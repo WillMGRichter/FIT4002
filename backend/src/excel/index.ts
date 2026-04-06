@@ -1,45 +1,55 @@
-const express = require("express");
-const multer = require("multer");
-const XLSX = require("xlsx");
-const app = express();
-const port = 3000;
+import express, { Request, Response } from "express";
+import multer from "multer";
+import XLSX from "xlsx";
+import cors from "cors";
 
-// Set up multer to store uploaded files in memory
+const app = express();
+const port = 5000;
+
+// Enable CORS if frontend is on a different port
+app.use(cors());
+
+// Multer config: store uploaded files in memory
 const upload = multer({ storage: multer.memoryStorage() });
 
-// POST /upload endpoint
-app.post("/upload", upload.single("file"), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "No file uploaded" });
-  }
-
-  // Read workbook from buffer
-  const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
-  const result = [];
-
-  workbook.SheetNames.forEach(sheetName => {
-    const sheet = workbook.Sheets[sheetName];
-    const formulas = [];
-
-    for (const cellAddress in sheet) {
-      const cell = sheet[cellAddress];
-
-      if (cell.f) { // if the cell has a formula
-        const references = cell.f.match(/([A-Z]+[0-9]+)/g) || [];
-        formulas.push({
-          cell: cellAddress,
-          formula: cell.f,
-          references
-        });
-      }
+// POST /excel/upload
+app.post("/excel/upload", upload.single("file"), (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
     }
 
-    result.push({ sheet: sheetName, formulas });
-  });
+    // Read workbook from buffer
+    const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+    const result: any[] = [];
 
-  res.json(result);
+    workbook.SheetNames.forEach(sheetName => {
+      const sheet = workbook.Sheets[sheetName];
+      const formulas: any[] = [];
+
+      for (const cellAddress in sheet) {
+        const cell = sheet[cellAddress];
+
+        if (cell.f) { // formula exists
+          const references = cell.f.match(/([A-Z]+[0-9]+)/g) || [];
+          formulas.push({
+            cell: cellAddress,
+            formula: cell.f,
+            references,
+          });
+        }
+      }
+
+      result.push({ sheet: sheetName, formulas });
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to process Excel file" });
+  }
 });
 
 app.listen(port, () => {
-  console.log(`Excel formula API running on http://localhost:${port}`);
+  console.log(`Excel formula API running at http://localhost:${port}/excel/upload`);
 });
