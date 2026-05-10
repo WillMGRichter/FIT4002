@@ -1,0 +1,129 @@
+/* ============================================================
+   Design Tokens — extracted from Figma "High-Fid prototype"
+   ============================================================ */
+
+/* ── Dark theme (primary UI) ── */
+:root,
+[data-theme="dark"] {
+  /* Surfaces */
+  --color-canvas:       #0D0D0D;
+  --color-bg-primary:   #111111;
+  --color-bg-raised:    #161616;
+  --color-bg-hover:     #1C1C1C;
+
+  /* Borders */
+  --color-border:       #2A2A2A;
+  --color-border-active:#444444;
+
+  /* Text */
+  --color-text-primary:   #DDDDDD;
+  --color-text-secondary: #AAAAAA;
+  --color-text-tertiary:  #777777;
+  --color-white:          #FFFFFF;
+
+  /* Accent (blue) */
+  --color-accent:       #2563EB;
+  --color-accent-dark:  #1D4ED8;
+  --color-accent-hover: #3B82F6;
+
+  /* Status */
+  --color-success:      #22C55E;
+  --color-warning:      #F59E0B;
+  --color-danger:       #EF4444;
+
+  /* Sidebar */
+  --sidebar-width: 220px;
+}
+
+/* ── Light theme (login / org management pages) ── */
+[data-theme="light"] {
+  --color-canvas:       #F9FAFB;
+  --color-bg-primary:   #FFFFFF;
+  --color-bg-raised:    #F3F4F6;
+  --color-bg-hover:     #E9EAEC;
+
+  --color-border:       #E5E7EB;
+  --color-border-active:#D1D5DB;
+
+  --color-text-primary:   #111827;
+  --color-text-secondary: #6B7280;
+  --color-text-tertiary:  #9CA3AF;
+  --color-white:          #FFFFFF;
+
+  /* Accent (green — matches Figma login page) */
+  --color-accent:       #3D6B35;
+  --color-accent-dark:  #2F5429;
+  --color-accent-hover: #4B7A3F;
+  --color-accent-subtle:#EDF3EC;
+}
+
+/* ── Typography ── */
+:root {
+  --font-sans: 'DM Sans', 'Helvetica Neue', sans-serif;
+  --font-mono: 'DM Mono', 'Fira Code', monospace;
+
+  --text-xs:   0.75rem;    /* 12px */
+  --text-sm:   0.8125rem;  /* 13px */
+  --text-base: 0.875rem;   /* 14px */
+  --text-md:   1rem;       /* 16px */
+  --text-lg:   1.125rem;   /* 18px */
+  --text-xl:   1.25rem;    /* 20px */
+  --text-2xl:  1.5rem;     /* 24px */
+  --text-3xl:  1.875rem;   /* 30px */
+
+  --weight-regular: 400;
+  --weight-medium:  500;
+  --weight-semibold:600;
+  --weight-bold:    700;
+
+  --leading-tight:  1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed:1.625;
+
+  /* ── Spacing ── */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* ── Radii ── */
+  --radius-sm:  4px;
+  --radius-md:  6px;
+  --radius-lg:  8px;
+  --radius-xl:  12px;
+  --radius-2xl: 16px;
+  --radius-full:9999px;
+
+  /* ── Shadows ── */
+  --shadow-sm:  0 1px 2px rgba(0,0,0,0.4);
+  --shadow-md:  0 4px 12px rgba(0,0,0,0.5);
+  --shadow-lg:  0 8px 24px rgba(0,0,0,0.6);
+
+  /* ── Transitions ── */
+  --transition-fast:   120ms ease;
+  --transition-base:   200ms ease;
+  --transition-slow:   350ms ease;
+}
+
+/* ── Global reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+  background: var(--color-canvas);
+  line-height: var(--leading-normal);
+}
+
+a { color: inherit; text-decoration: none; }
+button { cursor: pointer; font-family: inherit; }
+input, textarea, select { font-family: inherit; }

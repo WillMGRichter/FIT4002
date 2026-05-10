@@ -1,0 +1,225 @@
+.layout {
+  display:    flex;
+  min-height: 100vh;
+  background: var(--color-canvas);
+}
+
+.main {
+  flex:           1;
+  display:        flex;
+  flex-direction: column;
+  min-width:      0;
+}
+
+/* ── Topbar ── */
+.topbar {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  padding:         0 var(--space-8);
+  height:          56px;
+  border-bottom:   1px solid var(--color-border);
+  background:      var(--color-bg-primary);
+  position:        sticky;
+  top:             0;
+  z-index:         10;
+}
+
+.pageTitle {
+  font-size:   var(--text-xl);
+  font-weight: var(--weight-semibold);
+  color:       var(--color-text-primary);
+}
+
+.themeBtn {
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  width:           36px;
+  height:          36px;
+  background:      transparent;
+  border:          none;
+  border-radius:   var(--radius-md);
+  color:           var(--color-text-secondary);
+  transition:      background var(--transition-fast), color var(--transition-fast);
+}
+.themeBtn:hover {
+  background: var(--color-bg-hover);
+  color:      var(--color-text-primary);
+}
+
+/* ── Content ── */
+.content {
+  display:  flex;
+  flex:     1;
+  padding:  var(--space-8);
+  gap:      var(--space-8);
+  max-width:1200px;
+}
+
+/* ── Org panel ── */
+.orgPanel {
+  width:          280px;
+  flex-shrink:    0;
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--space-3);
+}
+
+.panelHeader {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+}
+
+.panelTitle {
+  font-size:   var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color:       var(--color-text-primary);
+}
+
+.orgList {
+  list-style:     none;
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--space-2);
+}
+
+.orgItem {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  padding:         var(--space-3) var(--space-4);
+  border:          1px solid var(--color-border);
+  border-radius:   var(--radius-lg);
+  background:      var(--color-bg-primary);
+  cursor:          pointer;
+  transition:
+    background   var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.orgItem:hover { background: var(--color-bg-raised); }
+
+.orgItemActive {
+  border-color: var(--color-border-active);
+  background:   var(--color-bg-raised);
+}
+
+.orgItemName {
+  font-size:   var(--text-sm);
+  font-weight: var(--weight-medium);
+  color:       var(--color-text-primary);
+  flex:        1;
+}
+
+.deleteBtn {
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  width:           28px;
+  height:          28px;
+  background:      transparent;
+  border:          none;
+  border-radius:   var(--radius-sm);
+  color:           var(--color-text-tertiary);
+  opacity:         0;
+  transition:
+    opacity     var(--transition-fast),
+    background  var(--transition-fast),
+    color       var(--transition-fast);
+}
+
+.orgItem:hover .deleteBtn,
+.adminRow:hover .deleteBtn { opacity: 1; }
+
+.deleteBtn:hover {
+  background: #FEE2E2;
+  color:      var(--color-danger);
+}
+
+/* ── Detail panel ── */
+.detailPanel {
+  flex:           1;
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--space-6);
+}
+
+.detailTitle {
+  font-size:   var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  color:       var(--color-text-primary);
+}
+
+.adminsSection {
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--space-3);
+}
+
+.adminsHeader {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+}
+
+.adminsTitle {
+  font-size:   var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color:       var(--color-text-primary);
+}
+
+.addAdminIcon {
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  width:           32px;
+  height:          32px;
+  background:      transparent;
+  border:          none;
+  border-radius:   var(--radius-md);
+  color:           var(--color-text-secondary);
+  transition:      background var(--transition-fast), color var(--transition-fast);
+}
+.addAdminIcon:hover {
+  background: var(--color-bg-hover);
+  color:      var(--color-text-primary);
+}
+
+.adminList {
+  list-style:     none;
+  display:        flex;
+  flex-direction: column;
+}
+
+.adminRow {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  padding:         var(--space-3) var(--space-3);
+  border-bottom:   1px solid var(--color-border);
+}
+
+.adminRow:last-child { border-bottom: none; }
+
+.adminEmail {
+  font-size: var(--text-base);
+  color:     var(--color-text-primary);
+}
+
+/* ── Add row ── */
+.addRow {
+  display:     flex;
+  align-items: flex-start;
+  gap:         var(--space-3);
+  margin-top:  var(--space-2);
+}
+
+.addInput { flex: 1; }
+
+/* ── Empty state ── */
+.emptyState {
+  color:     var(--color-text-secondary);
+  font-size: var(--text-base);
+}
