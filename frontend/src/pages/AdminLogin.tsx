@@ -1,25 +1,11 @@
 import React, { useState } from 'react';
-import { Button } from '../components/Button';
-import { Input }  from '../components/Input';
 import styles from './AdminLogin.module.css';
 
-const EyeIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-    <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z" stroke="currentColor" strokeWidth="1.4"/>
-    <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.4"/>
-  </svg>
-);
-
-const EyeOffIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-    <path d="M2 2l12 12M6.9 6.93A2 2 0 0010.06 10M4.1 4.13C2.47 5.22 1 8 1 8s2.5 5 7 5c1.38 0 2.63-.38 3.71-.98M7 3.07C7.33 3.03 7.66 3 8 3c4.5 0 7 5 7 5s-.7 1.46-1.93 2.78" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-  </svg>
-);
-
+// Minimal Green Shield Icon from the image
 const ShieldIcon = () => (
-  <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-    <path d="M14 3L5 7v7c0 5.25 3.85 10.15 9 11.35C19.15 24.15 23 19.25 23 14V7L14 3z" fill="var(--color-accent-subtle)" stroke="var(--color-accent)" strokeWidth="1.5"/>
-    <path d="M10 14l2.5 2.5L18 11" stroke="var(--color-accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    <path d="M9 12l2 2 4-4" />
   </svg>
 );
 
@@ -33,24 +19,8 @@ const GoogleIcon = () => (
 );
 
 export const AdminLogin: React.FC = () => {
-  const [email,    setEmail]    = useState('');
-  const [password, setPassword] = useState('');
-  const [showPw,   setShowPw]   = useState(false);
-  const [loading,  setLoading]  = useState(false);
-  const [error,    setError]    = useState('');
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    if (!email || !password) { setError('Please fill in all fields.'); return; }
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 1200)); // simulate network
-    setLoading(false);
-    setError('Invalid credentials. Please try again.');
-  };
-
   return (
-    <div className={styles.page} data-theme="light">
+    <div className={styles.page}>
       <div className={styles.card}>
         <div className={styles.icon}>
           <ShieldIcon />
@@ -59,60 +29,43 @@ export const AdminLogin: React.FC = () => {
         <h1 className={styles.title}>Admin Login</h1>
         <p className={styles.subtitle}>Sign in to your admin account to continue</p>
 
-        <form className={styles.form} onSubmit={handleSubmit} noValidate>
-          <Input
-            label="Email"
-            type="email"
-            placeholder="admin@example.com"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            autoComplete="email"
-            error={error && !email ? 'Email is required' : ''}
-          />
-
-          <div className={styles.passwordField}>
-            <div className={styles.passwordHeader}>
-              <label className={styles.fieldLabel} htmlFor="password-input">Password</label>
-              <button type="button" className={styles.forgotLink}>Forgot password?</button>
-            </div>
-            <Input
-              id="password-input"
-              type={showPw ? 'text' : 'password'}
-              placeholder="Enter your password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              autoComplete="current-password"
-              iconRight={
-                <button
-                  type="button"
-                  onClick={() => setShowPw(v => !v)}
-                  aria-label={showPw ? 'Hide password' : 'Show password'}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', color: 'var(--color-text-tertiary)' }}
-                >
-                  {showPw ? <EyeOffIcon /> : <EyeIcon />}
-                </button>
-              }
+        <form className={styles.form}>
+          <div className={styles.fieldGroup}>
+            <label className={styles.fieldLabel}>Email</label>
+            <input 
+              type="email" 
+              placeholder="admin@example.com" 
+              style={{ padding: '0.75rem', borderRadius: '0.375rem', border: '1px solid #e5e7eb', background: '#f9fafb' }}
             />
           </div>
 
-          {error && <p className={styles.errorMsg} role="alert">{error}</p>}
+          <div className={styles.fieldGroup}>
+            <div className={styles.labelRow}>
+              <label className={styles.fieldLabel}>Password</label>
+              <button type="button" className={styles.forgotLink}>Forgot password?</button>
+            </div>
+            <input 
+              type="password" 
+              placeholder="Enter your password" 
+              style={{ padding: '0.75rem', borderRadius: '0.375rem', border: '1px solid #e5e7eb', background: '#f9fafb' }}
+            />
+          </div>
 
-          <Button type="submit" fullWidth size="lg" loading={loading}>
+          <button type="submit" className={styles.signInBtn}>
             Sign in
-          </Button>
+          </button>
         </form>
 
         <div className={styles.divider}>
           <span>OR CONTINUE WITH</span>
         </div>
 
-        <Button variant="secondary" fullWidth size="lg" iconLeft={<GoogleIcon />}>
-          Google
-        </Button>
+        <button type="button" className={styles.googleBtn}>
+          <GoogleIcon /> Google
+        </button>
 
-        <p className={styles.signup}>
-          Don't have an account?{' '}
-          <button type="button" className={styles.signupLink}>Sign up</button>
+        <p className={styles.signupText}>
+          Don't have an account? <button className={styles.signupLink}>Sign up</button>
         </p>
       </div>
     </div>
