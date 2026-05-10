@@ -1,13 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import styles from './CreateSimulation.module.css';
-
-// Accent colors based on image dashboard
-const QUICK_LINKS = [
-  { path: '/showcase', label: 'Component Showcase', desc: 'Browse all UI components and design tokens', icon: '⊞', accent: '#2563EB' },
-  { path: '/login',    label: 'Admin Login',         desc: 'Authentication page with form validation',  icon: '🔐', accent: '#3D6B35' },
-  { path: '/orgs',     label: 'Organisations',        desc: 'Manage organisations and admin users',      icon: '🏢', accent: '#7C3AED' },
-];
 
 export const CreateSimulation: React.FC = () => {
   const [message, setMessage] = useState<string>('');
