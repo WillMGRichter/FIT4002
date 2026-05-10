@@ -1,192 +1,93 @@
 .page {
-  max-width:  900px;
-  margin:     0 auto;
-  padding:    var(--space-12) var(--space-6);
-  display:    flex;
-  flex-direction: column;
-  gap:        var(--space-12);
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 80px 40px;
+  background-color: #ffffff;
+  min-height: 100vh;
 }
 
-/* ── Hero ── */
 .hero {
-  display:        flex;
-  flex-direction: column;
-  align-items:    center;
-  text-align:     center;
-  gap:            var(--space-4);
-}
-
-.heroBadge {
-  display:       inline-flex;
-  align-items:   center;
-  gap:           var(--space-2);
-  padding:       var(--space-1) var(--space-3);
-  background:    var(--color-bg-raised);
-  border:        1px solid var(--color-border);
-  border-radius: var(--radius-full);
-  font-size:     var(--text-xs);
-  color:         var(--color-text-secondary);
-  font-weight:   var(--weight-medium);
-}
-
-.heroDot {
-  width:         6px;
-  height:        6px;
-  border-radius: 50%;
-  background:    var(--color-success);
-  box-shadow:    0 0 4px var(--color-success);
+  text-align: center;
+  margin-bottom: 60px;
 }
 
 .heroTitle {
-  font-size:   clamp(2rem, 5vw, 3rem);
-  font-weight: var(--weight-bold);
-  color:       var(--color-white);
+  font-size: 48px;
+  font-weight: 700;
+  color: #111827;
   letter-spacing: -0.02em;
-  line-height: var(--leading-tight);
+  margin-bottom: 16px;
 }
 
 .heroSub {
-  font-size:  var(--text-md);
-  color:      var(--color-text-secondary);
-  max-width:  520px;
-  line-height:var(--leading-relaxed);
+  font-size: 18px;
+  color: #6B7280;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
-/* ── Upload card ── */
+/* The central upload card from the design */
 .uploadCard {
-  width:         100%;
-  max-width:     520px;
-  background:    var(--color-bg-primary);
-  border:        1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  padding:       var(--space-8);
-  display:       flex;
-  flex-direction:column;
-  gap:           var(--space-3);
-  margin-top:    var(--space-4);
-}
-
-.uploadTitle {
-  font-size:   var(--text-lg);
-  font-weight: var(--weight-semibold);
-  color:       var(--color-text-primary);
-}
-
-.uploadDesc {
-  font-size: var(--text-sm);
-  color:     var(--color-text-tertiary);
-  margin-top: calc(var(--space-1) * -1);
-}
-
-.uploadLabel { display: block; }
-
-.uploadInput {
-  position: absolute;
-  opacity:  0;
-  width:    0;
-  height:   0;
+  background: #ffffff;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  padding: 40px;
+  max-width: 500px;
+  margin: 0 auto 80px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  text-align: center;
 }
 
 .uploadBtn {
-  display:         block;
-  width:           100%;
-  padding:         var(--space-3) var(--space-4);
-  background:      var(--color-accent);
-  color:           var(--color-white);
-  border-radius:   var(--radius-md);
-  font-size:       var(--text-base);
-  font-weight:     var(--weight-medium);
-  text-align:      center;
-  cursor:          pointer;
-  transition:      background var(--transition-fast);
-}
-.uploadBtn:hover { background: var(--color-accent-hover); }
-
-.uploadError {
-  font-size: var(--text-sm);
-  color:     var(--color-danger);
+  background-color: #16a34a; /* The specific green from the image */
+  color: white;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s;
+  border: none;
+  width: 100%;
+  justify-content: center;
 }
 
-.uploadResult {
-  background:    var(--color-bg-raised);
-  border:        1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding:       var(--space-4);
-  font-size:     var(--text-xs);
-  color:         var(--color-text-secondary);
-  overflow:      auto;
-  max-height:    300px;
-  white-space:   pre-wrap;
-  text-align:    left;
-}
-
-/* ── Quick links ── */
-.links { display: flex; flex-direction: column; gap: var(--space-4); }
-
-.linksTitle {
-  font-size:   var(--text-sm);
-  font-weight: var(--weight-semibold);
-  color:       var(--color-text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+.uploadBtn:hover {
+  background-color: #15803d;
 }
 
 .linksGrid {
-  display:               grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap:                   var(--space-3);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
 }
 
 .linkCard {
-  display:         flex;
-  align-items:     center;
-  gap:             var(--space-4);
-  padding:         var(--space-4) var(--space-5);
-  background:      var(--color-bg-primary);
-  border:          1px solid var(--color-border);
-  border-radius:   var(--radius-lg);
+  padding: 24px;
+  background: #ffffff;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
   text-decoration: none;
-  transition:
-    background   var(--transition-fast),
-    border-color var(--transition-fast),
-    transform    var(--transition-fast);
-}
-.linkCard:hover {
-  background:   var(--color-bg-raised);
-  border-color: var(--color-border-active);
-  transform:    translateY(-1px);
+  transition: all 0.2s ease;
 }
 
-.linkIcon {
-  width:           40px;
-  height:          40px;
-  border-radius:   var(--radius-lg);
-  display:         flex;
-  align-items:     center;
-  justify-content: center;
-  font-size:       20px;
-  flex-shrink:     0;
+.linkCard:hover {
+  border-color: #16a34a;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 
 .linkLabel {
-  font-size:   var(--text-base);
-  font-weight: var(--weight-semibold);
-  color:       var(--color-text-primary);
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  display: block;
+  margin-bottom: 4px;
 }
 
 .linkDesc {
-  font-size: var(--text-sm);
-  color:     var(--color-text-tertiary);
-  margin-top:2px;
-}
-
-.linkArrow {
-  margin-left: auto;
-  color:       var(--color-text-tertiary);
-  font-size:   var(--text-lg);
-  transition:  transform var(--transition-fast), color var(--transition-fast);
-}
-.linkCard:hover .linkArrow {
-  transform: translateX(3px);
-  color:     var(--color-text-secondary);
+  font-size: 14px;
+  color: #6B7280;
 }

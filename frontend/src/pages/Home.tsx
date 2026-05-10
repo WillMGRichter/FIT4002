@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import styles from './Home.module.css';
 
+// Accent colors based on image dashboard
 const QUICK_LINKS = [
   { path: '/showcase', label: 'Component Showcase', desc: 'Browse all UI components and design tokens', icon: '⊞', accent: '#2563EB' },
   { path: '/login',    label: 'Admin Login',         desc: 'Authentication page with form validation',  icon: '🔐', accent: '#3D6B35' },
@@ -38,15 +39,20 @@ export const Home: React.FC = () => {
     }
   };
 
+  const getDotStatus = () => {
+    if (backendOk === true)  return { text: 'Backend connected', class: styles.dotOk };
+    if (backendOk === false) return { text: 'Backend offline',   class: styles.dotOffline };
+    return { text: 'Connecting…',  class: styles.dotConnecting };
+  };
+  const status = getDotStatus();
+
   return (
-    <main className={styles.page}>
+    <main className={styles.page} data-theme="light">
       {/* Hero */}
       <section className={styles.hero}>
         <div className={styles.heroBadge}>
-          <span className={styles.heroDot} />
-          {backendOk === true  && 'Backend connected'}
-          {backendOk === false && 'Backend offline'}
-          {backendOk === null  && 'Connecting…'}
+          <span className={`${styles.heroDot} ${status.class}`} />
+          {status.text}
         </div>
         <h1 className={styles.heroTitle}>Excel Simulation</h1>
         <p className={styles.heroSub}>
@@ -60,7 +66,12 @@ export const Home: React.FC = () => {
           <label className={styles.uploadLabel}>
             <input type="file" accept=".xlsx" onChange={handleFile} className={styles.uploadInput} />
             <span className={styles.uploadBtn}>
-              {loading ? 'Processing…' : '↑ Choose .xlsx file'}
+              {loading ? 'Processing…' : (
+                <>
+                  <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M8 12V3M8 3l3 3M8 3L5 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  Choose .xlsx file
+                </>
+              )}
             </span>
           </label>
           {error && <p className={styles.uploadError}>{error}</p>}
@@ -78,7 +89,7 @@ export const Home: React.FC = () => {
         <div className={styles.linksGrid}>
           {QUICK_LINKS.map(link => (
             <Link key={link.path} to={link.path} className={styles.linkCard}>
-              <div className={styles.linkIcon} style={{ background: link.accent + '22', color: link.accent }}>
+              <div className={styles.linkIcon} style={{ background: link.accent + '11', color: link.accent }}>
                 {link.icon}
               </div>
               <div>
