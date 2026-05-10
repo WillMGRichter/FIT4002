@@ -82,25 +82,6 @@ export const CreateSimulation: React.FC = () => {
           )}
         </div>
       </section>
-
-      {/* Quick links */}
-      <section className={styles.links}>
-        <h2 className={styles.linksTitle}>Navigate</h2>
-        <div className={styles.linksGrid}>
-          {QUICK_LINKS.map(link => (
-            <Link key={link.path} to={link.path} className={styles.linkCard}>
-              <div className={styles.linkIcon} style={{ background: link.accent + '11', color: link.accent }}>
-                {link.icon}
-              </div>
-              <div>
-                <div className={styles.linkLabel}>{link.label}</div>
-                <div className={styles.linkDesc}>{link.desc}</div>
-              </div>
-              <span className={styles.linkArrow}>→</span>
-            </Link>
-          ))}
-        </div>
-      </section>
     </main>
   );
 };
