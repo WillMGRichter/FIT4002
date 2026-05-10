@@ -1,0 +1,353 @@
+/* =============================
+   Showcase Theme (Dark UI)
+   ============================= */
+
+.page {
+  padding: var(--space-6, 24px);
+  background: var(--color-bg-primary, #111);
+  color: var(--color-text-primary, #ddd);
+  min-height: 100vh;
+}
+
+/* ================= HERO ================= */
+.hero {
+  margin-bottom: 32px;
+  padding: 32px;
+  border-radius: 16px;
+  background: var(--color-bg-raised, #161616);
+  border: 1px solid var(--color-border, #2a2a2a);
+}
+
+.heroTitle {
+  font-size: var(--text-3xl, 32px);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.heroSub {
+  color: var(--color-text-secondary, #aaa);
+  font-size: var(--text-md, 16px);
+}
+
+/* ================= SECTION ================= */
+.section {
+  margin-top: 40px;
+}
+
+.sectionHeader {
+  margin-bottom: 16px;
+}
+
+.sectionTitle {
+  font-size: var(--text-xl, 20px);
+  font-weight: 600;
+}
+
+.sectionSub {
+  color: var(--color-text-tertiary, #777);
+  font-size: var(--text-sm, 13px);
+}
+
+/* ================= LAYOUTS ================= */
+.row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.inputGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+/* ================= CARDS ================= */
+.card {
+  background: var(--color-bg-raised, #161616);
+  border: 1px solid var(--color-border, #2a2a2a);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.cardTitle {
+  font-size: var(--text-md, 16px);
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+/* ================= BUTTONS ================= */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  padding: 10px 14px;
+  font-size: var(--text-sm, 14px);
+  cursor: pointer;
+  transition: 0.15s ease;
+  background: transparent;
+  color: inherit;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn_full {
+  width: 100%;
+}
+
+/* sizes */
+.btn_sm { padding: 6px 10px; font-size: 12px; }
+.btn_md { padding: 10px 14px; }
+.btn_lg { padding: 14px 18px; font-size: 16px; }
+
+/* variants */
+.btn_primary {
+  background: var(--color-accent, #2563eb);
+  color: white;
+}
+
+.btn_primary:hover { background: var(--color-accent-hover, #3b82f6); }
+
+.btn_secondary {
+  background: var(--color-bg-hover, #1c1c1c);
+  border: 1px solid var(--color-border, #2a2a2a);
+}
+
+.btn_secondary:hover {
+  background: #222;
+}
+
+.btn_ghost {
+  background: transparent;
+}
+
+.btn_outline {
+  border: 1px solid var(--color-border-active, #444);
+}
+
+.btn_danger {
+  background: var(--color-danger, #ef4444);
+  color: white;
+}
+
+.btn_loading {
+  opacity: 0.7;
+}
+
+.btnIcon {
+  display: inline-flex;
+}
+
+/* spinner */
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ================= INPUTS ================= */
+.inpWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.inpLabel {
+  font-size: 12px;
+  color: var(--color-text-secondary, #aaa);
+}
+
+.inpField {
+  display: flex;
+  align-items: center;
+  background: var(--color-bg-raised, #161616);
+  border: 1px solid var(--color-border, #2a2a2a);
+  border-radius: 10px;
+  padding: 8px;
+  gap: 6px;
+}
+
+.inp {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: inherit;
+}
+
+.inpPadL { padding-left: 6px; }
+.inpPadR { padding-right: 6px; }
+
+.inpError {
+  border-color: var(--color-danger, #ef4444);
+}
+
+.inpIconL, .inpIconR {
+  display: flex;
+  align-items: center;
+  color: var(--color-text-tertiary, #777);
+}
+
+.inpErrMsg {
+  color: var(--color-danger, #ef4444);
+  font-size: 12px;
+}
+
+.inpHint {
+  font-size: 12px;
+  color: var(--color-text-tertiary, #777);
+}
+
+/* ================= BADGES ================= */
+.badge {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border, #2a2a2a);
+}
+
+.badge_default { background: #222; }
+.badge_success { background: #14532d; color: #22c55e; }
+.badge_warning { background: #3a2a05; color: #f59e0b; }
+.badge_danger  { background: #3b0a0a; color: #ef4444; }
+.badge_accent  { background: #1e3a8a; color: #93c5fd; }
+
+/* ================= AVATAR ================= */
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-weight: 600;
+  overflow: hidden;
+}
+
+.avatar_sm { width: 28px; height: 28px; font-size: 12px; }
+.avatar_md { width: 36px; height: 36px; font-size: 14px; }
+.avatar_lg { width: 48px; height: 48px; font-size: 16px; }
+
+/* ================= TOGGLE ================= */
+.toggleWrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.toggle {
+  width: 42px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--color-bg-hover, #1c1c1c);
+  border: 1px solid var(--color-border, #2a2a2a);
+  position: relative;
+  transition: 0.2s;
+}
+
+.toggleOn {
+  background: var(--color-accent, #2563eb);
+}
+
+.toggleThumb {
+  width: 18px;
+  height: 18px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 1px;
+  left: 2px;
+  transition: 0.2s;
+}
+
+.toggleOn .toggleThumb {
+  left: 22px;
+}
+
+.toggleLabel {
+  font-size: 14px;
+}
+
+/* ================= TAGS ================= */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--color-bg-hover, #1c1c1c);
+  border: 1px solid var(--color-border, #2a2a2a);
+  font-size: 12px;
+}
+
+.tagRemove {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* ================= SWATCHES ================= */
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.swatch {
+  width: 140px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--color-bg-raised, #161616);
+  border: 1px solid var(--color-border, #2a2a2a);
+}
+
+.swatchColor {
+  width: 100%;
+  height: 40px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.swatchName {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.swatchHex {
+  font-size: 12px;
+  color: var(--color-text-secondary, #aaa);
+}
+
+.swatchToken {
+  font-size: 11px;
+  color: var(--color-text-tertiary, #777);
+}
+
+/* ================= UTIL ================= */
+.paletteGroup {
+  margin-bottom: 20px;
+}
+
+.paletteLabel {
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--color-text-secondary, #aaa);
+}

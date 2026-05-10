@@ -1,0 +1,192 @@
+.page {
+  max-width:  900px;
+  margin:     0 auto;
+  padding:    var(--space-12) var(--space-6);
+  display:    flex;
+  flex-direction: column;
+  gap:        var(--space-12);
+}
+
+/* ── Hero ── */
+.hero {
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  text-align:     center;
+  gap:            var(--space-4);
+}
+
+.heroBadge {
+  display:       inline-flex;
+  align-items:   center;
+  gap:           var(--space-2);
+  padding:       var(--space-1) var(--space-3);
+  background:    var(--color-bg-raised);
+  border:        1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-size:     var(--text-xs);
+  color:         var(--color-text-secondary);
+  font-weight:   var(--weight-medium);
+}
+
+.heroDot {
+  width:         6px;
+  height:        6px;
+  border-radius: 50%;
+  background:    var(--color-success);
+  box-shadow:    0 0 4px var(--color-success);
+}
+
+.heroTitle {
+  font-size:   clamp(2rem, 5vw, 3rem);
+  font-weight: var(--weight-bold);
+  color:       var(--color-white);
+  letter-spacing: -0.02em;
+  line-height: var(--leading-tight);
+}
+
+.heroSub {
+  font-size:  var(--text-md);
+  color:      var(--color-text-secondary);
+  max-width:  520px;
+  line-height:var(--leading-relaxed);
+}
+
+/* ── Upload card ── */
+.uploadCard {
+  width:         100%;
+  max-width:     520px;
+  background:    var(--color-bg-primary);
+  border:        1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding:       var(--space-8);
+  display:       flex;
+  flex-direction:column;
+  gap:           var(--space-3);
+  margin-top:    var(--space-4);
+}
+
+.uploadTitle {
+  font-size:   var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color:       var(--color-text-primary);
+}
+
+.uploadDesc {
+  font-size: var(--text-sm);
+  color:     var(--color-text-tertiary);
+  margin-top: calc(var(--space-1) * -1);
+}
+
+.uploadLabel { display: block; }
+
+.uploadInput {
+  position: absolute;
+  opacity:  0;
+  width:    0;
+  height:   0;
+}
+
+.uploadBtn {
+  display:         block;
+  width:           100%;
+  padding:         var(--space-3) var(--space-4);
+  background:      var(--color-accent);
+  color:           var(--color-white);
+  border-radius:   var(--radius-md);
+  font-size:       var(--text-base);
+  font-weight:     var(--weight-medium);
+  text-align:      center;
+  cursor:          pointer;
+  transition:      background var(--transition-fast);
+}
+.uploadBtn:hover { background: var(--color-accent-hover); }
+
+.uploadError {
+  font-size: var(--text-sm);
+  color:     var(--color-danger);
+}
+
+.uploadResult {
+  background:    var(--color-bg-raised);
+  border:        1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding:       var(--space-4);
+  font-size:     var(--text-xs);
+  color:         var(--color-text-secondary);
+  overflow:      auto;
+  max-height:    300px;
+  white-space:   pre-wrap;
+  text-align:    left;
+}
+
+/* ── Quick links ── */
+.links { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.linksTitle {
+  font-size:   var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color:       var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.linksGrid {
+  display:               grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap:                   var(--space-3);
+}
+
+.linkCard {
+  display:         flex;
+  align-items:     center;
+  gap:             var(--space-4);
+  padding:         var(--space-4) var(--space-5);
+  background:      var(--color-bg-primary);
+  border:          1px solid var(--color-border);
+  border-radius:   var(--radius-lg);
+  text-decoration: none;
+  transition:
+    background   var(--transition-fast),
+    border-color var(--transition-fast),
+    transform    var(--transition-fast);
+}
+.linkCard:hover {
+  background:   var(--color-bg-raised);
+  border-color: var(--color-border-active);
+  transform:    translateY(-1px);
+}
+
+.linkIcon {
+  width:           40px;
+  height:          40px;
+  border-radius:   var(--radius-lg);
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  font-size:       20px;
+  flex-shrink:     0;
+}
+
+.linkLabel {
+  font-size:   var(--text-base);
+  font-weight: var(--weight-semibold);
+  color:       var(--color-text-primary);
+}
+
+.linkDesc {
+  font-size: var(--text-sm);
+  color:     var(--color-text-tertiary);
+  margin-top:2px;
+}
+
+.linkArrow {
+  margin-left: auto;
+  color:       var(--color-text-tertiary);
+  font-size:   var(--text-lg);
+  transition:  transform var(--transition-fast), color var(--transition-fast);
+}
+.linkCard:hover .linkArrow {
+  transform: translateX(3px);
+  color:     var(--color-text-secondary);
+}

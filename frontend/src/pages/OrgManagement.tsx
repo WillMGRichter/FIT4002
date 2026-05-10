@@ -83,7 +83,7 @@ export const OrgManagement: React.FC = () => {
   };
 
   const handleDeleteOrg = (id: string) => {
-    if (!confirm('Delete this organisation?')) return;
+    if (!window.confirm('Delete this organisation?')) return;
     setOrgs(prev => {
       const next = prev.filter(o => o.id !== id);
       if (selectedOrgId === id) setSelectedOrgId(next[0]?.id ?? '');
