@@ -1,0 +1,129 @@
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  height: 56px; /* Slightly taller for professional spacing */
+  padding: 0 24px;
+  background: #ffffff;
+  border-bottom: 1px solid #E5E7EB;
+  gap: 32px;
+}
+
+/* ── Brand ── */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.brandName {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  letter-spacing: -0.01em;
+}
+
+/* ── Desktop nav ── */
+.navLinks {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%; /* Important for the bottom border indicator */
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6B7280; /* Gray-500 */
+  text-decoration: none;
+  position: relative;
+  transition: color 0.2s ease;
+}
+
+.navLink:hover {
+  color: #111827;
+}
+
+.navLinkActive {
+  color: #111827;
+}
+
+/* The active indicator line from the image */
+.navLinkActive::after {
+  content: "";
+  position: absolute;
+  bottom: -1px; /* Aligns perfectly with the navbar border */
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #16a34a;
+  border-radius: 2px 2px 0 0;
+}
+
+.navIcon {
+  display: flex;
+  align-items: center;
+  color: currentColor;
+}
+
+/* ── Right side ── */
+.navRight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: auto;
+}
+
+.statusGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: #f0fdf4;
+  border-radius: 99px;
+  border: 1px solid #dcfce7;
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #16a34a;
+}
+
+.statusText {
+  font-size: 12px;
+  font-weight: 500;
+  color: #16a34a;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f3f4f6;
+  border: 1px solid #E5E7EB;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* ── Mobile Logic ── */
+@media (max-width: 768px) {
+  .navLinks { display: none; }
+  .navRight { display: none; }
+  .hamburger { display: block; background: none; border: none; cursor: pointer; color: #6B7280; }
+}
