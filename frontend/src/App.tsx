@@ -5,6 +5,7 @@ import { AdminLogin } from './pages/AdminLogin';
 import { Showcase } from './pages/Showcase';
 import { OrgManagement } from './pages/OrgManagement';
 import { CreateSimulation } from './pages/CreateSimulation';
+import { CanvasPlayground } from './pages/CanvasPlayground';
 
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
         <Route path="/login" element={<AdminLogin />} />
         <Route path="/orgs" element={<OrgManagement />} />
         <Route path="/createSim" element={<CreateSimulation />} />
+        <Route path="/canvas" element={<CanvasPlayground />} />
       </Routes>
     </>
   );
