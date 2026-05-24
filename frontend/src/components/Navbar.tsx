@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import styles from './Navbar.module.css';
-import { ExcelIcon, HomeIcon, ComponentsIcon, BuildingIcon, ShieldIcon, CloseIcon, MenuIcon } from './Icons'
+import { ExcelIcon, HomeIcon, ComponentsIcon, BuildingIcon, ShieldIcon, CloseIcon, MenuIcon, CanvasIcon } from './Icons'
 
 interface NavRoute {
   path:  string;
@@ -14,7 +14,8 @@ const ROUTES: NavRoute[] = [
   { path: '/showcase', label: 'Components',   icon: <ComponentsIcon /> },
   { path: '/login',    label: 'Admin Login',  icon: <ShieldIcon /> },
   { path: '/orgs',     label: 'Organisations',icon: <BuildingIcon /> },
-  { path: '/createSim',label: 'Create +',     icon: <ComponentsIcon /> },
+  { path: '/createSim',      label: 'Create +',         icon: <ComponentsIcon /> },
+  { path: '/canvas',         label: 'CanvasPlayground', icon: <CanvasIcon /> },
 ];
 
 export const Navbar: React.FC = () => {
