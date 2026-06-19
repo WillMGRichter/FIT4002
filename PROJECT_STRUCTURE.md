@@ -12,39 +12,39 @@ FIT4002/
 │   │   │   └── entities/
 │   │   │       └── user.ts              # User entity (stub for future use)
 │   │   ├── types/
-│   │   │   └── index.ts                 # ⭐ ALL TypeScript type definitions
+│   │   │   └── index.ts                 #  ALL TypeScript type definitions
 │   │   ├── middleware/
 │   │   │   └── authMiddleware.ts        # JWT verification middleware
 │   │   ├── services/
-│   │   │   ├── authService.ts           # ⭐ Authentication logic (JWT, bcrypt)
-│   │   │   ├── projectService.ts        # ⭐ Project CRUD operations
-│   │   │   └── simulationService.ts     # ⭐ Simulation state management
+│   │   │   ├── authService.ts           #  Authentication logic (JWT, bcrypt)
+│   │   │   ├── projectService.ts        #  Project CRUD operations
+│   │   │   └── simulationService.ts     #  Simulation state management
 │   │   ├── routes/
-│   │   │   ├── authRoutes.ts            # ⭐ /auth endpoints (signup, login)
-│   │   │   ├── projectRoutes.ts         # ⭐ /projects endpoints
-│   │   │   └── simulationRoutes.ts      # ⭐ /simulations endpoints
+│   │   │   ├── authRoutes.ts            # * /auth endpoints (signup, login)
+│   │   │   ├── projectRoutes.ts         # * /projects endpoints
+│   │   │   └── simulationRoutes.ts      # * /simulations endpoints
 │   │   └── excel/
 │   │       └── excelParser.ts           # Excel file upload/parsing
 │   ├── migrations/
-│   │   └── 001_initial_schema.sql       # ⭐ Database schema (RUN THIS FIRST!)
+│   │   └── 001_initial_schema.sql       # * Database schema (RUN THIS FIRST!)
 │   ├── package.json                     # Dependencies and scripts
 │   ├── tsconfig.json                    # TypeScript configuration
-│   ├── .env.example                     # ⭐ Configuration template
+│   ├── .env.example                     # * Configuration template
 │   └── .env                             # (Create locally, not in repo)
 │
 ├── frontend/                            # React SPA
 │   ├── src/
 │   │   ├── index.tsx                   # React entry point
-│   │   ├── App.tsx                     # ⭐ Main app with routing logic
+│   │   ├── App.tsx                     # * Main app with routing logic
 │   │   ├── index.css                   # Global styles
 │   │   ├── contexts/
-│   │   │   └── AuthContext.tsx         # ⭐ Authentication state (global)
+│   │   │   └── AuthContext.tsx         # * Authentication state (global)
 │   │   └── pages/
-│   │       ├── LoginPage.tsx           # ⭐ Login form
-│   │       ├── SignupPage.tsx          # ⭐ Signup form
-│   │       ├── DashboardPage.tsx       # ⭐ Project listing dashboard
-│   │       ├── ProjectCreatePage.tsx   # ⭐ Create project with Excel upload
-│   │       ├── SimulationPage.tsx      # ⭐ Student interaction page
+│   │       ├── LoginPage.tsx           # * Login form
+│   │       ├── SignupPage.tsx          # * Signup form
+│   │       ├── DashboardPage.tsx       # * Project listing dashboard
+│   │       ├── ProjectCreatePage.tsx   # * Create project with Excel upload
+│   │       ├── SimulationPage.tsx      # * Student interaction page
 │   │       ├── AuthPages.css           # Auth page styling
 │   │       ├── Dashboard.css           # Dashboard styling
 │   │       ├── ProjectCreate.css       # Create project styling
@@ -57,10 +57,10 @@ FIT4002/
 │   ├── tsconfig.json                   # TypeScript configuration
 │   └── .env.local                      # (Local environment, not in repo)
 │
-├── QUICK_START.md                      # ⭐ 5-minute setup guide (START HERE)
-├── IMPLEMENTATION_GUIDE.md             # ⭐ Architecture & detailed docs
-├── IMPLEMENTATION_SUMMARY.md           # ⭐ What was built summary
-├── ROADMAP.md                          # ⭐ Future features guide
+├── QUICK_START.md                      # * 5-minute setup guide (START HERE)
+├── IMPLEMENTATION_GUIDE.md             # * Architecture & detailed docs
+├── IMPLEMENTATION_SUMMARY.md           # * What was built summary
+├── ROADMAP.md                          # * Future features guide
 └── README.md                           # (Optional: project overview)
 ```
 
