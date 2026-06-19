@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { UserRound } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import './AuthPages.css';
 
@@ -41,7 +42,7 @@ export const LoginPage: React.FC = () => {
         {/* Icon */}
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
           <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem' }}>
-            👤
+            <UserRound size={34} color="#118a05" strokeWidth={1.9} />
           </div>
         </div>
 

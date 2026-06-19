@@ -1,15 +1,40 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef, useState } from 'react';
+import { Link2, Plus, Trash2, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import './ProjectCreate.css';
+
+interface StudentRow {
+  id: string;
+  firstName: string;
+  lastName: string;
+  username: string;
+  password: string;
+}
+
+const createBlankStudent = (): StudentRow => ({
+  id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
+  firstName: '',
+  lastName: '',
+  username: '',
+  password: '',
+});
 
 export const ProjectCreatePage: React.FC = () => {
   const [step, setStep] = useState<'form' | 'students'>('form');
   const [simulationTitle, setSimulationTitle] = useState('');
   const [simulationId, setSimulationId] = useState('');
   const [excelFile, setExcelFile] = useState<File | null>(null);
-  const [students, setStudents] = useState<Array<{ id: string; firstName: string; lastName: string; username: string; password: string }>>([
-    { id: '1', firstName: '', lastName: '', username: '', password: '' },
+  const [students, setStudents] = useState<StudentRow[]>([
+    createBlankStudent(),
+    createBlankStudent(),
+    createBlankStudent(),
+    createBlankStudent(),
+    createBlankStudent(),
+    createBlankStudent(),
+    createBlankStudent(),
+    createBlankStudent(),
   ]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -17,58 +42,65 @@ export const ProjectCreatePage: React.FC = () => {
   const navigate = useNavigate();
   const { token } = useAuth();
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      setExcelFile(e.target.files[0]);
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files?.[0]) {
+      setExcelFile(event.target.files[0]);
+      setError('');
     }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.dataTransfer.files?.[0]) {
-      setExcelFile(e.dataTransfer.files[0]);
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.dataTransfer.files?.[0]) {
+      setExcelFile(event.dataTransfer.files[0]);
+      setError('');
     }
   };
 
   const handleAddStudent = () => {
-    setStudents([...students, { id: Date.now().toString(), firstName: '', lastName: '', username: '', password: '' }]);
+    setStudents(current => [...current, createBlankStudent()]);
   };
 
   const handleRemoveStudent = (id: string) => {
-    setStudents(students.filter(s => s.id !== id));
+    setStudents(current => current.length === 1 ? current : current.filter(student => student.id !== id));
   };
 
-  const handleStudentChange = (id: string, field: string, value: string) => {
-    setStudents(students.map(s => s.id === id ? { ...s, [field]: value } : s));
+  const handleStudentChange = (id: string, field: keyof Omit<StudentRow, 'id'>, value: string) => {
+    setStudents(current => current.map(student => student.id === id ? { ...student, [field]: value } : student));
   };
 
-  const handleNext = async () => {
+  const handleNext = () => {
     if (!simulationTitle || !excelFile) {
       setError('Please fill in all required fields');
       return;
     }
+
+    setError('');
     setStep('students');
   };
 
   const handleCreateSimulation = async () => {
     if (!simulationTitle || !excelFile) {
       setError('Please fill in all required fields');
+      setStep('form');
       return;
     }
 
     setLoading(true);
+    setError('');
+
     try {
       const formData = new FormData();
       formData.append('file', excelFile);
       formData.append('title', simulationTitle);
       formData.append('id', simulationId || simulationTitle);
-      formData.append('students', JSON.stringify(students.filter(s => s.username)));
+      formData.append('students', JSON.stringify(students.filter(student => student.username)));
 
       const response = await fetch('http://localhost:5000/projects', {
         method: 'POST',
@@ -79,8 +111,8 @@ export const ProjectCreatePage: React.FC = () => {
       });
 
       if (!response.ok) throw new Error('Failed to create simulation');
-      const project = await response.json();
-      navigate(`/dashboard`);
+      await response.json();
+      navigate('/dashboard');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -88,324 +120,142 @@ export const ProjectCreatePage: React.FC = () => {
     }
   };
 
-  const baseStyles = {
-    container: {
-      display: 'flex',
-      height: '100vh',
-      background: '#1a1a1a',
-    },
-    sidebar: {
-      width: '180px',
-      background: '#0f0f0f',
-      borderRight: '1px solid #333',
-      padding: '1.5rem 0',
-      display: 'flex',
-      flexDirection: 'column' as const,
-    },
-    main: {
-      flex: 1,
-      padding: '2rem',
-      color: '#fff',
-      overflow: 'auto',
-    },
-    header: {
-      marginBottom: '2rem',
-    },
-    title: {
-      fontSize: '1.875rem',
-      fontWeight: 700,
-      margin: 0,
-      marginBottom: '0.5rem',
-    },
-    formContainer: {
-      maxWidth: '800px',
-    },
-    formGroup: {
-      marginBottom: '1.5rem',
-    },
-    label: {
-      display: 'block',
-      fontSize: '0.875rem',
-      fontWeight: 600,
-      marginBottom: '0.5rem',
-      color: '#fff',
-    },
-    required: {
-      color: '#ef4444',
-    },
-    input: {
-      width: '100%',
-      padding: '0.75rem',
-      border: '1px solid #444',
-      borderRadius: '0.375rem',
-      background: '#fff',
-      color: '#000',
-      fontSize: '0.875rem',
-    },
-    uploadArea: {
-      border: '2px dashed #16a34a',
-      borderRadius: '0.5rem',
-      padding: '2rem',
-      textAlign: 'center' as const,
-      cursor: 'pointer',
-      background: '#1a3a1a',
-      color: '#16a34a',
-    },
-    button: {
-      padding: '0.75rem 1.5rem',
-      borderRadius: '0.375rem',
-      border: 'none',
-      fontWeight: 600,
-      cursor: 'pointer',
-      fontSize: '0.875rem',
-    },
-    buttonPrimary: {
-      background: '#16a34a',
-      color: 'white',
-    },
-    table: {
-      width: '100%',
-      borderCollapse: 'collapse' as const,
-    },
-  };
+  return (
+    <AppShell title="Simulations" activeItem="create">
+      <div className="create-simulation-page">
+        <h1>Create New Simulation</h1>
 
-  if (step === 'form') {
-    return (
-      <div style={baseStyles.container as React.CSSProperties}>
-        {/* Sidebar */}
-        <aside style={baseStyles.sidebar as React.CSSProperties}>
-          <div style={{ padding: '0 1rem', marginBottom: '2rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#666', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem', fontWeight: 600 }}>
-                BS
-              </div>
-              <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#fff' }}>Ben Stern</span>
-            </div>
-          </div>
+        {error && <div className="create-error">{error}</div>}
 
-          <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0 0.5rem', color: '#999' }}>
-            <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.875rem', color: '#16a34a' }}>📌 Simulations</button>
-          </nav>
-
-          <div style={{ borderTop: '1px solid #333', padding: '1rem 0.5rem', color: '#999' }}>
-            <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.875rem', width: '100%' }}>
-              🏢 Organisation
-            </button>
-          </div>
-        </aside>
-
-        {/* Main */}
-        <main style={baseStyles.main as React.CSSProperties}>
-          <div style={baseStyles.header as React.CSSProperties}>
-            <h1 style={baseStyles.title as React.CSSProperties}>Create New Simulation</h1>
-          </div>
-
-          {error && <div style={{ color: '#ef4444', marginBottom: '1rem', fontSize: '0.875rem' }}>{error}</div>}
-
-          <div style={baseStyles.formContainer as React.CSSProperties}>
-            <div style={baseStyles.formGroup as React.CSSProperties}>
-              <label style={baseStyles.label as React.CSSProperties}>
-                Simulation Title
-                <span style={baseStyles.required as React.CSSProperties}> *</span>
-              </label>
+        {step === 'form' ? (
+          <section className="create-form" aria-label="Simulation details">
+            <label className="create-field">
+              <span>
+                Simulation Title<span className="required">*</span>
+              </span>
               <input
+                autoFocus
                 type="text"
                 value={simulationTitle}
-                onChange={(e) => setSimulationTitle(e.target.value)}
+                onChange={(event) => setSimulationTitle(event.target.value)}
                 placeholder="Text"
-                style={baseStyles.input as React.CSSProperties}
               />
-            </div>
+            </label>
 
-            <div style={baseStyles.formGroup as React.CSSProperties}>
-              <label style={baseStyles.label as React.CSSProperties}>
-                Simulation ID
-                <span style={baseStyles.required as React.CSSProperties}> *</span>
-              </label>
+            <label className="create-field">
+              <span>
+                Simulation ID<span className="required">*</span>
+              </span>
               <input
                 type="text"
                 value={simulationId}
-                onChange={(e) => setSimulationId(e.target.value)}
+                onChange={(event) => setSimulationId(event.target.value)}
                 placeholder="Text"
-                style={baseStyles.input as React.CSSProperties}
               />
-              <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.5rem' }}>
-                🔗 Simulation URL: https://smartsimulations.com/organisation/
-              </div>
+            </label>
+            <div className="simulation-url">
+              <Link2 size={18} />
+              <span>Simulation URL: <em>https://smartsimulations.com/organisation/</em></span>
             </div>
 
-            <div style={baseStyles.formGroup as React.CSSProperties}>
-              <label style={baseStyles.label as React.CSSProperties}>
-                Simulation File
-                <span style={baseStyles.required as React.CSSProperties}> *</span>
-              </label>
-              <div
-                style={baseStyles.uploadArea as React.CSSProperties}
+            <div className="create-field">
+              <span>
+                Simulation File<span className="required">*</span>
+              </span>
+              <button
+                type="button"
+                className="upload-dropzone"
                 onClick={() => fileInputRef.current?.click()}
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
               >
-                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📤</div>
-                <div>Drag & Drop or <span style={{ color: '#16a34a', fontWeight: 600, cursor: 'pointer' }}>Choose file</span> to upload</div>
-                <div style={{ fontSize: '0.75rem', color: '#16a34a', marginTop: '0.5rem' }}>.xlsx</div>
-                {excelFile && <div style={{ marginTop: '1rem', color: '#16a34a' }}>Selected: {excelFile.name}</div>}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".xlsx"
-                  onChange={handleFileChange}
-                  style={{ display: 'none' }}
-                />
-              </div>
+                <Upload size={25} strokeWidth={1.7} />
+                <span>Drag &amp; Drop or <strong>Choose file</strong> to upload</span>
+                <small>{excelFile ? excelFile.name : '.xlsx'}</small>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleFileChange}
+                hidden
+              />
             </div>
 
-            <div style={{ marginTop: '2rem' }}>
-              <button
-                onClick={handleNext}
-                disabled={loading}
-                style={{
-                  ...baseStyles.button,
-                  ...baseStyles.buttonPrimary,
-                } as React.CSSProperties}
-              >
-                {loading ? 'Processing...' : 'Next'}
+            <div className="create-divider" />
+
+            <button className="primary-action" type="button" disabled={loading} onClick={handleNext}>
+              {loading ? 'Processing...' : 'Next'}
+            </button>
+          </section>
+        ) : (
+          <section className="students-step" aria-label="Student accounts">
+            <h2>Students</h2>
+            <div className="students-table" role="table">
+              <div className="students-row students-row--head" role="row">
+                <div className="students-check" />
+                <div>First Name</div>
+                <div>Last Name</div>
+                <div>Username</div>
+                <div>Password</div>
+                <div />
+              </div>
+              {students.map((student, index) => (
+                <div className="students-row" role="row" key={student.id}>
+                  <label className="students-check">
+                    <input type="checkbox" aria-label={`Select student row ${index + 1}`} />
+                    <span />
+                  </label>
+                  <input
+                    value={student.firstName}
+                    onChange={(event) => handleStudentChange(student.id, 'firstName', event.target.value)}
+                    aria-label="First name"
+                  />
+                  <input
+                    value={student.lastName}
+                    onChange={(event) => handleStudentChange(student.id, 'lastName', event.target.value)}
+                    aria-label="Last name"
+                  />
+                  <input
+                    value={student.username}
+                    onChange={(event) => handleStudentChange(student.id, 'username', event.target.value)}
+                    aria-label="Username"
+                  />
+                  <input
+                    value={student.password}
+                    onChange={(event) => handleStudentChange(student.id, 'password', event.target.value)}
+                    aria-label="Password"
+                  />
+                  <button
+                    className="row-icon-button"
+                    type="button"
+                    title="Remove student"
+                    onClick={() => handleRemoveStudent(student.id)}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button className="primary-action primary-action--inline" type="button" onClick={handleAddStudent}>
+              <Plus size={17} />
+              Add Student
+            </button>
+
+            <div className="create-divider create-divider--students" />
+
+            <div className="create-actions">
+              <button className="secondary-action" type="button" onClick={() => setStep('form')}>
+                Back
+              </button>
+              <button className="primary-action" type="button" disabled={loading} onClick={handleCreateSimulation}>
+                {loading ? 'Creating...' : 'Create Simulation'}
               </button>
             </div>
-          </div>
-        </main>
+          </section>
+        )}
       </div>
-    );
-  }
-
-  return (
-    <div style={baseStyles.container as React.CSSProperties}>
-      {/* Sidebar - same as above */}
-      <aside style={baseStyles.sidebar as React.CSSProperties}>
-        <div style={{ padding: '0 1rem', marginBottom: '2rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#666', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem', fontWeight: 600 }}>
-              BS
-            </div>
-            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#fff' }}>Ben Stern</span>
-          </div>
-        </div>
-
-        <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0 0.5rem', color: '#999' }}>
-          <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.875rem', color: '#16a34a' }}>📌 Simulations</button>
-        </nav>
-
-        <div style={{ borderTop: '1px solid #333', padding: '1rem 0.5rem', color: '#999' }}>
-          <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.875rem', width: '100%' }}>
-            🏢 Organisation
-          </button>
-        </div>
-      </aside>
-
-      {/* Main - Students Step */}
-      <main style={baseStyles.main as React.CSSProperties}>
-        <div style={baseStyles.header as React.CSSProperties}>
-          <h1 style={baseStyles.title as React.CSSProperties}>Create New Simulation</h1>
-        </div>
-
-        <div style={baseStyles.formContainer as React.CSSProperties}>
-          <div style={baseStyles.formGroup as React.CSSProperties}>
-            <h2 style={{ margin: '0 0 1rem', fontSize: '1.125rem', fontWeight: 600 }}>Students</h2>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={baseStyles.table as React.CSSProperties}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #444' }}>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem' }}></th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem' }}>First Name</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem' }}>Last Name</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem' }}>Username</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, fontSize: '0.875rem' }}>Password</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {students.map((student, index) => (
-                    <tr key={student.id} style={{ borderBottom: '1px solid #333', background: index % 2 === 0 ? '#f5f5f5' : '#fff', color: '#000' }}>
-                      <td style={{ padding: '0.75rem' }}>
-                        <input type="checkbox" />
-                      </td>
-                      <td style={{ padding: '0.75rem' }}>
-                        <input
-                          type="text"
-                          value={student.firstName}
-                          onChange={(e) => handleStudentChange(student.id, 'firstName', e.target.value)}
-                          placeholder="First Name"
-                          style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '0.875rem' }}
-                        />
-                      </td>
-                      <td style={{ padding: '0.75rem' }}>
-                        <input
-                          type="text"
-                          value={student.lastName}
-                          onChange={(e) => handleStudentChange(student.id, 'lastName', e.target.value)}
-                          placeholder="Last Name"
-                          style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '0.875rem' }}
-                        />
-                      </td>
-                      <td style={{ padding: '0.75rem' }}>
-                        <input
-                          type="text"
-                          value={student.username}
-                          onChange={(e) => handleStudentChange(student.id, 'username', e.target.value)}
-                          placeholder="Username"
-                          style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '0.875rem' }}
-                        />
-                      </td>
-                      <td style={{ padding: '0.75rem' }}>
-                        <input
-                          type="text"
-                          value={student.password}
-                          onChange={(e) => handleStudentChange(student.id, 'password', e.target.value)}
-                          placeholder="Password"
-                          style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '0.875rem' }}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <button
-              onClick={handleAddStudent}
-              style={{
-                ...baseStyles.button,
-                background: '#16a34a',
-                color: 'white',
-                marginTop: '1rem',
-              } as React.CSSProperties}
-            >
-              + Add Student
-            </button>
-          </div>
-
-          <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem' }}>
-            <button
-              onClick={() => setStep('form')}
-              style={{
-                ...baseStyles.button,
-                background: '#444',
-                color: '#fff',
-              } as React.CSSProperties}
-            >
-              Back
-            </button>
-            <button
-              onClick={handleCreateSimulation}
-              disabled={loading}
-              style={{
-                ...baseStyles.button,
-                ...baseStyles.buttonPrimary,
-              } as React.CSSProperties}
-            >
-              {loading ? 'Creating...' : 'Create Simulation'}
-            </button>
-          </div>
-        </div>
-      </main>
-    </div>
+    </AppShell>
   );
 };

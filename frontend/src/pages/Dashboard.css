@@ -1,160 +1,95 @@
-.dashboard {
-  min-height: 100vh;
-  background-color: #f5f5f5;
+.dashboard-page {
+  padding: 80px 32px 80px;
 }
 
-.dashboard-header {
-  background: white;
-  padding: 20px 40px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.dashboard-header h1 {
-  margin: 0;
-  color: #667eea;
-  font-size: 28px;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.header-right span {
-  color: #666;
-}
-
-.logout-btn {
-  padding: 8px 16px;
-  background-color: #dc3545;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.logout-btn:hover {
-  background-color: #c82333;
-}
-
-.dashboard-main {
-  padding: 40px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.dashboard-content {
-  background: white;
-  padding: 30px;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
-}
-
-.section-header h2 {
-  margin: 0;
-  color: #333;
-  font-size: 24px;
-}
-
-.btn-primary {
-  padding: 10px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: bold;
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
-}
-
-.projects-grid {
+.dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(4, minmax(210px, 258px));
+  gap: 32px 29px;
 }
 
-.project-card {
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 20px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.project-card:hover {
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-  transform: translateY(-4px);
-}
-
-.project-card h3 {
-  margin: 0 0 10px 0;
-  color: #333;
-  font-size: 18px;
-}
-
-.project-card p {
-  margin: 0 0 15px 0;
-  color: #666;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.project-meta {
+.simulation-card {
+  position: relative;
+  min-height: 200px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-  color: #999;
-}
-
-.visibility {
-  background-color: #f0f0f0;
-  padding: 4px 8px;
-  border-radius: 3px;
-  text-transform: capitalize;
-}
-
-.date {
-  color: #bbb;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: #999;
-}
-
-.loading,
-.error {
-  text-align: center;
-  padding: 20px;
-  font-size: 16px;
-}
-
-.loading {
-  color: #667eea;
-}
-
-.error {
-  color: #dc3545;
-  background-color: #fee;
-  padding: 15px;
+  flex-direction: column;
+  padding: 16px;
+  border: 1px solid #c9c9c9;
   border-radius: 5px;
+  background: #ffffff;
+  color: #151515;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.simulation-card:hover {
+  border-color: #9f9f9f;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+}
+
+.simulation-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 19px;
+}
+
+.simulation-card__body h2 {
+  margin: 0 0 13px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.simulation-card__body p {
+  min-height: 42px;
+  margin: 0;
+  color: #3e3e3e;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.simulation-card__members {
+  margin-top: auto;
+  align-self: flex-end;
+  color: #b2b2b2;
+  font-size: 12px;
+}
+
+.simulation-card--create {
+  min-height: 200px;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  color: #111111;
+}
+
+.simulation-card--create svg {
+  color: #5ca856;
+}
+
+.simulation-card--create span {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.dashboard-state {
+  color: var(--shell-muted);
+  font-size: 14px;
+}
+
+.dashboard-state--error {
+  color: #c21d13;
+}
+
+@media (max-width: 1240px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .dashboard-page {
+    padding: 32px 18px 72px;
+  }
 }
