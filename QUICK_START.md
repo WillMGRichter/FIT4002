@@ -262,6 +262,6 @@ When uploaded, students see:
 
 ---
 
-**Congratulations! You're now running SmartSim! 🎉**
+** You're now running SmartSim! **
 
 For advanced features and customization, see [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md).
