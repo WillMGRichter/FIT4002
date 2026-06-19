@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import styles from './AdminLogin.module.css';
 
 // Minimal Green Shield Icon from the image
@@ -19,6 +20,38 @@ const GoogleIcon = () => (
 );
 
 export const AdminLogin: React.FC = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    
+    if (!email || !password) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // TODO: Connect to admin authentication endpoint
+      // For now, just simulate a login
+      await new Promise(resolve => setTimeout(resolve, 500));
+      navigate('/org-management');
+    } catch (err: any) {
+      setError(err.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = () => {
+    alert('Password reset feature coming soon!');
+  };
+
   return (
     <div className={styles.page}>
       <div className={styles.card}>
@@ -29,12 +62,17 @@ export const AdminLogin: React.FC = () => {
         <h1 className={styles.title}>Admin Login</h1>
         <p className={styles.subtitle}>Sign in to your admin account to continue</p>
 
-        <form className={styles.form}>
+        {error && <div style={{ color: '#dc2626', marginBottom: '1rem', fontSize: '0.875rem' }}>{error}</div>}
+
+        <form className={styles.form} onSubmit={handleSubmit}>
           <div className={styles.fieldGroup}>
             <label className={styles.fieldLabel}>Email</label>
             <input 
               type="email" 
-              placeholder="admin@example.com" 
+              placeholder="admin@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
               style={{ padding: '0.75rem', borderRadius: '0.375rem', border: '1px solid #e5e7eb', background: '#f9fafb' }}
             />
           </div>
@@ -42,17 +80,22 @@ export const AdminLogin: React.FC = () => {
           <div className={styles.fieldGroup}>
             <div className={styles.labelRow}>
               <label className={styles.fieldLabel}>Password</label>
-              <button type="button" className={styles.forgotLink}>Forgot password?</button>
+              <button type="button" className={styles.forgotLink} onClick={handleForgotPassword}>
+                Forgot password?
+              </button>
             </div>
             <input 
               type="password" 
-              placeholder="Enter your password" 
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
               style={{ padding: '0.75rem', borderRadius: '0.375rem', border: '1px solid #e5e7eb', background: '#f9fafb' }}
             />
           </div>
 
-          <button type="submit" className={styles.signInBtn}>
-            Sign in
+          <button type="submit" className={styles.signInBtn} disabled={loading}>
+            {loading ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
 
@@ -60,12 +103,12 @@ export const AdminLogin: React.FC = () => {
           <span>OR CONTINUE WITH</span>
         </div>
 
-        <button type="button" className={styles.googleBtn}>
+        <button type="button" className={styles.googleBtn} disabled={loading}>
           <GoogleIcon /> Google
         </button>
 
         <p className={styles.signupText}>
-          Don't have an account? <button className={styles.signupLink}>Sign up</button>
+          Don't have an account? <Link to="/login" className={styles.signupLink} style={{ cursor: 'pointer' }}>Sign in as user</Link>
         </p>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styles from './CreateSimulation.module.css';
 
 export const CreateSimulation: React.FC = () => {
@@ -7,6 +8,7 @@ export const CreateSimulation: React.FC = () => {
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState('');
   const [backendOk, setBackendOk] = useState<boolean | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetch('http://localhost:5000')
@@ -40,6 +42,13 @@ export const CreateSimulation: React.FC = () => {
 
   return (
     <main className={styles.page} data-theme="light">
+      {/* Navigation Header */}
+      <header style={{ padding: '1rem', textAlign: 'left' }}>
+        <button onClick={() => navigate('/dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', color: '#0ea5e9' }}>
+          ← Back to Dashboard
+        </button>
+      </header>
+
       {/* Hero */}
       <section className={styles.hero}>
         <div className={styles.heroBadge}>

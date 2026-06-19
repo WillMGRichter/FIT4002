@@ -1,4 +1,5 @@
 import React, { useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ReactFlow,
   Background,
@@ -126,14 +127,14 @@ const nextId = () => `node_${++_id}`;
 
 // ── Inner canvas — must live inside ReactFlowProvider ─────────────────────────
 
-const CanvasInner: React.FC = () => {
+const CanvasInner: React.FC<{ navigate: any }> = ({ navigate }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const { screenToFlowPosition } = useReactFlow();
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   const onConnect = useCallback(
-    (params: Connection) => setEdges(eds => addEdge(params, eds)),
+    (params: Connection) => setEdges((eds: Edge[]) => addEdge(params, eds)),
     [setEdges],
   );
 
@@ -155,7 +156,7 @@ const CanvasInner: React.FC = () => {
         position,
         data: {},
       };
-      setNodes(nds => nds.concat(newNode));
+      setNodes((nds: Node[]) => nds.concat(newNode));
     },
     [screenToFlowPosition, setNodes],
   );
@@ -168,6 +169,11 @@ const CanvasInner: React.FC = () => {
         {/* ── Toolbar ── */}
         <div className={styles.toolbar}>
           <div className={styles.toolbarGroup}>
+            <button className={styles.toolBtn} title="Back to Dashboard" onClick={() => navigate('/dashboard')}>
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+                <path d="M10 12L4 8l6-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
             <button className={styles.toolBtn} title="Undo" disabled>
               <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
                 <path d="M3.5 6H10a4 4 0 010 8H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -229,8 +235,11 @@ const CanvasInner: React.FC = () => {
 
 // ── Exported page ─────────────────────────────────────────────────────────────
 
-export const CanvasPlayground: React.FC = () => (
-  <ReactFlowProvider>
-    <CanvasInner />
-  </ReactFlowProvider>
-);
+export const CanvasPlayground: React.FC = () => {
+  const navigate = useNavigate();
+  return (
+    <ReactFlowProvider>
+      <CanvasInner navigate={navigate} />
+    </ReactFlowProvider>
+  );
+};

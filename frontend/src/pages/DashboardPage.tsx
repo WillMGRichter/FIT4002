@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import './Dashboard.css';
@@ -18,16 +18,7 @@ export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, token, logout } = useAuth();
 
-  useEffect(() => {
-    if (!token) {
-      navigate('/login');
-      return;
-    }
-
-    fetchProjects();
-  }, [token, navigate]);
-
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     try {
       setLoading(true);
       const endpoint =
@@ -47,7 +38,16 @@ export const DashboardPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.role, token]);
+
+  useEffect(() => {
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
+    fetchProjects();
+  }, [token, navigate, fetchProjects]);
 
   const handleCreateProject = () => {
     navigate('/projects/create');
@@ -68,10 +68,25 @@ export const DashboardPage: React.FC = () => {
     navigate('/login');
   };
 
+  const navigateTo = (path: string) => {
+    navigate(path);
+  };
+
   return (
     <div className="dashboard">
       <header className="dashboard-header">
         <h1>SmartSim</h1>
+        <nav style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <button onClick={() => navigateTo('/canvas')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', color: '#0ea5e9', textDecoration: 'underline' }}>
+            Canvas
+          </button>
+          <button onClick={() => navigateTo('/create-simulation')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', color: '#0ea5e9', textDecoration: 'underline' }}>
+            Simulations
+          </button>
+          <button onClick={() => navigateTo('/org-management')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', color: '#0ea5e9', textDecoration: 'underline' }}>
+            Orgs
+          </button>
+        </nav>
         <div className="header-right">
           <span>Welcome, {user?.username}!</span>
           <button onClick={handleLogout} className="logout-btn">
