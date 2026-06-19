@@ -46,18 +46,31 @@ export const StudentSimulationView: React.FC = () => {
     if (!project?.excel_data?.cells) return {};
     const f: Record<string, string> = {};
     for (const [ref, cell] of Object.entries<any>(project.excel_data.cells)) {
-      if (cell.formula || (typeof cell.value === 'string' && cell.value.startsWith('='))) {
-        f[ref.toUpperCase()] = cell.formula || cell.value;
+      const rawFormula = cell.formula || (typeof cell.value === 'string' ? cell.value : null);
+      if (rawFormula) {
+        f[ref.toUpperCase()] = rawFormula.startsWith('=') ? rawFormula : '=' + rawFormula;
       }
     }
     return f;
   }, [project]);
 
-  // Compute outputs from inputs + formulas
+  // Default values from the spreadsheet (for formula inputs not yet changed by student)
+  const defaultCells = useMemo(() => {
+    if (!project?.excel_data?.cells) return {};
+    const d: CellMap = {};
+    for (const [ref, cell] of Object.entries<any>(project.excel_data.cells)) {
+      if (!cell.formula && cell.value !== null && cell.value !== undefined && !isNaN(Number(cell.value))) {
+        d[ref.toUpperCase()] = Number(cell.value);
+      }
+    }
+    return d;
+  }, [project]);
+
+  // Compute outputs from inputs + formulas (seed with default values, overlay student inputs)
   const computedValues = useMemo(() => {
-    const allCells: CellMap = { ...inputValues };
+    const allCells: CellMap = { ...defaultCells, ...inputValues };
     return recomputeAll(allCells, formulas);
-  }, [inputValues, formulas]);
+  }, [inputValues, formulas, defaultCells]);
 
   useEffect(() => {
     if (!projectId || !token) return;

@@ -75,6 +75,28 @@ export const ProjectDesigner: React.FC = () => {
   const activePage = pages[activePageIdx];
   const activeElements = activePage?.elements || [];
 
+  const inputCells = React.useMemo(() => {
+    if (project?.excel_data?.inputCells) {
+      return project.excel_data.inputCells.sort((a: any, b: any) => a.ref.localeCompare(b.ref, undefined, { numeric: true }));
+    }
+    if (!project?.excel_data?.cells) return [];
+    return Object.entries(project.excel_data.cells)
+      .filter(([_, cell]: [string, any]) => !cell.formula)
+      .map(([ref, cell]: [string, any]) => ({ ref, value: cell.value, title: null }))
+      .sort((a, b) => a.ref.localeCompare(b.ref, undefined, { numeric: true }));
+  }, [project]);
+
+  const outputCells = React.useMemo(() => {
+    if (project?.excel_data?.outputCells) {
+      return project.excel_data.outputCells.sort((a: any, b: any) => a.ref.localeCompare(b.ref, undefined, { numeric: true }));
+    }
+    if (!project?.excel_data?.cells) return [];
+    return Object.entries(project.excel_data.cells)
+      .filter(([_, cell]: [string, any]) => !!cell.formula)
+      .map(([ref, cell]: [string, any]) => ({ ref, formula: cell.formula, title: null, dependencies: {} }))
+      .sort((a, b) => a.ref.localeCompare(b.ref, undefined, { numeric: true }));
+  }, [project]);
+
   const [saving, setSaving] = useState(false);
 
   const savePages = useCallback(async () => {
@@ -400,7 +422,15 @@ export const ProjectDesigner: React.FC = () => {
                   </div>
                   <div className={styles.propRow}>
                     <label>Cell ref</label>
-                    <input type="text" value={selectedElem.props.cellRef || ''} onChange={e => updateElementProps(selectedElem.id, { cellRef: e.target.value.toUpperCase() })} className={styles.propInput} placeholder="A1" />
+                    <select value={selectedElem.props.cellRef || ''} onChange={e => updateElementProps(selectedElem.id, { cellRef: e.target.value })} className={styles.propInput}>
+                      <option value="">— Select cell —</option>
+                      {selectedElem.type === 'input-field' && inputCells.map((c: any) => (
+                        <option key={c.ref} value={c.ref}>{c.title || c.ref}{c.value !== undefined && c.value !== null ? ` (${c.value})` : ''}</option>
+                      ))}
+                      {selectedElem.type === 'output-field' && outputCells.map((c: any) => (
+                        <option key={c.ref} value={c.ref}>{c.title || c.ref}{c.formula ? ` (${c.formula})` : ''}</option>
+                      ))}
+                    </select>
                   </div>
                   {selectedElem.type === 'input-field' && (
                     <div className={styles.propRow}>
