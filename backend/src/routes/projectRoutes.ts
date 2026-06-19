@@ -41,7 +41,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 // Get project by ID
 router.get('/:projectId', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const project = await getProjectById(req.params.projectId);
+    const project = await getProjectById(req.params.projectId as string);
     res.json(project);
   } catch (error: any) {
     res.status(404).json({ error: 'Project not found' });
@@ -71,14 +71,14 @@ router.get('/student/projects', authMiddleware, async (req: AuthRequest, res: Re
 // Update project
 router.put('/:projectId', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const project = await getProjectById(req.params.projectId);
+    const project = await getProjectById(req.params.projectId as string);
 
     // Check authorization - only creator or admins can update
     if (project.created_by !== req.userId!) {
       return res.status(403).json({ error: 'Unauthorized to update this project' });
     }
 
-    const updated = await updateProject(req.params.projectId, req.body);
+    const updated = await updateProject(req.params.projectId as string, req.body);
     res.json(updated);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -88,14 +88,14 @@ router.put('/:projectId', authMiddleware, async (req: AuthRequest, res: Response
 // Delete project
 router.delete('/:projectId', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const project = await getProjectById(req.params.projectId);
+    const project = await getProjectById(req.params.projectId as string);
 
     // Check authorization
     if (project.created_by !== req.userId!) {
       return res.status(403).json({ error: 'Unauthorized to delete this project' });
     }
 
-    await deleteProject(req.params.projectId);
+    await deleteProject(req.params.projectId as string);
     res.json({ message: 'Project deleted' });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -106,14 +106,14 @@ router.delete('/:projectId', authMiddleware, async (req: AuthRequest, res: Respo
 router.post('/:projectId/participants', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { userId, role } = req.body;
-    const project = await getProjectById(req.params.projectId);
+    const project = await getProjectById(req.params.projectId as string);
 
     // Check authorization
     if (project.created_by !== req.userId!) {
       return res.status(403).json({ error: 'Only project creator can add participants' });
     }
 
-    const participant = await addProjectParticipant(req.params.projectId, userId, role);
+    const participant = await addProjectParticipant(req.params.projectId as string, userId, role);
     res.status(201).json(participant);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -123,7 +123,7 @@ router.post('/:projectId/participants', authMiddleware, async (req: AuthRequest,
 // Get project participants
 router.get('/:projectId/participants', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const participants = await getProjectParticipants(req.params.projectId);
+    const participants = await getProjectParticipants(req.params.projectId as string);
     res.json(participants);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -136,14 +136,14 @@ router.delete(
   authMiddleware,
   async (req: AuthRequest, res: Response) => {
     try {
-      const project = await getProjectById(req.params.projectId);
+      const project = await getProjectById(req.params.projectId as string);
 
       // Check authorization
       if (project.created_by !== req.userId!) {
         return res.status(403).json({ error: 'Only project creator can remove participants' });
       }
 
-      await removeProjectParticipant(req.params.projectId, req.params.userId);
+      await removeProjectParticipant(req.params.projectId as string, req.params.userId as string);
       res.json({ message: 'Participant removed' });
     } catch (error: any) {
       res.status(400).json({ error: error.message });

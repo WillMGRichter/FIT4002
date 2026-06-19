@@ -14,7 +14,7 @@ const router = Router();
 // Save simulation progress
 router.post('/:projectId/progress', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { projectId } = req.params;
+    const projectId = req.params.projectId as string;
     const { state } = req.body;
     const userId = req.userId!;
 
@@ -32,7 +32,7 @@ router.post('/:projectId/progress', authMiddleware, async (req: AuthRequest, res
 // Get simulation progress
 router.get('/:projectId/progress', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { projectId } = req.params;
+    const projectId = req.params.projectId as string;
     const userId = req.userId!;
 
     const progress = await getSimulationProgress(projectId, userId);
@@ -45,7 +45,7 @@ router.get('/:projectId/progress', authMiddleware, async (req: AuthRequest, res:
 // Complete simulation
 router.post('/:projectId/complete', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { projectId } = req.params;
+    const projectId = req.params.projectId as string;
     const { finalState } = req.body;
     const userId = req.userId!;
 
@@ -63,7 +63,7 @@ router.post('/:projectId/complete', authMiddleware, async (req: AuthRequest, res
 // Get project results (for teachers)
 router.get('/:projectId/results', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { projectId } = req.params;
+    const projectId = req.params.projectId as string;
     const userId = req.userId!;
 
     // Verify user is the project creator (teacher)
@@ -72,7 +72,7 @@ router.get('/:projectId/results', authMiddleware, async (req: AuthRequest, res: 
       return res.status(403).json({ error: 'Unauthorized to view these results' });
     }
 
-    const results = await getProjectResults(projectId);
+    const results = await getProjectResults(projectId as string);
     res.json(results);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -82,7 +82,7 @@ router.get('/:projectId/results', authMiddleware, async (req: AuthRequest, res: 
 // Get user's results for a project
 router.get('/:projectId/results/user', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { projectId } = req.params;
+    const projectId = req.params.projectId as string;
     const userId = req.userId!;
 
     const results = await getUserProjectResults(projectId, userId);

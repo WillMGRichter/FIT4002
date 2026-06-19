@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from '../config/supabase';
 import { Project, ProjectParticipant } from '../types';
 
 export async function createProject(

@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
-import { supabase } from './supabase';
+import { supabase } from '../config/supabase';
 import { User, AuthResponse } from '../types';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-prod';
