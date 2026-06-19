@@ -227,6 +227,11 @@
   background: #15803d;
 }
 
+.saveBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .previewBtn {
   background: transparent;
   color: #374151;

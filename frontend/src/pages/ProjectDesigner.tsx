@@ -75,16 +75,37 @@ export const ProjectDesigner: React.FC = () => {
   const activePage = pages[activePageIdx];
   const activeElements = activePage?.elements || [];
 
+  const [saving, setSaving] = useState(false);
+
   const savePages = useCallback(async () => {
     if (!projectId || !token) return;
-    for (const page of pages) {
-      if (page.id.startsWith('temp_')) continue;
-      await fetch(`http://localhost:5000/projects/${projectId}/pages/${page.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ elements: page.elements, name: page.name }),
-      });
+    setSaving(true);
+    const updatedPages = [...pages];
+    for (let i = 0; i < updatedPages.length; i++) {
+      const page = updatedPages[i];
+      if (page.id.startsWith('temp_')) {
+        const res = await fetch(`http://localhost:5000/projects/${projectId}/pages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ name: page.name, sortOrder: i }),
+        });
+        const created = await res.json();
+        updatedPages[i] = { ...created, elements: page.elements };
+        await fetch(`http://localhost:5000/projects/${projectId}/pages/${created.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ elements: page.elements }),
+        });
+      } else {
+        await fetch(`http://localhost:5000/projects/${projectId}/pages/${page.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ elements: page.elements, name: page.name }),
+        });
+      }
     }
+    setPages(updatedPages);
+    setSaving(false);
   }, [pages, projectId, token]);
 
   const addPage = async () => {
@@ -272,8 +293,8 @@ export const ProjectDesigner: React.FC = () => {
             </div>
             <div className={styles.toolbarGroup}>
               <div className={styles.toolbarDivider} />
-              <button className={`${styles.actionBtn} ${styles.saveBtn}`} onClick={savePages} title="Save"><Save size={16} /> Save</button>
-              <button className={`${styles.actionBtn} ${styles.previewBtn}`} onClick={() => navigate(`/projects/${projectId}/play`)} title="Preview"><Eye size={16} /> Preview</button>
+              <button className={`${styles.actionBtn} ${styles.saveBtn}`} onClick={savePages} disabled={saving} title="Save"><Save size={16} /> {saving ? 'Saving...' : 'Save'}</button>
+              <button className={`${styles.actionBtn} ${styles.previewBtn}`} onClick={async () => { await savePages(); navigate(`/projects/${projectId}/play`); }} title="Preview"><Eye size={16} /> Preview</button>
             </div>
           </div>
 
