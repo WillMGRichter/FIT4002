@@ -5,6 +5,8 @@ import cors from "cors";
 import authRoutes from "./routes/authRoutes";
 import projectRoutes from "./routes/projectRoutes";
 import simulationRoutes from "./routes/simulationRoutes";
+import pageRoutes from "./routes/pageRoutes";
+import studentStateRoutes from "./routes/studentStateRoutes";
 import excelParser from "./excel/excelParser";
 
 const app = express();
@@ -22,6 +24,8 @@ app.get("/", (req, res) => {
 app.use("/auth", authRoutes);
 app.use("/projects", projectRoutes);
 app.use("/simulations", simulationRoutes);
+app.use("/projects", pageRoutes);
+app.use("/simulations", studentStateRoutes);
 app.use("/excel", excelParser);
 
 // Error handling middleware

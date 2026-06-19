@@ -48,6 +48,8 @@ export interface ProjectParticipant {
   project_id: string;
   user_id: string;
   role: 'teacher' | 'student';
+  max_attempts: number;
+  attempts_used: number;
   created_at: string;
 }
 
@@ -66,6 +68,28 @@ export interface ProjectResult {
   user_id: string;
   final_state: any;
   completed_at: string;
+}
+
+export interface ProjectPage {
+  id: string;
+  project_id: string;
+  name: string;
+  sort_order: number;
+  elements: any;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StudentSimulationState {
+  id: string;
+  project_id: string;
+  user_id: string;
+  attempt_number: number;
+  input_values: any;
+  current_page_id?: string;
+  is_completed: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 // API Response types

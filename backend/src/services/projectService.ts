@@ -88,7 +88,8 @@ export async function deleteProject(projectId: string): Promise<void> {
 export async function addProjectParticipant(
   projectId: string,
   userId: string,
-  role: 'teacher' | 'student'
+  role: 'teacher' | 'student',
+  maxAttempts?: number
 ): Promise<ProjectParticipant> {
   const { data, error } = await supabase
     .from('project_participants')
@@ -97,6 +98,8 @@ export async function addProjectParticipant(
         project_id: projectId,
         user_id: userId,
         role,
+        max_attempts: maxAttempts || 1,
+        attempts_used: 0,
       },
     ])
     .select()

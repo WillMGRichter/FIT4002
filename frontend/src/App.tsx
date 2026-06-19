@@ -11,6 +11,8 @@ import { SimulationPage } from './pages/SimulationPage';
 import { CanvasPlayground } from './pages/CanvasPlayground';
 import { CreateSimulation } from './pages/CreateSimulation';
 import { OrgManagement } from './pages/OrgManagement';
+import { ProjectDesigner } from './pages/ProjectDesigner';
+import { StudentSimulationView } from './pages/StudentSimulationView';
 import './App.css';
 
 
@@ -30,6 +32,8 @@ function AppContent() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/projects/create" element={<ProjectCreatePage />} />
           <Route path="/projects/:projectId/simulate" element={<SimulationPage />} />
+          <Route path="/projects/:projectId/design" element={<ProjectDesigner />} />
+          <Route path="/projects/:projectId/play" element={<StudentSimulationView />} />
           <Route path="/canvas" element={<CanvasPlayground />} />
           <Route path="/create-simulation" element={<CreateSimulation />} />
           <Route path="/org-management" element={<OrgManagement />} />

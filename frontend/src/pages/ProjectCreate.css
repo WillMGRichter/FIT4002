@@ -151,9 +151,14 @@
 .students-row {
   min-height: 40px;
   display: grid;
-  grid-template-columns: 50px 1.1fr 1.1fr 1.1fr 1.1fr 42px;
+  grid-template-columns: 50px 1fr 1fr 1fr 1fr 80px 42px;
   align-items: center;
   background: #ffffff;
+}
+
+.students-row input.attempts-input {
+  text-align: center;
+  min-width: 0;
 }
 
 .students-row:nth-child(even) {

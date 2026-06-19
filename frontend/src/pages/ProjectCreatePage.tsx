@@ -11,6 +11,7 @@ interface StudentRow {
   lastName: string;
   username: string;
   password: string;
+  maxAttempts: number;
 }
 
 const createBlankStudent = (): StudentRow => ({
@@ -19,6 +20,7 @@ const createBlankStudent = (): StudentRow => ({
   lastName: '',
   username: '',
   password: '',
+  maxAttempts: 1,
 });
 
 export const ProjectCreatePage: React.FC = () => {
@@ -100,7 +102,7 @@ export const ProjectCreatePage: React.FC = () => {
       formData.append('file', excelFile);
       formData.append('title', simulationTitle);
       formData.append('id', simulationId || simulationTitle);
-      formData.append('students', JSON.stringify(students.filter(student => student.username)));
+      formData.append('students', JSON.stringify(students.filter(student => student.username).map(s => ({ ...s, maxAttempts: parseInt(String(s.maxAttempts)) || 1 }))));
 
       const response = await fetch('http://localhost:5000/projects', {
         method: 'POST',
@@ -198,6 +200,7 @@ export const ProjectCreatePage: React.FC = () => {
                 <div>Last Name</div>
                 <div>Username</div>
                 <div>Password</div>
+                <div>Attempts</div>
                 <div />
               </div>
               {students.map((student, index) => (
@@ -225,6 +228,14 @@ export const ProjectCreatePage: React.FC = () => {
                     value={student.password}
                     onChange={(event) => handleStudentChange(student.id, 'password', event.target.value)}
                     aria-label="Password"
+                  />
+                  <input
+                    type="number"
+                    min={1}
+                    value={student.maxAttempts}
+                    onChange={(event) => handleStudentChange(student.id, 'maxAttempts', event.target.value)}
+                    aria-label="Max attempts"
+                    className="attempts-input"
                   />
                   <button
                     className="row-icon-button"
