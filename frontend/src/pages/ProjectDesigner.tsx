@@ -233,7 +233,6 @@ export const ProjectDesigner: React.FC = () => {
         <aside className={styles.pageSidebar}>
           <div className={styles.pageSidebarHeader}>
             <h3>Pages</h3>
-            <button className={styles.iconBtn} onClick={addPage} title="Add page"><Plus size={16} /></button>
           </div>
           <div className={styles.pageList}>
             {pages.map((page, idx) => (
@@ -253,10 +252,11 @@ export const ProjectDesigner: React.FC = () => {
                   }}
                   onClick={e => e.stopPropagation()}
                 />
-                <button className={styles.iconBtnDanger} onClick={e => { e.stopPropagation(); deletePage(idx); }} title="Delete page"><Trash2 size={13} /></button>
+                <button className={styles.pageDeleteBtn} onClick={e => { e.stopPropagation(); deletePage(idx); }} title="Delete page"><Trash2 size={13} /></button>
               </div>
             ))}
           </div>
+          <button className={styles.addPageBtn} onClick={addPage}><Plus size={14} /> Add Page</button>
         </aside>
 
         {/* ── Center: Canvas ── */}
@@ -271,8 +271,9 @@ export const ProjectDesigner: React.FC = () => {
               ))}
             </div>
             <div className={styles.toolbarGroup}>
-              <button className={styles.actionBtn} onClick={savePages} title="Save"><Save size={16} /> Save</button>
-              <button className={styles.actionBtn} onClick={() => navigate(`/projects/${projectId}/preview`)} title="Preview"><Eye size={16} /> Preview</button>
+              <div className={styles.toolbarDivider} />
+              <button className={`${styles.actionBtn} ${styles.saveBtn}`} onClick={savePages} title="Save"><Save size={16} /> Save</button>
+              <button className={`${styles.actionBtn} ${styles.previewBtn}`} onClick={() => navigate(`/projects/${projectId}/play`)} title="Preview"><Eye size={16} /> Preview</button>
             </div>
           </div>
 
@@ -325,30 +326,31 @@ export const ProjectDesigner: React.FC = () => {
           <h3 className={styles.propsTitle}>Properties</h3>
           {selectedElem ? (
             <div className={styles.propsContent}>
-              <div className={styles.propRow}>
-                <label>Type</label>
-                <span className={styles.propValue}>{selectedElem.type}</span>
+              <div className={styles.propsSection}>
+                <div className={styles.propsSectionTitle}>Position &amp; Size</div>
+                <div className={styles.propRow}>
+                  <label>X</label>
+                  <input type="number" value={selectedElem.x} onChange={e => updateElementPosition(selectedElem.id, parseInt(e.target.value) || 0, selectedElem.y)} className={styles.propInput} />
+                </div>
+                <div className={styles.propRow}>
+                  <label>Y</label>
+                  <input type="number" value={selectedElem.y} onChange={e => updateElementPosition(selectedElem.id, selectedElem.x, parseInt(e.target.value) || 0)} className={styles.propInput} />
+                </div>
+                <div className={styles.propRow}>
+                  <label>Width</label>
+                  <input type="number" value={selectedElem.w} onChange={e => updateElementSize(selectedElem.id, parseInt(e.target.value) || 40, selectedElem.h)} className={styles.propInput} />
+                </div>
+                <div className={styles.propRow}>
+                  <label>Height</label>
+                  <input type="number" value={selectedElem.h} onChange={e => updateElementSize(selectedElem.id, selectedElem.w, parseInt(e.target.value) || 24)} className={styles.propInput} />
+                </div>
               </div>
-              <div className={styles.propRow}>
-                <label>X</label>
-                <input type="number" value={selectedElem.x} onChange={e => updateElementPosition(selectedElem.id, parseInt(e.target.value) || 0, selectedElem.y)} className={styles.propInput} />
-              </div>
-              <div className={styles.propRow}>
-                <label>Y</label>
-                <input type="number" value={selectedElem.y} onChange={e => updateElementPosition(selectedElem.id, selectedElem.x, parseInt(e.target.value) || 0)} className={styles.propInput} />
-              </div>
-              <div className={styles.propRow}>
-                <label>W</label>
-                <input type="number" value={selectedElem.w} onChange={e => updateElementSize(selectedElem.id, parseInt(e.target.value) || 40, selectedElem.h)} className={styles.propInput} />
-              </div>
-              <div className={styles.propRow}>
-                <label>H</label>
-                <input type="number" value={selectedElem.h} onChange={e => updateElementSize(selectedElem.id, selectedElem.w, parseInt(e.target.value) || 24)} className={styles.propInput} />
-              </div>
+
               <div className={styles.divider} />
 
               {selectedElem.type === 'text' && (
-                <>
+                <div className={styles.propsSection}>
+                  <div className={styles.propsSectionTitle}>Text</div>
                   <div className={styles.propRow}>
                     <label>Content</label>
                     <input type="text" value={selectedElem.props.content || ''} onChange={e => updateElementProps(selectedElem.id, { content: e.target.value })} className={styles.propInput} />
@@ -359,17 +361,18 @@ export const ProjectDesigner: React.FC = () => {
                   </div>
                   <div className={styles.propRow}>
                     <label>Bold</label>
-                    <input type="checkbox" checked={selectedElem.props.bold || false} onChange={e => updateElementProps(selectedElem.id, { bold: e.target.checked })} />
+                    <input type="checkbox" checked={selectedElem.props.bold || false} onChange={e => updateElementProps(selectedElem.id, { bold: e.target.checked })} className={styles.propInput} />
                   </div>
                   <div className={styles.propRow}>
                     <label>Color</label>
-                    <input type="color" value={selectedElem.props.color || '#111827'} onChange={e => updateElementProps(selectedElem.id, { color: e.target.value })} className={styles.propInput} style={{ padding: 0, height: 32 }} />
+                    <input type="color" value={selectedElem.props.color || '#111827'} onChange={e => updateElementProps(selectedElem.id, { color: e.target.value })} className={styles.propInput} />
                   </div>
-                </>
+                </div>
               )}
 
               {(selectedElem.type === 'input-field' || selectedElem.type === 'output-field') && (
-                <>
+                <div className={styles.propsSection}>
+                  <div className={styles.propsSectionTitle}>Cell Binding</div>
                   <div className={styles.propRow}>
                     <label>Label</label>
                     <input type="text" value={selectedElem.props.label || ''} onChange={e => updateElementProps(selectedElem.id, { label: e.target.value })} className={styles.propInput} />
@@ -394,13 +397,16 @@ export const ProjectDesigner: React.FC = () => {
                       </select>
                     </div>
                   )}
-                </>
+                </div>
               )}
 
               {selectedElem.type === 'image' && (
-                <div className={styles.propRow}>
-                  <label>Image URL</label>
-                  <input type="text" value={selectedElem.props.src || ''} onChange={e => updateElementProps(selectedElem.id, { src: e.target.value })} className={styles.propInput} />
+                <div className={styles.propsSection}>
+                  <div className={styles.propsSectionTitle}>Image</div>
+                  <div className={styles.propRow}>
+                    <label>Image URL</label>
+                    <input type="text" value={selectedElem.props.src || ''} onChange={e => updateElementProps(selectedElem.id, { src: e.target.value })} className={styles.propInput} />
+                  </div>
                 </div>
               )}
 

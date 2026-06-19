@@ -113,8 +113,8 @@ export const ProjectCreatePage: React.FC = () => {
       });
 
       if (!response.ok) throw new Error('Failed to create simulation');
-      await response.json();
-      navigate('/dashboard');
+      const project = await response.json();
+      navigate(`/projects/${project.id}/design`);
     } catch (err: any) {
       setError(err.message);
     } finally {

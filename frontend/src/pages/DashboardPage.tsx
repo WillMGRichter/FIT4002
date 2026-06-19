@@ -71,7 +71,11 @@ export const DashboardPage: React.FC = () => {
   const visibleProjects = projects.length > 0 ? projects : mockProjects;
 
   const handleProjectClick = (projectId: string) => {
-    navigate(`/projects/${projectId}/simulate`);
+    if (user?.role === 'student') {
+      navigate(`/projects/${projectId}/play`);
+    } else {
+      navigate(`/projects/${projectId}/design`);
+    }
   };
 
   const toggleStar = (projectId: string, event: React.MouseEvent) => {
