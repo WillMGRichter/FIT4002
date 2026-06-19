@@ -1,59 +1,63 @@
-import { useEffect, useState } from "react";
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { LoginPage } from './pages/LoginPage';
+import { SignupPage } from './pages/SignupPage';
+import { DashboardPage } from './pages/DashboardPage';
+import { ProjectCreatePage } from './pages/ProjectCreatePage';
+import { SimulationPage } from './pages/SimulationPage';
+import './App.css';
 
-function App() {
-   const [formulas, setFormulas] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, loading } = useAuth();
 
-  useEffect(() => {
-    fetch("http://localhost:5000")
-      .then(res => res.json())
-      .then(data => setMessage(data.message));
-  }, []);
+  if (loading) {
+    return <div className="loading-container">Loading...</div>;
+  }
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.length) return;
-    const file = e.target.files[0];
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
 
-    const formData = new FormData();
-    formData.append("file", file); // Must match multer.single("file")
+  return <>{children}</>;
+};
 
-    setLoading(true);
-    setError("");
+function AppContent() {
+  const { user, loading } = useAuth();
 
-    try {
-      const res = await fetch("http://localhost:5000/excel/upload", {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) throw new Error("Upload failed");
-
-      const data = await res.json();
-      setFormulas(data);
-    } catch (err: any) {
-      setError(err.message || "Error uploading file");
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (loading) {
+    return <div className="loading-container">Loading...</div>;
+  }
 
   return (
-    <div>
-      <h1>React Frontend</h1>
-      <p>{message}</p>
-
-      <h2>Upload Excel to extract formulas</h2>
-      <input type="file" accept=".xlsx" onChange={handleFileChange} />
-      {loading && <p>Processing...</p>}
-      {error && <p style={{ color: "red" }}>{error}</p>}
-
-      {formulas && (
-        <pre style={{ textAlign: "left", whiteSpace: "pre-wrap" }}>
-          {JSON.stringify(formulas, null, 2)}
-        </pre>
+    <Routes>
+      {user ? (
+        <>
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/projects/create" element={<ProjectCreatePage />} />
+          <Route path="/projects/:projectId/simulate" element={<SimulationPage />} />
+          <Route path="/" element={<Navigate to="/dashboard" />} />
+          <Route path="*" element={<Navigate to="/dashboard" />} />
+        </>
+      ) : (
+        <>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/" element={<Navigate to="/login" />} />
+          <Route path="*" element={<Navigate to="/login" />} />
+        </>
       )}
-    </div>
+    </Routes>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 
