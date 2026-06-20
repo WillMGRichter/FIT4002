@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { PlusCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { PlusCircle, Search as SearchIcon } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AppShell, ProjectBadge, StarButton } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
+import { addRecent, getStarredProjects, setStarredProjects, toggleStar } from '../utils/projectStorage';
 import './Dashboard.css';
 
 interface Project {
@@ -33,7 +34,9 @@ export const DashboardPage: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [starred, setStarred] = useState<Set<string>>(new Set(['5', '6']));
+  const [starred, setStarred] = useState<Set<string>>(() => new Set(getStarredProjects().map(p => p.id)));
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchQuery = searchParams.get('q') || '';
   const navigate = useNavigate();
   const { user, token } = useAuth();
 
@@ -71,7 +74,14 @@ export const DashboardPage: React.FC = () => {
 
   const visibleProjects = projects.length > 0 ? projects : (error ? mockProjects : []);
 
-  const handleProjectClick = (projectId: string) => {
+  const filteredProjects = useMemo(() => {
+    if (!searchQuery) return visibleProjects;
+    const q = searchQuery.toLowerCase();
+    return visibleProjects.filter(p => p.name.toLowerCase().includes(q) || (p.description && p.description.toLowerCase().includes(q)));
+  }, [visibleProjects, searchQuery]);
+
+  const handleProjectClick = (projectId: string, projectName: string) => {
+    addRecent({ id: projectId, name: projectName });
     if (user?.role === 'student') {
       navigate(`/projects/${projectId}/play`);
     } else {
@@ -79,8 +89,9 @@ export const DashboardPage: React.FC = () => {
     }
   };
 
-  const toggleStar = (projectId: string, event: React.MouseEvent) => {
+  const handleToggleStar = (projectId: string, projectName: string, event: React.MouseEvent) => {
     event.stopPropagation();
+    toggleStar({ id: projectId, name: projectName });
     setStarred(prev => {
       const next = new Set(prev);
       if (next.has(projectId)) {
@@ -100,31 +111,46 @@ export const DashboardPage: React.FC = () => {
         ) : error ? (
           <div className="dashboard-state dashboard-state--error">{error}</div>
         ) : (
-          <div className="dashboard-grid">
-            {visibleProjects.map((project, index) => (
-              <button
-                key={project.id}
-                className="simulation-card"
-                onClick={() => handleProjectClick(project.id)}
-              >
-                <div className="simulation-card__top">
-                  <ProjectBadge color={badgeColors[index % badgeColors.length]} />
-                  <StarButton active={starred.has(project.id)} onClick={(event) => toggleStar(project.id, event)} />
-                </div>
-                <div className="simulation-card__body">
-                  <h2>{project.name}</h2>
-                  <p>{project.description}</p>
-                </div>
-                <div className="simulation-card__members">
-                  {memberCounts[index % memberCounts.length]} {memberCounts[index % memberCounts.length] === 1 ? 'member' : 'members'}
-                </div>
-              </button>
-            ))}
+          <div className="dashboard-page__content">
+            {searchQuery && (
+              <div className="dashboard-search-header">
+                <SearchIcon size={18} />
+                <span>Results for &quot;{searchQuery}&quot; ({filteredProjects.length} project{filteredProjects.length !== 1 ? 's' : ''})</span>
+                <button className="dashboard-search-clear" onClick={() => setSearchParams({}, { replace: true })}>Clear</button>
+              </div>
+            )}
+            <div className="dashboard-grid">
+              {filteredProjects.map((project, index) => (
+                <button
+                  key={project.id}
+                  className="simulation-card"
+                  onClick={() => handleProjectClick(project.id, project.name)}
+                >
+                  <div className="simulation-card__top">
+                    <ProjectBadge color={badgeColors[index % badgeColors.length]} />
+                    <StarButton active={starred.has(project.id)} onClick={(event) => handleToggleStar(project.id, project.name, event)} />
+                  </div>
+                  <div className="simulation-card__body">
+                    <h2>{project.name}</h2>
+                    <p>{project.description}</p>
+                  </div>
+                  <div className="simulation-card__members">
+                    {memberCounts[index % memberCounts.length]} {memberCounts[index % memberCounts.length] === 1 ? 'member' : 'members'}
+                  </div>
+                </button>
+              ))}
 
-            <button className="simulation-card simulation-card--create" onClick={() => navigate('/projects/create')}>
-              <PlusCircle size={43} strokeWidth={2.3} />
-              <span>Create New Simulation</span>
-            </button>
+              {filteredProjects.length === 0 && (
+                <div className="dashboard-state">No projects match &quot;{searchQuery}&quot;</div>
+              )}
+
+              {!searchQuery && (
+                <button className="simulation-card simulation-card--create" onClick={() => navigate('/projects/create')}>
+                  <PlusCircle size={43} strokeWidth={2.3} />
+                  <span>Create New Simulation</span>
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>

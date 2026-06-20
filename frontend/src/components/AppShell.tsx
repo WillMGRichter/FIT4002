@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Bell,
   Building2,
   ChevronDown,
-  Clock3,
   FilePlus2,
   HelpCircle,
   Home,
@@ -15,8 +14,10 @@ import {
   Settings,
   Square,
   Star,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { getStarredProjects, getRecentProjects, type ProjectBrief } from '../utils/projectStorage';
 import './AppShell.css';
 
 type ActiveItem = 'home' | 'create' | 'project' | 'canvas';
@@ -31,8 +32,6 @@ interface AppShellProps {
   compactSidebar?: boolean;
 }
 
-const recentItems = ['Cafe Income Simulation', 'Monash Business Simulation', 'Simulation 1'];
-
 export const AppShell: React.FC<AppShellProps> = ({
   title,
   activeItem = 'home',
@@ -43,6 +42,11 @@ export const AppShell: React.FC<AppShellProps> = ({
   compactSidebar = false,
 }) => {
   const [dark, setDark] = useState(darkDefault);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchQuery = searchParams.get('q') || '';
+  const [showSearch, setShowSearch] = useState(!!searchQuery);
+  const [starredOpen, setStarredOpen] = useState(true);
+  const [recentOpen, setRecentOpen] = useState(true);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
@@ -53,11 +57,14 @@ export const AppShell: React.FC<AppShellProps> = ({
 
   const userName = user?.username || 'Ben Stern';
 
+  const starredProjects: ProjectBrief[] = getStarredProjects();
+  const recentProjects: ProjectBrief[] = getRecentProjects();
+
   return (
     <div className={`app-shell ${dark ? 'app-shell--dark' : ''}`}>
       <aside className={`app-shell__sidebar ${compactSidebar ? 'app-shell__sidebar--compact' : ''}`}>
         <div className="app-shell__profile">
-          <div className="app-shell__avatar">B</div>
+          <div className="app-shell__avatar">{userName.charAt(0).toUpperCase()}</div>
           <span>{userName}</span>
           <button className="app-shell__icon-button app-shell__profile-alert" title="Notifications">
             <Bell size={17} />
@@ -70,16 +77,28 @@ export const AppShell: React.FC<AppShellProps> = ({
             Back
           </button>
         ) : (
-          <>
-            <button className="app-shell__quiet-link">
-              <Search size={16} />
-              Search
-            </button>
-            <button className="app-shell__quiet-link">
-              <Clock3 size={16} />
-              Recent
-            </button>
-          </>
+          <button className="app-shell__quiet-link" onClick={() => { setShowSearch(v => !v); if (showSearch) setSearchParams({}, { replace: true }); }}>
+            {showSearch ? <X size={16} /> : <Search size={16} />}
+            {showSearch ? 'Close' : 'Search'}
+          </button>
+        )}
+
+        {showSearch && (
+          <input
+            className="app-shell__search-input"
+            type="text"
+            placeholder="Search projects..."
+            value={searchQuery}
+            onChange={e => {
+              const q = e.target.value;
+              if (q) {
+                setSearchParams({ q }, { replace: true });
+              } else {
+                setSearchParams({}, { replace: true });
+              }
+            }}
+            autoFocus
+          />
         )}
 
         <nav className="app-shell__nav">
@@ -102,25 +121,39 @@ export const AppShell: React.FC<AppShellProps> = ({
 
         {!compactSidebar && (
           <>
-            <div className="app-shell__section">
-              <div className="app-shell__section-title">
-                <span className="app-shell__section-dot app-shell__section-dot--red" />
-                Starred
+            {starredProjects.length > 0 && (
+              <div className="app-shell__section">
+                <div className="app-shell__section-title">
+                  <span className="app-shell__section-dot app-shell__section-dot--red" />
+                  Starred
+                  <button className="app-shell__collapse-btn" onClick={() => setStarredOpen(v => !v)}>
+                    <ChevronDown size={14} className={`app-shell__collapse-icon ${starredOpen ? '' : 'is-collapsed'}`} />
+                  </button>
+                </div>
+                {starredOpen && starredProjects.map(p => (
+                  <button key={p.id} className="app-shell__text-link" onClick={() => navigate(`/projects/${p.id}/design`)}>
+                    {p.name}
+                  </button>
+                ))}
               </div>
-              <button className="app-shell__text-link">Cafe Income Simulation</button>
-            </div>
+            )}
 
-            <div className="app-shell__section">
-              <div className="app-shell__section-title">
-                <span className="app-shell__section-dot app-shell__section-dot--blue" />
-                Recent
+            {recentProjects.length > 0 && (
+              <div className="app-shell__section">
+                <div className="app-shell__section-title">
+                  <span className="app-shell__section-dot app-shell__section-dot--blue" />
+                  Recent
+                  <button className="app-shell__collapse-btn" onClick={() => setRecentOpen(v => !v)}>
+                    <ChevronDown size={14} className={`app-shell__collapse-icon ${recentOpen ? '' : 'is-collapsed'}`} />
+                  </button>
+                </div>
+                {recentOpen && recentProjects.map(p => (
+                  <button key={p.id} className="app-shell__text-link" onClick={() => navigate(`/projects/${p.id}/design`)}>
+                    {p.name}
+                  </button>
+                ))}
               </div>
-              {recentItems.map(item => (
-                <button key={item} className="app-shell__text-link">
-                  {item}
-                </button>
-              ))}
-            </div>
+            )}
           </>
         )}
 

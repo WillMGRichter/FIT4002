@@ -81,6 +81,21 @@
   font: inherit;
 }
 
+.app-shell__search-input {
+  margin: 4px 12px;
+  padding: 6px 8px;
+  border: 1px solid var(--shell-border);
+  border-radius: 4px;
+  background: var(--shell-field);
+  color: var(--shell-field-text);
+  font-size: 12px;
+  outline: none;
+}
+
+.app-shell__search-input:focus {
+  border-color: var(--shell-active-strong);
+}
+
 .app-shell__quiet-link {
   min-height: 32px;
   display: flex;
@@ -138,6 +153,25 @@
   margin-bottom: 14px;
   font-size: 12px;
   font-weight: 700;
+}
+
+.app-shell__collapse-btn {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: var(--shell-text);
+  cursor: pointer;
+  padding: 2px;
+  display: grid;
+  place-items: center;
+}
+
+.app-shell__collapse-icon {
+  transition: transform 0.2s ease;
+}
+
+.app-shell__collapse-icon.is-collapsed {
+  transform: rotate(-90deg);
 }
 
 .app-shell__section-dot {

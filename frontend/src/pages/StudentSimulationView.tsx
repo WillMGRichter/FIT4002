@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Send, AlertCircle } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
+import { addRecent } from '../utils/projectStorage';
 import { recomputeAll, type CellMap } from '../utils/FormulaEngine';
 import styles from './StudentSimulationView.module.css';
 
@@ -94,6 +95,7 @@ export const StudentSimulationView: React.FC = () => {
         pgs = pgs.map((p: any) => ({ ...p, elements: p.elements || [] }));
 
         setProject(proj);
+        addRecent({ id: projectId!, name: proj.name });
         setPages(pgs);
 
         // Try to load existing state

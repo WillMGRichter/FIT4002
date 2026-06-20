@@ -4,6 +4,7 @@ import { Trash2, Plus, Eye, Save, GripVertical, Type, Image, RectangleHorizontal
 import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
+import { addRecent } from '../utils/projectStorage';
 import styles from './ProjectDesigner.module.css';
 
 type ElementType = 'text' | 'input-field' | 'output-field' | 'image';
@@ -57,6 +58,7 @@ export const ProjectDesigner: React.FC = () => {
       .then(r => r.json())
       .then(data => {
         setProject(data);
+        addRecent({ id: projectId!, name: data.name });
         return fetch(`${API_URL}/projects/${projectId}/pages`, {
           headers: { Authorization: `Bearer ${token}` },
         });

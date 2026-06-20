@@ -19,6 +19,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
+import { addRecent } from '../utils/projectStorage';
 import './SimulationPage.css';
 
 interface Project {
@@ -60,6 +61,7 @@ export const SimulationPage: React.FC = () => {
         if (!response.ok) throw new Error('Failed to load project');
         const data = await response.json();
         setProject(data);
+        addRecent({ id: projectId!, name: data.name });
       } catch (err: any) {
         setError(err.message);
       } finally {
