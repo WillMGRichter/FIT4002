@@ -145,6 +145,23 @@ export async function getProjectParticipants(projectId: string): Promise<Project
   return data || [];
 }
 
+/** Fetches participants with their usernames via a join on the users table */
+export async function getProjectParticipantsWithUsernames(projectId: string): Promise<any[]> {
+  const { data, error } = await supabase
+    .from('project_participants')
+    .select(`
+      *,
+      users:user_id ( username )
+    `)
+    .eq('project_id', projectId);
+
+  if (error) throw error;
+  return (data || []).map((p: any) => ({
+    ...p,
+    username: p.users?.username || null,
+  }));
+}
+
 /** Removes a user from a project's participant list */
 export async function removeProjectParticipant(projectId: string, userId: string): Promise<void> {
   const { error } = await supabase

@@ -10,6 +10,7 @@ import {
   deleteProject,
   addProjectParticipant,
   getProjectParticipants,
+  getProjectParticipantsWithUsernames,
   removeProjectParticipant,
   getStudentProjects,
 } from '../services/projectService';
@@ -342,6 +343,16 @@ router.post('/:projectId/participants', authMiddleware, async (req: AuthRequest,
 
     const participant = await addProjectParticipant(req.params.projectId as string, userId, role, maxAttempts);
     res.status(201).json(participant);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+/** GET /:projectId/participants — List all participants of a project. Requires auth. Returns: Participant[]. */
+router.get('/:projectId/participants/with-usernames', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const participants = await getProjectParticipantsWithUsernames(req.params.projectId as string);
+    res.json(participants);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }

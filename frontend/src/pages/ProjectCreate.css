@@ -26,6 +26,21 @@
   font-weight: 500;
 }
 
+.edit-readonly-field {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #f5f5f5;
+  color: #666;
+  font-size: 14px;
+}
+
+.edit-existing-count {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: #666;
+}
+
 .required {
   color: #e63822;
 }
@@ -151,14 +166,26 @@
 .students-row {
   min-height: 40px;
   display: grid;
-  grid-template-columns: 50px 1fr 1fr 1fr 1fr 80px 42px;
+  grid-template-columns: 50px 1fr 1fr 1fr 1fr 42px;
   align-items: center;
   background: #ffffff;
 }
 
-.students-row input.attempts-input {
+.universal-attempts {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  font-size: 15px;
+}
+
+.universal-attempts input {
+  width: 70px;
+  padding: 6px 10px;
+  border: 1px solid #858585;
+  border-radius: 5px;
+  font: inherit;
   text-align: center;
-  min-width: 0;
 }
 
 .students-row:nth-child(even) {
@@ -247,6 +274,11 @@
 
   .students-row {
     grid-template-columns: 42px repeat(4, minmax(120px, 1fr)) 36px;
+  }
+
+  .universal-attempts {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .students-table {

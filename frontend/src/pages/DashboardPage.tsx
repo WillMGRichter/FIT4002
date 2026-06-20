@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { PlusCircle, Search as SearchIcon } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { MoreVertical, PlusCircle, Search as SearchIcon, X } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AppShell, ProjectBadge, StarButton } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
@@ -44,6 +44,24 @@ export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, token } = useAuth();
 
+  // Menu state
+  const [menuProjectId, setMenuProjectId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Delete state
+  const [deleteProjectId, setDeleteProjectId] = useState<string | null>(null);
+
+  // Close menu on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuProjectId(null);
+      }
+    };
+    if (menuProjectId) document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [menuProjectId]);
+
   const fetchProjects = useCallback(async () => {
     if (!token) return;
 
@@ -61,7 +79,6 @@ export const DashboardPage: React.FC = () => {
       const data = await response.json();
       setProjects(data);
 
-      // Fetch participant counts for all projects in parallel
       const counts: Record<string, number> = {};
       await Promise.all(data.map(async (p: Project) => {
         try {
@@ -87,7 +104,6 @@ export const DashboardPage: React.FC = () => {
       navigate('/login');
       return;
     }
-
     fetchProjects();
   }, [token, navigate, fetchProjects]);
 
@@ -123,6 +139,28 @@ export const DashboardPage: React.FC = () => {
     });
   };
 
+  const openEdit = (project: Project) => {
+    setMenuProjectId(null);
+    navigate(`/projects/create?edit=${project.id}`);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteProjectId || !token) return;
+    try {
+      const res = await fetch(`${API_URL}/projects/${deleteProjectId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Failed to delete');
+      setDeleteProjectId(null);
+      fetchProjects();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const isTeacher = user?.role !== 'student';
+
   return (
     <AppShell title="Simulations" activeItem="home">
       <div className="dashboard-page">
@@ -140,6 +178,13 @@ export const DashboardPage: React.FC = () => {
               </div>
             )}
             <div className="dashboard-grid">
+              {!searchQuery && (
+                <button className="simulation-card simulation-card--create" onClick={() => navigate('/projects/create')}>
+                  <PlusCircle size={43} strokeWidth={2.3} />
+                  <span>Create New Simulation</span>
+                </button>
+              )}
+
               {filteredProjects.map((project, index) => {
                 const count = isFallback ? (mockStudentCounts[project.id] ?? 0) : (studentCounts[project.id] ?? 0);
                 return (
@@ -150,7 +195,32 @@ export const DashboardPage: React.FC = () => {
                   >
                     <div className="simulation-card__top">
                       <ProjectBadge color={badgeColors[index % badgeColors.length]} />
-                      <StarButton active={starred.has(project.id)} onClick={(event) => handleToggleStar(project.id, project.name, event)} />
+                      <div className="simulation-card__top-actions">
+                        <StarButton active={starred.has(project.id)} onClick={(event) => handleToggleStar(project.id, project.name, event)} />
+                        {isTeacher && (
+                          <div className="simulation-card__menu-wrapper">
+                            <button
+                              className="simulation-card__menu-btn"
+                              onClick={e => { e.stopPropagation(); setMenuProjectId(menuProjectId === project.id ? null : project.id); }}
+                            >
+                              <MoreVertical size={16} />
+                            </button>
+                            {menuProjectId === project.id && (
+                              <div className="simulation-card__menu" ref={menuRef}>
+                                <button className="simulation-card__menu-item" onClick={e => { e.stopPropagation(); openEdit(project); }}>
+                                  Edit
+                                </button>
+                                <button
+                                  className="simulation-card__menu-item simulation-card__menu-item--danger"
+                                  onClick={e => { e.stopPropagation(); setMenuProjectId(null); setDeleteProjectId(project.id); }}
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="simulation-card__body">
                       <h2>{project.name}</h2>
@@ -163,16 +233,28 @@ export const DashboardPage: React.FC = () => {
                 );
               })}
 
-              {filteredProjects.length === 0 && (
+              {filteredProjects.length === 0 && searchQuery && (
                 <div className="dashboard-state">No projects match &quot;{searchQuery}&quot;</div>
               )}
+            </div>
+          </div>
+        )}
 
-              {!searchQuery && (
-                <button className="simulation-card simulation-card--create" onClick={() => navigate('/projects/create')}>
-                  <PlusCircle size={43} strokeWidth={2.3} />
-                  <span>Create New Simulation</span>
-                </button>
-              )}
+        {/* Delete confirmation */}
+        {deleteProjectId && (
+          <div className="modal-overlay" onClick={() => setDeleteProjectId(null)}>
+            <div className="modal modal--small" onClick={e => e.stopPropagation()}>
+              <div className="modal__header">
+                <h3>Delete Simulation</h3>
+                <button className="modal__close" onClick={() => setDeleteProjectId(null)}><X size={18} /></button>
+              </div>
+              <div className="modal__body">
+                <p>Are you sure you want to delete this simulation? This action cannot be undone.</p>
+              </div>
+              <div className="modal__footer">
+                <button className="modal__btn modal__btn--cancel" onClick={() => setDeleteProjectId(null)}>Cancel</button>
+                <button className="modal__btn modal__btn--danger" onClick={handleDelete}>Delete</button>
+              </div>
             </div>
           </div>
         )}
