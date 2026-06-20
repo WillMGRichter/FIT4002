@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AppShell, ProjectBadge, StarButton } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
-import { addRecent, getStarredProjects, setStarredProjects, toggleStar } from '../utils/projectStorage';
+import { addRecent, getStarredProjects, toggleStar } from '../utils/projectStorage';
 import './Dashboard.css';
 
 interface Project {
@@ -16,7 +16,6 @@ interface Project {
 }
 
 const badgeColors = ['#6f98f6', '#ff4d1f', '#ffc400', '#ffc400', '#6f98f6', '#ffc400', '#9b55f4', '#9b55f4'];
-const memberCounts = [5, 3, 1, 1, 5, 1, 2, 2];
 
 // Fallback mock projects shown only on API error (not empty results)
 const mockProjects: Project[] = [
@@ -30,11 +29,16 @@ const mockProjects: Project[] = [
   { id: '8', name: 'Test2 Simulation', description: '', created_at: new Date().toISOString(), visibility: 'Public' },
 ];
 
+const mockStudentCounts: Record<string, number> = {
+  '1': 5, '2': 3, '3': 1, '4': 1, '5': 5, '6': 1, '7': 2, '8': 2,
+};
+
 export const DashboardPage: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [starred, setStarred] = useState<Set<string>>(() => new Set(getStarredProjects().map(p => p.id)));
+  const [studentCounts, setStudentCounts] = useState<Record<string, number>>({});
   const [searchParams, setSearchParams] = useSearchParams();
   const searchQuery = searchParams.get('q') || '';
   const navigate = useNavigate();
@@ -56,6 +60,21 @@ export const DashboardPage: React.FC = () => {
       if (!response.ok) throw new Error('Failed to fetch projects');
       const data = await response.json();
       setProjects(data);
+
+      // Fetch participant counts for all projects in parallel
+      const counts: Record<string, number> = {};
+      await Promise.all(data.map(async (p: Project) => {
+        try {
+          const partRes = await fetch(`${API_URL}/projects/${p.id}/participants`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (partRes.ok) {
+            const participants = await partRes.json();
+            counts[p.id] = participants.filter((part: any) => part.role === 'student').length;
+          }
+        } catch { /* skip */ }
+      }));
+      setStudentCounts(counts);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -72,7 +91,8 @@ export const DashboardPage: React.FC = () => {
     fetchProjects();
   }, [token, navigate, fetchProjects]);
 
-  const visibleProjects = projects.length > 0 ? projects : (error ? mockProjects : []);
+  const isFallback = error && projects.length === 0;
+  const visibleProjects = isFallback ? mockProjects : projects;
 
   const filteredProjects = useMemo(() => {
     if (!searchQuery) return visibleProjects;
@@ -120,25 +140,28 @@ export const DashboardPage: React.FC = () => {
               </div>
             )}
             <div className="dashboard-grid">
-              {filteredProjects.map((project, index) => (
-                <button
-                  key={project.id}
-                  className="simulation-card"
-                  onClick={() => handleProjectClick(project.id, project.name)}
-                >
-                  <div className="simulation-card__top">
-                    <ProjectBadge color={badgeColors[index % badgeColors.length]} />
-                    <StarButton active={starred.has(project.id)} onClick={(event) => handleToggleStar(project.id, project.name, event)} />
-                  </div>
-                  <div className="simulation-card__body">
-                    <h2>{project.name}</h2>
-                    <p>{project.description}</p>
-                  </div>
-                  <div className="simulation-card__members">
-                    {memberCounts[index % memberCounts.length]} {memberCounts[index % memberCounts.length] === 1 ? 'member' : 'members'}
-                  </div>
-                </button>
-              ))}
+              {filteredProjects.map((project, index) => {
+                const count = isFallback ? (mockStudentCounts[project.id] ?? 0) : (studentCounts[project.id] ?? 0);
+                return (
+                  <button
+                    key={project.id}
+                    className="simulation-card"
+                    onClick={() => handleProjectClick(project.id, project.name)}
+                  >
+                    <div className="simulation-card__top">
+                      <ProjectBadge color={badgeColors[index % badgeColors.length]} />
+                      <StarButton active={starred.has(project.id)} onClick={(event) => handleToggleStar(project.id, project.name, event)} />
+                    </div>
+                    <div className="simulation-card__body">
+                      <h2>{project.name}</h2>
+                      <p>{project.description}</p>
+                    </div>
+                    <div className="simulation-card__members">
+                      {count} {count === 1 ? 'student' : 'students'}
+                    </div>
+                  </button>
+                );
+              })}
 
               {filteredProjects.length === 0 && (
                 <div className="dashboard-state">No projects match &quot;{searchQuery}&quot;</div>
