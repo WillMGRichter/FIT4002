@@ -1,6 +1,6 @@
-# SmartSim Project Structure & File Reference
+# SmartSim Project Structure and File Reference
 
-## 📁 Project Layout
+## Project Layout
 
 ```
 FIT4002/
@@ -12,39 +12,39 @@ FIT4002/
 │   │   │   └── entities/
 │   │   │       └── user.ts              # User entity (stub for future use)
 │   │   ├── types/
-│   │   │   └── index.ts                 #  ALL TypeScript type definitions
+│   │   │   └── index.ts                 # ALL TypeScript type definitions
 │   │   ├── middleware/
 │   │   │   └── authMiddleware.ts        # JWT verification middleware
 │   │   ├── services/
-│   │   │   ├── authService.ts           #  Authentication logic (JWT, bcrypt)
-│   │   │   ├── projectService.ts        #  Project CRUD operations
-│   │   │   └── simulationService.ts     #  Simulation state management
+│   │   │   ├── authService.ts           # Authentication logic (JWT, bcrypt)
+│   │   │   ├── projectService.ts        # Project CRUD operations
+│   │   │   └── simulationService.ts     # Simulation state management
 │   │   ├── routes/
-│   │   │   ├── authRoutes.ts            # * /auth endpoints (signup, login)
-│   │   │   ├── projectRoutes.ts         # * /projects endpoints
-│   │   │   └── simulationRoutes.ts      # * /simulations endpoints
+│   │   │   ├── authRoutes.ts            # /auth endpoints (signup, login)
+│   │   │   ├── projectRoutes.ts         # /projects endpoints
+│   │   │   └── simulationRoutes.ts      # /simulations endpoints
 │   │   └── excel/
 │   │       └── excelParser.ts           # Excel file upload/parsing
 │   ├── migrations/
-│   │   └── 001_initial_schema.sql       # * Database schema (RUN THIS FIRST!)
+│   │   └── 001_initial_schema.sql       # Database schema (RUN THIS FIRST)
 │   ├── package.json                     # Dependencies and scripts
 │   ├── tsconfig.json                    # TypeScript configuration
-│   ├── .env.example                     # * Configuration template
+│   ├── .env.example                     # Configuration template
 │   └── .env                             # (Create locally, not in repo)
 │
 ├── frontend/                            # React SPA
 │   ├── src/
 │   │   ├── index.tsx                   # React entry point
-│   │   ├── App.tsx                     # * Main app with routing logic
+│   │   ├── App.tsx                     # Main app with routing logic
 │   │   ├── index.css                   # Global styles
 │   │   ├── contexts/
-│   │   │   └── AuthContext.tsx         # * Authentication state (global)
+│   │   │   └── AuthContext.tsx         # Authentication state (global)
 │   │   └── pages/
-│   │       ├── LoginPage.tsx           # * Login form
-│   │       ├── SignupPage.tsx          # * Signup form
-│   │       ├── DashboardPage.tsx       # * Project listing dashboard
-│   │       ├── ProjectCreatePage.tsx   # * Create project with Excel upload
-│   │       ├── SimulationPage.tsx      # * Student interaction page
+│   │       ├── LoginPage.tsx           # Login form
+│   │       ├── SignupPage.tsx          # Signup form
+│   │       ├── DashboardPage.tsx       # Project listing dashboard
+│   │       ├── ProjectCreatePage.tsx   # Create project with Excel upload
+│   │       ├── SimulationPage.tsx      # Student interaction page
 │   │       ├── AuthPages.css           # Auth page styling
 │   │       ├── Dashboard.css           # Dashboard styling
 │   │       ├── ProjectCreate.css       # Create project styling
@@ -57,46 +57,46 @@ FIT4002/
 │   ├── tsconfig.json                   # TypeScript configuration
 │   └── .env.local                      # (Local environment, not in repo)
 │
-├── QUICK_START.md                      # * 5-minute setup guide (START HERE)
-├── IMPLEMENTATION_GUIDE.md             # * Architecture & detailed docs
-├── IMPLEMENTATION_SUMMARY.md           # * What was built summary
-├── ROADMAP.md                          # * Future features guide
+├── QUICK_START.md                      # Setup guide (START HERE)
+├── IMPLEMENTATION_GUIDE.md             # Architecture and detailed docs
+├── IMPLEMENTATION_SUMMARY.md           # Summary of what was built
+├── ROADMAP.md                          # Future features guide
 └── README.md                           # (Optional: project overview)
 ```
 
 ---
 
-## 🎯 Key Files to Understand First
+## Key Files to Understand First
 
-### 1. **Backend Type Definitions** ← START HERE
-📄 `backend/src/types/index.ts`
+### 1. Backend Type Definitions
+**Location**: `backend/src/types/index.ts`
 - Contains all TypeScript interfaces
 - User, Project, Simulation types
 - API response types
-- User roles: `organisation | admin | teacher | student`
+- User roles: organisation, admin, teacher, student
 
-### 2. **Database Schema** ← MUST RUN DURING SETUP
-📄 `backend/migrations/001_initial_schema.sql`
+### 2. Database Schema
+**Location**: `backend/migrations/001_initial_schema.sql`
 - Create all database tables
 - Set up relationships and indexes
 - 6 tables: users, organisations, projects, participants, progress, results
 
-### 3. **Main Server**
-📄 `backend/src/index.ts`
+### 3. Main Server
+**Location**: `backend/src/index.ts`
 - Express app setup
 - Route mounting
 - CORS and middleware configuration
 - Port 5000
 
-### 4. **Main React App**
-📄 `frontend/src/App.tsx`
+### 4. Main React App
+**Location**: `frontend/src/App.tsx`
 - Route definitions
 - Auth provider setup
 - Protected route logic
 - Browser routing config
 
-### 5. **Auth Context**
-📄 `frontend/src/contexts/AuthContext.tsx`
+### 5. Auth Context
+**Location**: `frontend/src/contexts/AuthContext.tsx`
 - Global authentication state
 - Login/signup functions
 - Token management
@@ -104,134 +104,134 @@ FIT4002/
 
 ---
 
-## 🔄 Data Flow Patterns
+## Data Flow Patterns
 
 ### Authentication Flow
 ```
 User Form (LoginPage.tsx)
-    ↓
+    |
 useAuth() hook
-    ↓
+    |
 authService.loginUser()
-    ↓
+    |
 Supabase (fetch user + verify password)
-    ↓
+    |
 JWT generated
-    ↓
+    |
 Stored in localStorage
-    ↓
+    |
 AuthContext updated
-    ↓
+    |
 Routes protected based on user state
 ```
 
 ### Create Project Flow
 ```
 Teacher uploads Excel (ProjectCreatePage.tsx)
-    ↓
+    |
 Excel parsed (excelParser.ts)
-    ↓
+    |
 POST /projects (with excelData)
-    ↓
+    |
 projectService.createProject()
-    ↓
+    |
 Stored in Supabase
-    ↓
+    |
 Redirect to dashboard
 ```
 
 ### Run Simulation Flow
 ```
 Student opens project (SimulationPage.tsx)
-    ↓
+    |
 Fetch project details
-    ↓
+    |
 Load saved progress (if exists)
-    ↓
+    |
 Display inputs from Excel
-    ↓
+    |
 Student modifies values
-    ↓
+    |
 POST /simulations/:projectId/progress
-    ↓
+    |
 simulationService.saveSimulationProgress()
-    ↓
+    |
 Stored in Supabase
-    ↓
+    |
 Can continue later from same state
 ```
 
 ---
 
-## 🔗 API Endpoint Reference
+## API Endpoint Reference
 
-### Structure: `METHOD /endpoint → Handler`
+### Structure: METHOD /endpoint -> Handler
 
-#### Authentication Routes (`/auth`)
-- `POST /auth/signup/organisation` → Create org + admin
-- `POST /auth/signup` → Register teacher/student  
-- `POST /auth/login` → Generate JWT token
+#### Authentication Routes (/auth)
+- `POST /auth/signup/organisation` -> Create org + admin
+- `POST /auth/signup` -> Register teacher/student
+- `POST /auth/login` -> Generate JWT token
 
-#### Project Routes (`/projects`)
-- `POST /projects` → Create project
-- `GET /projects/:projectId` → Get project details
-- `GET /projects/teacher/projects` → Get teacher's projects
-- `GET /projects/student/projects` → Get assigned projects
-- `PUT /projects/:projectId` → Update project
-- `DELETE /projects/:projectId` → Delete project
-- `POST /projects/:projectId/participants` → Add student
-- `DELETE /projects/:projectId/participants/:userId` → Remove student
-- `GET /projects/:projectId/participants` → List participants
+#### Project Routes (/projects)
+- `POST /projects` -> Create project
+- `GET /projects/:projectId` -> Get project details
+- `GET /projects/teacher/projects` -> Get teacher's projects
+- `GET /projects/student/projects` -> Get assigned projects
+- `PUT /projects/:projectId` -> Update project
+- `DELETE /projects/:projectId` -> Delete project
+- `POST /projects/:projectId/participants` -> Add student
+- `DELETE /projects/:projectId/participants/:userId` -> Remove student
+- `GET /projects/:projectId/participants` -> List participants
 
-#### Simulation Routes (`/simulations`)
-- `POST /simulations/:projectId/progress` → Save state
-- `GET /simulations/:projectId/progress` → Load state
-- `POST /simulations/:projectId/complete` → Submit results
-- `GET /simulations/:projectId/results` → Get all results (teacher)
-- `GET /simulations/:projectId/results/user` → Get user's results
+#### Simulation Routes (/simulations)
+- `POST /simulations/:projectId/progress` -> Save state
+- `GET /simulations/:projectId/progress` -> Load state
+- `POST /simulations/:projectId/complete` -> Submit results
+- `GET /simulations/:projectId/results` -> Get all results (teacher)
+- `GET /simulations/:projectId/results/user` -> Get user's results
 
-#### Excel Routes (`/excel`)
-- `POST /excel/upload` → Parse Excel file
+#### Excel Routes (/excel)
+- `POST /excel/upload` -> Parse Excel file
 
 ---
 
-## 🗄️ Database Schema Overview
+## Database Schema Overview
 
 ### users
 ```
-id (UUID) → User identifier
-username (TEXT) → Unique login
-password_hash (TEXT) → Bcrypt hash
-role (TEXT) → organisation | admin | teacher | student
-organisation_id (FK) → Parent organisation
+id (UUID) -> User identifier
+username (TEXT) -> Unique login
+password_hash (TEXT) -> Bcrypt hash
+role (TEXT) -> organisation | admin | teacher | student
+organisation_id (FK) -> Parent organisation
 created_at / updated_at (TIMESTAMP)
 ```
 
 ### organisations
 ```
-id (UUID) → Org identifier
-name (TEXT) → School/company name
+id (UUID) -> Org identifier
+name (TEXT) -> School/company name
 created_at (TIMESTAMP)
 ```
 
 ### projects
 ```
-id (UUID) → Project identifier
-name (TEXT) → Simulation name
-description (TEXT) → Details
-created_by (FK) → Teacher who created it
-organisation_id (FK) → Parent org
-visibility (TEXT) → private | public | selective
-excel_data (JSONB) → Parsed Excel formulas
+id (UUID) -> Project identifier
+name (TEXT) -> Simulation name
+description (TEXT) -> Details
+created_by (FK) -> Teacher who created it
+organisation_id (FK) -> Parent org
+visibility (TEXT) -> private | public | selective
+excel_data (JSONB) -> Parsed Excel formulas
 created_at / updated_at (TIMESTAMP)
 ```
 
 ### project_participants
 ```
 id (UUID)
-project_id (FK) → Which project
-user_id (FK) → Which user
-role (TEXT) → teacher | student
+project_id (FK) -> Which project
+user_id (FK) -> Which user
+role (TEXT) -> teacher | student
 created_at (TIMESTAMP)
 ```
 
@@ -240,7 +240,7 @@ created_at (TIMESTAMP)
 id (UUID)
 project_id (FK)
 user_id (FK)
-state (JSONB) → Current input values
+state (JSONB) -> Current input values
 saved_at / updated_at (TIMESTAMP)
 ```
 
@@ -249,16 +249,16 @@ saved_at / updated_at (TIMESTAMP)
 id (UUID)
 project_id (FK)
 user_id (FK)
-final_state (JSONB) → Final submitted state
+final_state (JSONB) -> Final submitted state
 completed_at (TIMESTAMP)
 ```
 
 ---
 
-## 🛠️ Services Explained
+## Services Explained
 
 ### authService.ts
-**What it does**: Authentication and user management
+**Purpose**: Authentication and user management
 **Key functions**:
 - `hashPassword()` - Bcrypt hashing
 - `comparePassword()` - Verify password
@@ -270,7 +270,7 @@ completed_at (TIMESTAMP)
 - `createOrganisation()` - New org
 
 ### projectService.ts
-**What it does**: Project CRUD and participant management
+**Purpose**: Project CRUD and participant management
 **Key functions**:
 - `createProject()` - New simulation
 - `getProjectById()` - Fetch project
@@ -282,7 +282,7 @@ completed_at (TIMESTAMP)
 - `getProjectsByTeacher()` - List teacher's projects
 
 ### simulationService.ts
-**What it does**: Simulation state and results
+**Purpose**: Simulation state and results
 **Key functions**:
 - `saveSimulationProgress()` - Save current state
 - `getSimulationProgress()` - Load saved state
@@ -292,7 +292,7 @@ completed_at (TIMESTAMP)
 
 ---
 
-## 🔐 Authentication & Authorization
+## Authentication and Authorization
 
 ### JWT Token
 - Generated on login
@@ -303,20 +303,20 @@ completed_at (TIMESTAMP)
 ### Role-Based Access Control (RBAC)
 ```
 organisation
-    → Can: Create org, manage admins
-    → Cannot: Create projects
+    -> Can: Create org, manage admins
+    -> Cannot: Create projects
 
 admin
-    → Can: Create/delete users, manage teachers
-    → Cannot: Create projects (unless also teacher)
+    -> Can: Create/delete users, manage teachers
+    -> Cannot: Create projects (unless also teacher)
 
 teacher
-    → Can: Create projects, add students, view results
-    → Cannot: Access other orgs' projects
+    -> Can: Create projects, add students, view results
+    -> Cannot: Access other orgs' projects
 
 student
-    → Can: Run simulations, save progress
-    → Cannot: Create projects, modify permissions
+    -> Can: Run simulations, save progress
+    -> Cannot: Create projects, modify permissions
 ```
 
 ### Protected Routes
@@ -327,33 +327,33 @@ student
 
 ---
 
-## 📊 Component Hierarchy
+## Component Hierarchy
 
 ```
 App.tsx (main router)
-├── AuthContext (global auth state)
-├── LoginPage
-│   └── Login form
-├── SignupPage
-│   └── Signup form
-├── DashboardPage
-│   ├── Header (logout, user info)
-│   ├── Project grid
-│   └── Project cards (clickable)
-├── ProjectCreatePage
-│   ├── Project form
-│   ├── Excel upload input
-│   └── Excel preview
-└── SimulationPage
-    ├── Header (project name)
-    ├── Input fields (from Excel)
-    ├── State display (JSON)
-    └── Action buttons (save, submit)
++-- AuthContext (global auth state)
++-- LoginPage
+|   +-- Login form
++-- SignupPage
+|   +-- Signup form
++-- DashboardPage
+|   +-- Header (logout, user info)
+|   +-- Project grid
+|   +-- Project cards (clickable)
++-- ProjectCreatePage
+|   +-- Project form
+|   +-- Excel upload input
+|   +-- Excel preview
++-- SimulationPage
+    +-- Header (project name)
+    +-- Input fields (from Excel)
+    +-- State display (JSON)
+    +-- Action buttons (save, submit)
 ```
 
 ---
 
-## 🔑 Key Concepts
+## Key Concepts
 
 ### State Management
 - `AuthContext` - User authentication state
@@ -380,7 +380,7 @@ App.tsx (main router)
 
 ---
 
-## 🚀 Common Tasks
+## Common Tasks
 
 ### Add a new API endpoint
 1. Add function to service (`services/*.ts`)
@@ -404,7 +404,7 @@ App.tsx (main router)
 
 ---
 
-## 🧪 Testing the Application
+## Testing the Application
 
 ### Manual Testing Checklist
 - [ ] Signup creates organisation
@@ -421,41 +421,41 @@ App.tsx (main router)
 
 ---
 
-## 📚 Documentation Files
+## Documentation Files
 
 | File | Purpose | Read Time |
 |------|---------|-----------|
-| QUICK_START.md | 5-minute setup | 5 min |
-| IMPLEMENTATION_GUIDE.md | Architecture & API | 20 min |
+| QUICK_START.md | Setup guide | 5 min |
+| IMPLEMENTATION_GUIDE.md | Architecture and API | 20 min |
 | ROADMAP.md | Future features | 15 min |
 | IMPLEMENTATION_SUMMARY.md | What was built | 10 min |
 | This file | Project structure | 10 min |
 
 ---
 
-## 🔗 External Resources
+## External Resources
 
-- **Supabase Docs**: https://supabase.com/docs
-- **Express.js**: https://expressjs.com/
-- **React**: https://react.dev/
-- **TypeScript**: https://www.typescriptlang.org/
-- **JWT**: https://jwt.io/
-- **XLSX**: https://sheetjs.com/
-
----
-
-## 💡 Pro Tips
-
-1. **Always check types first** - `types/index.ts` shows all data structures
-2. **Services contain business logic** - Routes should be thin wrappers
-3. **Use consistent error handling** - Follow existing patterns
-4. **Test auth flow first** - Most features depend on authentication
-5. **Frontend auth depends on localStorage** - Clear it to reset
-6. **Check backend logs** - Always look at `npm run dev` output
-7. **Use Supabase dashboard** - Useful for viewing/editing data directly
+- Supabase Docs: https://supabase.com/docs
+- Express.js: https://expressjs.com/
+- React: https://react.dev/
+- TypeScript: https://www.typescriptlang.org/
+- JWT: https://jwt.io/
+- XLSX: https://sheetjs.com/
 
 ---
 
-**Last Updated**: 2026-06-19  
-**Version**: 1.0.0 MVP  
-**Status**: Production Ready ✅
+## Pro Tips
+
+1. Always check types first - `types/index.ts` shows all data structures
+2. Services contain business logic - Routes should be thin wrappers
+3. Use consistent error handling - Follow existing patterns
+4. Test auth flow first - Most features depend on authentication
+5. Frontend auth depends on localStorage - Clear it to reset
+6. Check backend logs - Always look at `npm run dev` output
+7. Use Supabase dashboard - Useful for viewing/editing data directly
+
+---
+
+**Last Updated**: 2026-06-19
+**Version**: 1.0.0 MVP
+**Status**: Production Ready

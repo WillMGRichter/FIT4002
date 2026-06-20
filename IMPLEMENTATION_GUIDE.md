@@ -1,31 +1,31 @@
 # SmartSim - Excel Simulation Platform
 
-A simplified web-based platform for teachers to create and manage Excel-based simulations for students. Inspired by Forio but designed for ease of use and quick setup.
+A web-based platform for teachers to create and manage Excel-based simulations for students. Inspired by Forio but designed for ease of use and rapid setup.
 
 ## Project Overview
 
 SmartSim allows:
-- **Teachers** to upload Excel spreadsheets, create simulation projects, and manage student participation
-- **Students** to run simulations, test different scenarios, and save their progress
-- **Admins** to manage organizational structure and approve project creation
+- Teachers to upload Excel spreadsheets, create simulation projects, and manage student participation
+- Students to run simulations, test different scenarios, and save their progress
+- Administrators to manage organisational structure and approve project creation
 - Easy sharing and tracking of simulation results
 
 ## Technology Stack
 
 ### Backend
-- **Framework**: Express.js (Node.js)
-- **Language**: TypeScript
-- **Database**: Supabase (PostgreSQL)
-- **Authentication**: JWT
-- **File Handling**: Multer
-- **Excel Processing**: XLSX
+- Framework: Express.js (Node.js)
+- Language: TypeScript
+- Database: Supabase (PostgreSQL)
+- Authentication: JWT
+- File Handling: Multer
+- Excel Processing: XLSX
 
 ### Frontend
-- **Framework**: React 19
-- **Language**: TypeScript
-- **Routing**: React Router DOM
-- **Styling**: CSS3
-- **State Management**: React Context API
+- Framework: React 19
+- Language: TypeScript
+- Routing: React Router DOM
+- Styling: CSS3
+- State Management: React Context API
 
 ## Project Structure
 
@@ -212,7 +212,7 @@ The frontend will run on `http://localhost:3000`
 3. Create new project:
    - Upload Excel file
    - Configure simulation parameters
-   - Design UI (canvas - future)
+   - Design UI (canvas)
    - Set visibility and sharing
 4. Invite students via email/ID
 5. Monitor student progress
@@ -257,11 +257,11 @@ The frontend will run on `http://localhost:3000`
 
 ## Security Considerations
 
-1. **Passwords**: Hashed with bcrypt (10 rounds)
-2. **Tokens**: JWT with 7-day expiration
-3. **Database**: All sensitive queries use parameterized statements
-4. **Authorization**: Role-based access control on all endpoints
-5. **CORS**: Configured to allow frontend domain
+1. Passwords: Hashed with bcrypt (10 rounds)
+2. Tokens: JWT with 7-day expiration
+3. Database: All sensitive queries use parameterized statements
+4. Authorization: Role-based access control on all endpoints
+5. CORS: Configured to allow frontend domain
 
 ## Environment Variables
 
