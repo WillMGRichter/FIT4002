@@ -11,7 +11,7 @@ import { getProjectById } from '../services/projectService';
 
 const router = Router();
 
-// Save simulation progress
+/** POST /:projectId/progress — Save a student's simulation progress state. Requires auth. Body: { state: any }. Returns: SimulationProgress. */
 router.post('/:projectId/progress', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const projectId = req.params.projectId as string;
@@ -29,7 +29,7 @@ router.post('/:projectId/progress', authMiddleware, async (req: AuthRequest, res
   }
 });
 
-// Get simulation progress
+/** GET /:projectId/progress — Retrieve the authenticated user's saved simulation progress for a project. Requires auth. Returns: SimulationProgress | null. */
 router.get('/:projectId/progress', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const projectId = req.params.projectId as string;
@@ -42,7 +42,7 @@ router.get('/:projectId/progress', authMiddleware, async (req: AuthRequest, res:
   }
 });
 
-// Complete simulation
+/** POST /:projectId/complete — Mark a simulation as completed with final state. Requires auth. Body: { finalState: any }. Returns: SimulationResult. */
 router.post('/:projectId/complete', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const projectId = req.params.projectId as string;
@@ -60,7 +60,7 @@ router.post('/:projectId/complete', authMiddleware, async (req: AuthRequest, res
   }
 });
 
-// Get project results (for teachers)
+/** GET /:projectId/results — Get aggregated results for a project (teacher-only: verifies user is the project creator). Requires auth. Returns: SimulationResult[]. */
 router.get('/:projectId/results', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const projectId = req.params.projectId as string;
@@ -79,7 +79,7 @@ router.get('/:projectId/results', authMiddleware, async (req: AuthRequest, res: 
   }
 });
 
-// Get user's results for a project
+/** GET /:projectId/results/user — Get the authenticated user's own results for a project. Requires auth. Returns: SimulationResult[]. */
 router.get('/:projectId/results/user', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const projectId = req.params.projectId as string;

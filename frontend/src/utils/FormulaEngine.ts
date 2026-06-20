@@ -24,6 +24,7 @@ function parseCellRef(ref: string): { col: number; row: number } | null {
   return { col: colToIndex(match[2].toUpperCase()), row: parseInt(match[4], 10) };
 }
 
+// Expand a range like "A1:C3" into individual cell references (A1, A2, A3, B1, ...).
 function expandRange(range: string): string[] {
   const parts = range.split(':');
   if (parts.length !== 2) return [range];
@@ -105,6 +106,8 @@ function precedence(op: string): number {
   return 0;
 }
 
+// Evaluate a tokenized infix expression using the shunting-yard algorithm.
+// Supports +, -, *, / with standard operator precedence and parentheses.
 function evaluateExpression(tokens: string[], cells: CellMap): number {
   const values: number[] = [];
   const ops: string[] = [];
@@ -141,6 +144,8 @@ function evaluateExpression(tokens: string[], cells: CellMap): number {
   return values[0] || 0;
 }
 
+// Evaluate a single formula (e.g. "=A1+B2*2") against the given cell values.
+// Pipeline: strip '=' -> expand range functions (SUM, AVERAGE, etc.) -> substitute cell refs -> evaluate infix expression via shunting-yard.
 export function evaluateFormula(formula: string, cells: CellMap): number {
   if (!formula || !formula.toString().startsWith('=')) {
     const num = parseFloat(String(formula));
@@ -183,6 +188,8 @@ export function getCellDependencies(formulas: Record<string, string>): Record<st
   return deps;
 }
 
+// Recompute all formula outputs in dependency order using topological sort.
+// The cells map starts with input values; each formula is evaluated against the progressively filled map.
 export function recomputeAll(
   cells: CellMap,
   formulas: Record<string, string>
@@ -202,6 +209,8 @@ export function recomputeAll(
   return result;
 }
 
+// Topological sort so formulas are evaluated after all their dependencies.
+// Uses DFS-based ordering; cycles are silently broken by skipping already-visited nodes.
 function topologicalSort(deps: Record<string, string[]>): string[] {
   const visited = new Set<string>();
   const sorted: string[] = [];

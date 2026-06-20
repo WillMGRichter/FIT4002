@@ -1,4 +1,3 @@
-// index.ts
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
@@ -15,25 +14,26 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// Health check
+/** Health check endpoint - returns server status */
 app.get("/", (req, res) => {
   res.json({ message: "SmartSim API - Server running!" });
 });
 
-// Routes
+/** Route mounts */
 app.use("/auth", authRoutes);
 app.use("/projects", projectRoutes);
 app.use("/simulations", simulationRoutes);
 app.use("/projects", pageRoutes);
-app.use("/simulations", studentStateRoutes);
+app.use("/student-state", studentStateRoutes);
 app.use("/excel", excelParser);
 
-// Error handling middleware
+/** Global error handler - catches unhandled errors from all routes */
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error("Error:", err);
   res.status(500).json({ error: "Internal server error" });
 });
 
+/** Starts the Express server on the configured port */
 app.listen(PORT, () => {
   console.log(`SmartSim API running on port ${PORT}`);
 });

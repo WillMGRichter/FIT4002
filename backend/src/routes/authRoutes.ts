@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { registerUser, loginUser, createOrganisation } from '../services/authService';
+import { registerUser, loginUser, createOrganisation, listOrganisations } from '../services/authService';
+import { authMiddleware, AuthRequest } from '../middleware/authMiddleware';
 
 const router = Router();
 
@@ -14,7 +15,7 @@ interface LoginRequest {
   password: string;
 }
 
-// Create organisation and organisation admin account
+/** POST /signup/organisation — Create organisation and organisation admin account. Body: { username, password, organisationName }. Returns: { user, token }. */
 router.post('/signup/organisation', async (req: Request, res: Response) => {
   try {
     const { username, password, organisationName } = req.body as SignupRequest;
@@ -35,7 +36,7 @@ router.post('/signup/organisation', async (req: Request, res: Response) => {
   }
 });
 
-// Register new user (teacher or student) for existing organisation
+/** POST /signup — Register new user (teacher or student) for an existing organisation. Body: { username, password, role, organisationId }. Returns: { user, token }. */
 router.post('/signup', async (req: Request, res: Response) => {
   try {
     const { username, password, role, organisationId } = req.body;
@@ -56,7 +57,17 @@ router.post('/signup', async (req: Request, res: Response) => {
   }
 });
 
-// Login
+/** GET /organisations — List all organisations. Requires auth. Returns: Organisation[]. */
+router.get('/organisations', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const orgs = await listOrganisations();
+    res.json(orgs);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+/** POST /login — Authenticate user and return JWT token. Body: { username, password }. Returns: { user, token }. */
 router.post('/login', async (req: Request, res: Response) => {
   try {
     const { username, password } = req.body as LoginRequest;

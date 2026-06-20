@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase';
 import { ProjectPage } from '../types';
 
+/** Fetches all pages for a project, ordered by sort_order */
 export async function getPagesByProject(projectId: string): Promise<ProjectPage[]> {
   const { data, error } = await supabase
     .from('project_pages')
@@ -12,6 +13,7 @@ export async function getPagesByProject(projectId: string): Promise<ProjectPage[
   return data || [];
 }
 
+/** Fetches a single page by its ID */
 export async function getPageById(pageId: string): Promise<ProjectPage> {
   const { data, error } = await supabase
     .from('project_pages')
@@ -23,6 +25,10 @@ export async function getPageById(pageId: string): Promise<ProjectPage> {
   return data;
 }
 
+/**
+ * Creates a new page in a project.
+ * @param sortOrder - Position in the page sequence (0-based)
+ */
 export async function createPage(
   projectId: string,
   name: string,
@@ -38,6 +44,7 @@ export async function createPage(
   return data;
 }
 
+/** Updates a page with partial data */
 export async function updatePage(
   pageId: string,
   updates: Partial<ProjectPage>
@@ -53,6 +60,7 @@ export async function updatePage(
   return data;
 }
 
+/** Deletes a page by its ID */
 export async function deletePage(pageId: string): Promise<void> {
   const { error } = await supabase
     .from('project_pages')
@@ -62,6 +70,10 @@ export async function deletePage(pageId: string): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * Reorders pages by accepting an ordered array of page IDs.
+ * Each page's sort_order is set to its index in the array.
+ */
 export async function reorderPages(
   projectId: string,
   pageIds: string[]

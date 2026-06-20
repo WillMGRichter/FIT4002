@@ -14,7 +14,7 @@ import { OrgManagement } from './pages/OrgManagement';
 import { ProjectDesigner } from './pages/ProjectDesigner';
 import { StudentSimulationView } from './pages/StudentSimulationView';
 import './App.css';
-
+import './pages/common.css';
 
 
 function AppContent() {

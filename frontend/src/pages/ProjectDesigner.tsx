@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Trash2, Plus, Eye, Save, GripVertical, Type, Image, RectangleHorizontal, ChartBar } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../config';
 import styles from './ProjectDesigner.module.css';
 
 type ElementType = 'text' | 'input-field' | 'output-field' | 'image';
@@ -50,13 +51,13 @@ export const ProjectDesigner: React.FC = () => {
 
   useEffect(() => {
     if (!projectId || !token) return;
-    fetch(`http://localhost:5000/projects/${projectId}`, {
+    fetch(`${API_URL}/projects/${projectId}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.json())
       .then(data => {
         setProject(data);
-        return fetch(`http://localhost:5000/projects/${projectId}/pages`, {
+        return fetch(`${API_URL}/projects/${projectId}/pages`, {
           headers: { Authorization: `Bearer ${token}` },
         });
       })
@@ -75,6 +76,7 @@ export const ProjectDesigner: React.FC = () => {
   const activePage = pages[activePageIdx];
   const activeElements = activePage?.elements || [];
 
+  // Collect all non-formula (input) cells from the uploaded spreadsheet, sorted by reference
   const inputCells = React.useMemo(() => {
     if (project?.excel_data?.inputCells) {
       return project.excel_data.inputCells.sort((a: any, b: any) => a.ref.localeCompare(b.ref, undefined, { numeric: true }));
@@ -86,6 +88,7 @@ export const ProjectDesigner: React.FC = () => {
       .sort((a, b) => a.ref.localeCompare(b.ref, undefined, { numeric: true }));
   }, [project]);
 
+  // Collect all formula (output) cells from the uploaded spreadsheet, sorted by reference
   const outputCells = React.useMemo(() => {
     if (project?.excel_data?.outputCells) {
       return project.excel_data.outputCells.sort((a: any, b: any) => a.ref.localeCompare(b.ref, undefined, { numeric: true }));
@@ -99,6 +102,7 @@ export const ProjectDesigner: React.FC = () => {
 
   const [saving, setSaving] = useState(false);
 
+  // Persist all pages to the server. Pages with temp IDs are created first via POST, then updated with elements.
   const savePages = useCallback(async () => {
     if (!projectId || !token) return;
     setSaving(true);
@@ -106,20 +110,20 @@ export const ProjectDesigner: React.FC = () => {
     for (let i = 0; i < updatedPages.length; i++) {
       const page = updatedPages[i];
       if (page.id.startsWith('temp_')) {
-        const res = await fetch(`http://localhost:5000/projects/${projectId}/pages`, {
+        const res = await fetch(`${API_URL}/projects/${projectId}/pages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ name: page.name, sortOrder: i }),
         });
         const created = await res.json();
         updatedPages[i] = { ...created, elements: page.elements };
-        await fetch(`http://localhost:5000/projects/${projectId}/pages/${created.id}`, {
+        await fetch(`${API_URL}/projects/${projectId}/pages/${created.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ elements: page.elements }),
         });
       } else {
-        await fetch(`http://localhost:5000/projects/${projectId}/pages/${page.id}`, {
+        await fetch(`${API_URL}/projects/${projectId}/pages/${page.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ elements: page.elements, name: page.name }),
@@ -136,7 +140,7 @@ export const ProjectDesigner: React.FC = () => {
       setActivePageIdx(pages.length);
       return;
     }
-    const res = await fetch(`http://localhost:5000/projects/${projectId}/pages`, {
+    const res = await fetch(`${API_URL}/projects/${projectId}/pages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ name: `Page ${pages.length + 1}`, sortOrder: pages.length }),
@@ -150,7 +154,7 @@ export const ProjectDesigner: React.FC = () => {
     const page = pages[idx];
     if (pages.length <= 1) return;
     if (!page.id.startsWith('temp_') && token && projectId) {
-      await fetch(`http://localhost:5000/projects/${projectId}/pages/${page.id}`, {
+      await fetch(`${API_URL}/projects/${projectId}/pages/${page.id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });

@@ -18,7 +18,7 @@ import { getUserById, registerUser } from '../services/authService';
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Create a new project (multipart: file + fields)
+/** POST / — Create a new project with optional Excel upload. Multipart: file + fields (title, description, students JSON). Requires auth. Returns: Project. */
 router.post('/', authMiddleware, upload.single('file'), async (req: AuthRequest, res: Response) => {
   try {
     const name = req.body.title || req.body.name;
@@ -265,7 +265,7 @@ router.post('/', authMiddleware, upload.single('file'), async (req: AuthRequest,
   }
 });
 
-// Get project by ID
+/** GET /:projectId — Get project by ID. Requires auth. Returns: Project. */
 router.get('/:projectId', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const project = await getProjectById(req.params.projectId as string);
@@ -275,7 +275,7 @@ router.get('/:projectId', authMiddleware, async (req: AuthRequest, res: Response
   }
 });
 
-// Get teacher's projects
+/** GET /teacher/projects — Get all projects created by the authenticated teacher. Requires auth. Returns: Project[]. */
 router.get('/teacher/projects', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const projects = await getProjectsByTeacher(req.userId!);
@@ -285,7 +285,7 @@ router.get('/teacher/projects', authMiddleware, async (req: AuthRequest, res: Re
   }
 });
 
-// Get student's projects
+/** GET /student/projects — Get all projects the authenticated student is a participant of. Requires auth. Returns: Project[]. */
 router.get('/student/projects', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const projects = await getStudentProjects(req.userId!);
@@ -295,7 +295,7 @@ router.get('/student/projects', authMiddleware, async (req: AuthRequest, res: Re
   }
 });
 
-// Update project
+/** PUT /:projectId — Update project metadata. Only the creator may update. Requires auth. Body: partial Project fields. Returns: Project. */
 router.put('/:projectId', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const project = await getProjectById(req.params.projectId as string);
@@ -312,7 +312,7 @@ router.put('/:projectId', authMiddleware, async (req: AuthRequest, res: Response
   }
 });
 
-// Delete project
+/** DELETE /:projectId — Delete a project. Only the creator may delete. Requires auth. Returns: { message }. */
 router.delete('/:projectId', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const project = await getProjectById(req.params.projectId as string);
@@ -329,7 +329,7 @@ router.delete('/:projectId', authMiddleware, async (req: AuthRequest, res: Respo
   }
 });
 
-// Add participant to project
+/** POST /:projectId/participants — Add a participant (student/teacher) to a project. Only the creator may add. Requires auth. Body: { userId, role, maxAttempts? }. Returns: Participant. */
 router.post('/:projectId/participants', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { userId, role, maxAttempts } = req.body;
@@ -347,7 +347,7 @@ router.post('/:projectId/participants', authMiddleware, async (req: AuthRequest,
   }
 });
 
-// Get project participants
+/** GET /:projectId/participants — List all participants of a project. Requires auth. Returns: Participant[]. */
 router.get('/:projectId/participants', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const participants = await getProjectParticipants(req.params.projectId as string);
@@ -357,7 +357,7 @@ router.get('/:projectId/participants', authMiddleware, async (req: AuthRequest, 
   }
 });
 
-// Remove participant from project
+/** DELETE /:projectId/participants/:userId — Remove a participant from a project. Only the creator may remove. Requires auth. Returns: { message }. */
 router.delete(
   '/:projectId/participants/:userId',
   authMiddleware,

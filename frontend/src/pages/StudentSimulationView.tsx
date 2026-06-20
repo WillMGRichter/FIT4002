@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Send, AlertCircle } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../config';
 import { recomputeAll, type CellMap } from '../utils/FormulaEngine';
 import styles from './StudentSimulationView.module.css';
 
@@ -41,7 +42,7 @@ export const StudentSimulationView: React.FC = () => {
 
   const autoSaveTimer = useRef<number | null>(null);
 
-  // Extract formulas from excel_data
+  // Extract formula strings from the project's excel_data for client-side recomputation
   const formulas = useMemo(() => {
     if (!project?.excel_data?.cells) return {};
     const f: Record<string, string> = {};
@@ -54,7 +55,7 @@ export const StudentSimulationView: React.FC = () => {
     return f;
   }, [project]);
 
-  // Default values from the spreadsheet (for formula inputs not yet changed by student)
+  // Seed values from the spreadsheet — used as defaults until the student provides input
   const defaultCells = useMemo(() => {
     if (!project?.excel_data?.cells) return {};
     const d: CellMap = {};
@@ -66,7 +67,7 @@ export const StudentSimulationView: React.FC = () => {
     return d;
   }, [project]);
 
-  // Compute outputs from inputs + formulas (seed with default values, overlay student inputs)
+  // Merge default cells with student input, then compute all formula outputs via topological sort
   const computedValues = useMemo(() => {
     const allCells: CellMap = { ...defaultCells, ...inputValues };
     return recomputeAll(allCells, formulas);
@@ -78,10 +79,10 @@ export const StudentSimulationView: React.FC = () => {
     const load = async () => {
       try {
         const [projRes, pagesRes] = await Promise.all([
-          fetch(`http://localhost:5000/projects/${projectId}`, {
+          fetch(`${API_URL}/projects/${projectId}`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch(`http://localhost:5000/projects/${projectId}/pages`, {
+          fetch(`${API_URL}/projects/${projectId}/pages`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
@@ -96,7 +97,7 @@ export const StudentSimulationView: React.FC = () => {
         setPages(pgs);
 
         // Try to load existing state
-        const stateRes = await fetch(`http://localhost:5000/simulations/${projectId}/state`, {
+        const stateRes = await fetch(`${API_URL}/student-state/${projectId}/state`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -114,7 +115,7 @@ export const StudentSimulationView: React.FC = () => {
         }
 
         // Get attempt info from participant
-        const partRes = await fetch(`http://localhost:5000/projects/${projectId}/participants`, {
+        const partRes = await fetch(`${API_URL}/projects/${projectId}/participants`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (partRes.ok) {
@@ -131,11 +132,11 @@ export const StudentSimulationView: React.FC = () => {
     load();
   }, [projectId, token]);
 
-  // Auto-save input values
+  // Persist current input values to the server (debounced) for resume across sessions
   const saveInputValues = useCallback(async (values: Record<string, number | string>) => {
     if (!stateIdRef.current || !projectId || !token) return;
     try {
-      await fetch(`http://localhost:5000/simulations/${projectId}/state/inputs`, {
+      await fetch(`${API_URL}/student-state/${projectId}/state/inputs`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ stateId: stateIdRef.current, inputValues: values }),
@@ -160,7 +161,7 @@ export const StudentSimulationView: React.FC = () => {
     setCurrentPageIdx(newIdx);
     if (stateIdRef.current && projectId && token && pages[newIdx]) {
       try {
-        await fetch(`http://localhost:5000/simulations/${projectId}/state/page`, {
+        await fetch(`${API_URL}/student-state/${projectId}/state/page`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ stateId: stateIdRef.current, pageId: pages[newIdx].id }),
@@ -174,7 +175,7 @@ export const StudentSimulationView: React.FC = () => {
     setSubmitting(true);
     try {
       await saveInputValues(inputValues);
-      const res = await fetch(`http://localhost:5000/simulations/${projectId}/state/complete`, {
+      const res = await fetch(`${API_URL}/student-state/${projectId}/state/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ stateId: stateIdRef.current, inputValues }),

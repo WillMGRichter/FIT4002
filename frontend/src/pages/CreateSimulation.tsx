@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_URL } from '../config';
 import styles from './CreateSimulation.module.css';
 
 export const CreateSimulation: React.FC = () => {
@@ -11,7 +12,7 @@ export const CreateSimulation: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch('http://localhost:5000')
+    fetch(`${API_URL}`)
       .then(res => res.json())
       .then(data => { setMessage(data.message); setBackendOk(true); })
       .catch(() => setBackendOk(false));
@@ -23,7 +24,7 @@ export const CreateSimulation: React.FC = () => {
     formData.append('file', e.target.files[0]);
     setLoading(true); setError(''); setFormulas(null);
     try {
-      const res = await fetch('http://localhost:5000/excel/upload', { method: 'POST', body: formData });
+      const res = await fetch(`${API_URL}/excel/upload`, { method: 'POST', body: formData });
       if (!res.ok) throw new Error('Upload failed');
       setFormulas(await res.json());
     } catch (err: any) {

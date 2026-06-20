@@ -3,6 +3,7 @@ import { PlusCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AppShell, ProjectBadge, StarButton } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../config';
 import './Dashboard.css';
 
 interface Project {
@@ -16,6 +17,7 @@ interface Project {
 const badgeColors = ['#6f98f6', '#ff4d1f', '#ffc400', '#ffc400', '#6f98f6', '#ffc400', '#9b55f4', '#9b55f4'];
 const memberCounts = [5, 3, 1, 1, 5, 1, 2, 2];
 
+// Fallback mock projects shown only on API error (not empty results)
 const mockProjects: Project[] = [
   { id: '1', name: 'Simulation 1', description: 'This is a test description for Simulation 1', created_at: new Date().toISOString(), visibility: 'Public' },
   { id: '2', name: 'Simulation 2', description: 'This is a test description for Simulation 2. This will be brief', created_at: new Date().toISOString(), visibility: 'Public' },
@@ -40,10 +42,9 @@ export const DashboardPage: React.FC = () => {
 
     try {
       setLoading(true);
-      const endpoint =
-        user?.role === 'student'
-          ? 'http://localhost:5000/projects/student/projects'
-          : 'http://localhost:5000/projects/teacher/projects';
+      const endpoint = user?.role === 'student'
+        ? `${API_URL}/projects/student/projects`
+        : `${API_URL}/projects/teacher/projects`;
 
       const response = await fetch(endpoint, {
         headers: { Authorization: `Bearer ${token}` },
@@ -68,7 +69,7 @@ export const DashboardPage: React.FC = () => {
     fetchProjects();
   }, [token, navigate, fetchProjects]);
 
-  const visibleProjects = projects.length > 0 ? projects : mockProjects;
+  const visibleProjects = projects.length > 0 ? projects : (error ? mockProjects : []);
 
   const handleProjectClick = (projectId: string) => {
     if (user?.role === 'student') {

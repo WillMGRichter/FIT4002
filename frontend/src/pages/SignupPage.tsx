@@ -14,8 +14,8 @@ const GoogleIcon = () => (
 );
 
 export const SignupPage: React.FC = () => {
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
+  const [organisationName, setOrganisationName] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -27,7 +27,7 @@ export const SignupPage: React.FC = () => {
     e.preventDefault();
     setError('');
 
-    if (!fullName || !email || !password || !confirmPassword) {
+    if (!organisationName || !username || !password || !confirmPassword) {
       setError('All fields are required');
       return;
     }
@@ -40,7 +40,7 @@ export const SignupPage: React.FC = () => {
     setLoading(true);
 
     try {
-      await signup(email, password, fullName);
+      await signup(username, password, organisationName);
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Signup failed');
@@ -78,13 +78,13 @@ export const SignupPage: React.FC = () => {
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1.25rem' }}>
             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: '#111' }}>
-              Full Name
+              Organisation Name
             </label>
             <input
               type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="John Doe"
+              value={organisationName}
+              onChange={(e) => setOrganisationName(e.target.value)}
+              placeholder="My Organisation"
               disabled={loading}
               style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', fontSize: '0.875rem', boxSizing: 'border-box' }}
             />
@@ -92,13 +92,13 @@ export const SignupPage: React.FC = () => {
 
           <div style={{ marginBottom: '1.25rem' }}>
             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: '#111' }}>
-              Email
+              Username
             </label>
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@example.com"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="admin"
               disabled={loading}
               style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', fontSize: '0.875rem', boxSizing: 'border-box' }}
             />

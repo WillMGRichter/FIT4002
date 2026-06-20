@@ -1,4 +1,4 @@
-// User roles
+/** Available user roles in the system hierarchy */
 export enum UserRole {
   ORGANISATION = 'organisation',
   ADMIN = 'admin',
@@ -6,20 +6,21 @@ export enum UserRole {
   STUDENT = 'student',
 }
 
-// Project visibility
+/** Visibility levels a project can have */
 export enum ProjectVisibility {
   PRIVATE = 'private',
   PUBLIC = 'public',
   SELECTIVE = 'selective',
 }
 
-// Database types
+/** Represents an organisation (school or company) */
 export interface Organisation {
   id: string;
   name: string;
   created_at: string;
 }
 
+/** Full user record including password hash (database-facing only) */
 export interface User {
   id: string;
   username: string;
@@ -31,18 +32,20 @@ export interface User {
   updated_at: string;
 }
 
+/** A simulation project created by a teacher */
 export interface Project {
   id: string;
   name: string;
   description?: string;
-  created_by: string; // teacher/admin user_id
+  created_by: string;
   organisation_id: string;
   visibility: ProjectVisibility;
-  excel_data?: any; // parsed excel data
+  excel_data?: any;
   created_at: string;
   updated_at: string;
 }
 
+/** Links a user to a project with a specific role and attempt limits */
 export interface ProjectParticipant {
   id: string;
   project_id: string;
@@ -53,15 +56,17 @@ export interface ProjectParticipant {
   created_at: string;
 }
 
+/** Ongoing simulation progress saved mid-way */
 export interface SimulationProgress {
   id: string;
   project_id: string;
   user_id: string;
-  state: any; // current values and progress
+  state: any;
   saved_at: string;
   updated_at: string;
 }
 
+/** A completed simulation submission */
 export interface ProjectResult {
   id: string;
   project_id: string;
@@ -70,6 +75,7 @@ export interface ProjectResult {
   completed_at: string;
 }
 
+/** A single page within a project's simulation canvas */
 export interface ProjectPage {
   id: string;
   project_id: string;
@@ -80,6 +86,7 @@ export interface ProjectPage {
   updated_at: string;
 }
 
+/** A student's simulation state for a specific attempt */
 export interface StudentSimulationState {
   id: string;
   project_id: string;
@@ -92,12 +99,16 @@ export interface StudentSimulationState {
   updated_at: string;
 }
 
-// API Response types
+/** User object with password_hash removed, safe for client response */
+export type SafeUser = Omit<User, 'password_hash'>;
+
+/** Standard authentication response containing JWT token and user data */
 export interface AuthResponse {
   token: string;
-  user: User;
+  user: SafeUser;
 }
 
+/** Standard error response shape */
 export interface ErrorResponse {
   error: string;
   details?: string;

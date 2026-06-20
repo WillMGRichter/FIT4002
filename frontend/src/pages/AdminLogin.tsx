@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 const ShieldIcon = () => (
   <ShieldCheck size={34} color="#118a05" strokeWidth={1.9} />
@@ -16,24 +17,25 @@ const GoogleIcon = () => (
 );
 
 export const AdminLogin: React.FC = () => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!email || !password) {
+    if (!username || !password) {
       setError('Please fill in all fields');
       return;
     }
 
     setLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await login(username, password);
       navigate('/org-management');
     } catch (err: any) {
       setError(err.message || 'Login failed');
@@ -75,13 +77,13 @@ export const AdminLogin: React.FC = () => {
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1.25rem' }}>
             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: '#111' }}>
-              Email
+              Username
             </label>
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@example.com"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="admin"
               disabled={loading}
               style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', fontSize: '0.875rem', boxSizing: 'border-box' }}
             />

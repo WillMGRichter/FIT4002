@@ -1,6 +1,15 @@
 import { supabase } from '../config/supabase';
 import { Project, ProjectParticipant } from '../types';
 
+/**
+ * Creates a new simulation project.
+ * @param name - Project name
+ * @param createdBy - User ID of the creator
+ * @param organisationId - Organisation the project belongs to
+ * @param description - Optional description
+ * @param excelData - Parsed Excel data (cells, formulas, etc.)
+ * @returns The newly created Project
+ */
 export async function createProject(
   name: string,
   createdBy: string,
@@ -27,6 +36,7 @@ export async function createProject(
   return data;
 }
 
+/** Fetches a single project by its ID */
 export async function getProjectById(projectId: string): Promise<Project> {
   const { data, error } = await supabase
     .from('projects')
@@ -38,6 +48,7 @@ export async function getProjectById(projectId: string): Promise<Project> {
   return data;
 }
 
+/** Fetches all projects belonging to an organisation */
 export async function getProjectsByOrganisation(organisationId: string): Promise<Project[]> {
   const { data, error } = await supabase
     .from('projects')
@@ -48,6 +59,7 @@ export async function getProjectsByOrganisation(organisationId: string): Promise
   return data || [];
 }
 
+/** Fetches all projects created by a specific teacher */
 export async function getProjectsByTeacher(teacherId: string): Promise<Project[]> {
   const { data, error } = await supabase
     .from('projects')
@@ -58,6 +70,11 @@ export async function getProjectsByTeacher(teacherId: string): Promise<Project[]
   return data || [];
 }
 
+/**
+ * Updates an existing project with partial data.
+ * @param projectId - ID of the project to update
+ * @param updates - Partial Project object with fields to update
+ */
 export async function updateProject(
   projectId: string,
   updates: Partial<Project>
@@ -76,6 +93,7 @@ export async function updateProject(
   return data;
 }
 
+/** Deletes a project by its ID */
 export async function deleteProject(projectId: string): Promise<void> {
   const { error } = await supabase
     .from('projects')
@@ -85,6 +103,13 @@ export async function deleteProject(projectId: string): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * Adds a user as a participant to a project.
+ * @param projectId - Project to add the user to
+ * @param userId - User to add
+ * @param role - Either 'teacher' or 'student'
+ * @param maxAttempts - Maximum simulation attempts allowed (default: 1)
+ */
 export async function addProjectParticipant(
   projectId: string,
   userId: string,
@@ -109,6 +134,7 @@ export async function addProjectParticipant(
   return data;
 }
 
+/** Fetches all participants for a given project */
 export async function getProjectParticipants(projectId: string): Promise<ProjectParticipant[]> {
   const { data, error } = await supabase
     .from('project_participants')
@@ -119,6 +145,7 @@ export async function getProjectParticipants(projectId: string): Promise<Project
   return data || [];
 }
 
+/** Removes a user from a project's participant list */
 export async function removeProjectParticipant(projectId: string, userId: string): Promise<void> {
   const { error } = await supabase
     .from('project_participants')
@@ -129,6 +156,10 @@ export async function removeProjectParticipant(projectId: string, userId: string
   if (error) throw error;
 }
 
+/**
+ * Fetches all projects a student is enrolled in.
+ * Uses the project_participants join table to find associated projects.
+ */
 export async function getStudentProjects(studentId: string): Promise<Project[]> {
   const { data, error } = await supabase
     .from('project_participants')
@@ -137,7 +168,6 @@ export async function getStudentProjects(studentId: string): Promise<Project[]> 
     .eq('role', 'student');
 
   if (error) throw error;
-
   if (!data || data.length === 0) return [];
 
   const projectIds = data.map((p) => p.project_id);

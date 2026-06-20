@@ -127,7 +127,7 @@ const nextId = () => `node_${++_id}`;
 
 // ── Inner canvas — must live inside ReactFlowProvider ─────────────────────────
 
-const CanvasInner: React.FC<{ navigate: any }> = ({ navigate }) => {
+const CanvasInner: React.FC<{ navigate: (path: string) => void }> = ({ navigate }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const { screenToFlowPosition } = useReactFlow();

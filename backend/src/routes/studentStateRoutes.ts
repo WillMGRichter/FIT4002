@@ -11,6 +11,7 @@ import { getProjectById } from '../services/projectService';
 
 const router = Router();
 
+/** GET /:projectId/state — Get or create the student's simulation state for a project. Requires auth. Returns: StudentState. */
 router.get('/:projectId/state', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const state = await getOrCreateState(req.params.projectId as string, req.userId!);
@@ -20,6 +21,7 @@ router.get('/:projectId/state', authMiddleware, async (req: AuthRequest, res: Re
   }
 });
 
+/** PUT /:projectId/state/inputs — Update the student's input values for the simulation. Requires auth. Body: { stateId: string, inputValues: Record<string, any> }. Returns: StudentState. */
 router.put('/:projectId/state/inputs', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { stateId, inputValues } = req.body;
@@ -30,6 +32,7 @@ router.put('/:projectId/state/inputs', authMiddleware, async (req: AuthRequest, 
   }
 });
 
+/** PUT /:projectId/state/page — Update the student's current page within the simulation. Requires auth. Body: { stateId: string, pageId: string }. Returns: StudentState. */
 router.put('/:projectId/state/page', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { stateId, pageId } = req.body;
@@ -40,6 +43,7 @@ router.put('/:projectId/state/page', authMiddleware, async (req: AuthRequest, re
   }
 });
 
+/** POST /:projectId/state/complete — Mark a simulation attempt as completed. Requires auth. Body: { stateId: string, inputValues: Record<string, any> }. Returns: { message }. */
 router.post('/:projectId/state/complete', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { stateId, inputValues } = req.body;
@@ -50,6 +54,7 @@ router.post('/:projectId/state/complete', authMiddleware, async (req: AuthReques
   }
 });
 
+/** GET /:projectId/results — Get all student results for a project (teacher-only: verifies user is the project creator). Requires auth. Returns: StudentResult[]. */
 router.get('/:projectId/results', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const project = await getProjectById(req.params.projectId as string);

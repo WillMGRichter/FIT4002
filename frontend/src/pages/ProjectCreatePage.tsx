@@ -3,6 +3,7 @@ import { Link2, Plus, Trash2, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../config';
 import './ProjectCreate.css';
 
 interface StudentRow {
@@ -104,7 +105,7 @@ export const ProjectCreatePage: React.FC = () => {
       formData.append('id', simulationId || simulationTitle);
       formData.append('students', JSON.stringify(students.filter(student => student.username).map(s => ({ ...s, maxAttempts: parseInt(String(s.maxAttempts)) || 1 }))));
 
-      const response = await fetch('http://localhost:5000/projects', {
+      const response = await fetch(`${API_URL}/projects`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -157,7 +158,7 @@ export const ProjectCreatePage: React.FC = () => {
             </label>
             <div className="simulation-url">
               <Link2 size={18} />
-              <span>Simulation URL: <em>https://smartsimulations.com/organisation/</em></span>
+              <span>Simulation URL: <em>{window.location.origin}/projects/</em></span>
             </div>
 
             <div className="create-field">

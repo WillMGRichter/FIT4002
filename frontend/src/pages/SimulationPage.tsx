@@ -18,6 +18,7 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../config';
 import './SimulationPage.css';
 
 interface Project {
@@ -52,7 +53,7 @@ export const SimulationPage: React.FC = () => {
 
     const fetchProject = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/projects/${projectId}`, {
+        const response = await fetch(`${API_URL}/projects/${projectId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 

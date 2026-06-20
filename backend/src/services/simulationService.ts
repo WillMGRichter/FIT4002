@@ -1,12 +1,16 @@
 import { supabase } from '../config/supabase';
 import { SimulationProgress, ProjectResult } from '../types';
 
+/**
+ * Saves or updates simulation progress for a user.
+ * Uses upsert on the (project_id, user_id) unique constraint.
+ * @param state - Current simulation state as a key-value map
+ */
 export async function saveSimulationProgress(
   projectId: string,
   userId: string,
   state: any
 ): Promise<SimulationProgress> {
-  // Upsert simulation progress
   const { data, error } = await supabase.from('simulation_progress').upsert(
     {
       project_id: projectId,
@@ -21,6 +25,10 @@ export async function saveSimulationProgress(
   return data;
 }
 
+/**
+ * Retrieves saved simulation progress for a user.
+ * Returns null if no progress has been saved yet (PGRST116 = not found).
+ */
 export async function getSimulationProgress(
   projectId: string,
   userId: string
@@ -39,6 +47,10 @@ export async function getSimulationProgress(
   return data || null;
 }
 
+/**
+ * Records a completed simulation submission.
+ * @param finalState - The final state of the simulation when submitted
+ */
 export async function completeSimulation(
   projectId: string,
   userId: string,
@@ -60,6 +72,7 @@ export async function completeSimulation(
   return data;
 }
 
+/** Fetches all results for a project, ordered by most recent first */
 export async function getProjectResults(projectId: string): Promise<ProjectResult[]> {
   const { data, error } = await supabase
     .from('project_results')
@@ -71,6 +84,7 @@ export async function getProjectResults(projectId: string): Promise<ProjectResul
   return data || [];
 }
 
+/** Fetches a specific user's results for a project */
 export async function getUserProjectResults(
   projectId: string,
   userId: string

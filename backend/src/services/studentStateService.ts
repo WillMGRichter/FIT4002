@@ -1,6 +1,11 @@
 import { supabase } from '../config/supabase';
 import { StudentSimulationState } from '../types';
 
+/**
+ * Retrieves the current active state for a student, or creates a new one if none exists.
+ * Checks participant validity and remaining attempts before creating new state.
+ * @returns The existing or newly created StudentSimulationState
+ */
 export async function getOrCreateState(
   projectId: string,
   userId: string
@@ -55,6 +60,7 @@ export async function getOrCreateState(
   return data;
 }
 
+/** Updates the input values for a student's simulation state */
 export async function updateInputValues(
   stateId: string,
   inputValues: any
@@ -70,6 +76,7 @@ export async function updateInputValues(
   return data;
 }
 
+/** Updates the current page the student is viewing in the simulation */
 export async function updateCurrentPage(
   stateId: string,
   pageId: string
@@ -85,6 +92,11 @@ export async function updateCurrentPage(
   return data;
 }
 
+/**
+ * Marks a simulation attempt as completed.
+ * Marks the state as completed, increments attempts_used (via RPC with fallback),
+ * and stores the final result in project_results.
+ */
 export async function completeAttempt(
   stateId: string,
   projectId: string,
@@ -103,6 +115,7 @@ export async function completeAttempt(
     p_user_id: userId,
   });
 
+  // Fallback: if RPC function doesn't exist, increment manually
   if (incrementError) {
     const { data: participant } = await supabase
       .from('project_participants')
@@ -120,7 +133,6 @@ export async function completeAttempt(
     }
   }
 
-  // Also store in project_results
   const { error: resultError } = await supabase
     .from('project_results')
     .insert([{
@@ -132,6 +144,10 @@ export async function completeAttempt(
   if (resultError) throw resultError;
 }
 
+/**
+ * Fetches all student results for a project, including associated user data.
+ * Joins with users table to include username and email.
+ */
 export async function getStudentResults(projectId: string): Promise<any[]> {
   const { data, error } = await supabase
     .from('project_results')
