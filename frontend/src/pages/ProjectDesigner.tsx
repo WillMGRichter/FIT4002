@@ -32,7 +32,7 @@ const newElemId = () => `elem_${++elemId}`;
 const ELEMENT_PALETTE: { type: ElementType; label: string; icon: React.ReactNode; defaultProps: Record<string, any> }[] = [
   { type: 'text', label: 'Text', icon: <Type size={20} />, defaultProps: { content: 'Text', fontSize: 16, color: '#111827', bold: false } },
   { type: 'input-field', label: 'Input', icon: <RectangleHorizontal size={20} />, defaultProps: { cellRef: '', label: 'Input', placeholder: 'Enter value...' } },
-  { type: 'output-field', label: 'Output', icon: <ChartBar size={20} />, defaultProps: { cellRef: '', cellRange: '', label: 'Output', format: 'number' } },
+  { type: 'output-field', label: 'Output', icon: <ChartBar size={20} />, defaultProps: { cellRef: '', cellRange: '', label: 'Output', format: 'number', chartTitle: '', xAxisTitle: '', yAxisTitle: '' } },
   { type: 'image', label: 'Image', icon: <Image size={20} />, defaultProps: { src: 'https://placehold.co/400x200?text=Image', alt: '' } },
 ];
 
@@ -483,16 +483,48 @@ export const ProjectDesigner: React.FC = () => {
                     </div>
                   )}
                   {selectedElem.type === 'output-field' && selectedElem.props.format === 'bar-chart' && (
-                    <div className={styles.propRow}>
-                      <label>Cell range</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. B4:B8"
-                        value={selectedElem.props.cellRange || ''}
-                        onChange={e => updateElementProps(selectedElem.id, { cellRange: e.target.value })}
-                        className={styles.propInput}
-                      />
-                    </div>
+                    <>
+                      <div className={styles.propRow}>
+                        <label>Cell range</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. B4:B8"
+                          value={selectedElem.props.cellRange || ''}
+                          onChange={e => updateElementProps(selectedElem.id, { cellRange: e.target.value })}
+                          className={styles.propInput}
+                        />
+                      </div>
+                      <div className={styles.propRow}>
+                        <label>Chart title</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Revenue by Year"
+                          value={selectedElem.props.chartTitle || ''}
+                          onChange={e => updateElementProps(selectedElem.id, { chartTitle: e.target.value })}
+                          className={styles.propInput}
+                        />
+                      </div>
+                      <div className={styles.propRow}>
+                        <label>X-axis title</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Year"
+                          value={selectedElem.props.xAxisTitle || ''}
+                          onChange={e => updateElementProps(selectedElem.id, { xAxisTitle: e.target.value })}
+                          className={styles.propInput}
+                        />
+                      </div>
+                      <div className={styles.propRow}>
+                        <label>Y-axis title</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Revenue ($)"
+                          value={selectedElem.props.yAxisTitle || ''}
+                          onChange={e => updateElementProps(selectedElem.id, { yAxisTitle: e.target.value })}
+                          className={styles.propInput}
+                        />
+                      </div>
+                    </>
                   )}
                 </div>
               )}

@@ -216,8 +216,8 @@ export const StudentSimulationView: React.FC = () => {
     }
   };
 
-  const renderBarChart = (cellRange: string) => {
-    const refs = expandRange(cellRange || '');
+  const renderBarChart = (props: Record<string, any>) => {
+    const refs = expandRange(props.cellRange || '');
     const bars = refs.map(ref => {
       const upperRef = ref.toUpperCase();
       return { ref: upperRef, value: Number(computedValues[upperRef]) || 0 };
@@ -225,14 +225,21 @@ export const StudentSimulationView: React.FC = () => {
     const max = Math.max(1, ...bars.map(b => Math.abs(b.value)));
 
     return (
-      <div className={styles.barChart}>
-        {bars.map(b => (
-          <div key={b.ref} className={styles.barChartCol}>
-            <span className={styles.barChartValue}>{formatValue(b.value)}</span>
-            <div className={styles.barChartBar} style={{ height: `${(Math.abs(b.value) / max) * 100}%` }} />
-            <span className={styles.barChartRefLabel}>{cellTitles[b.ref] || b.ref}</span>
+      <div className={styles.barChartWrap}>
+        {props.chartTitle && <div className={styles.barChartTitle}>{props.chartTitle}</div>}
+        <div className={styles.barChartRow}>
+          {props.yAxisTitle && <div className={styles.barChartYAxisTitle}>{props.yAxisTitle}</div>}
+          <div className={styles.barChart}>
+            {bars.map(b => (
+              <div key={b.ref} className={styles.barChartCol}>
+                <span className={styles.barChartValue}>{formatValue(b.value)}</span>
+                <div className={styles.barChartBar} style={{ height: `${(Math.abs(b.value) / max) * 100}%` }} />
+                <span className={styles.barChartRefLabel}>{cellTitles[b.ref] || b.ref}</span>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
+        {props.xAxisTitle && <div className={styles.barChartXAxisTitle}>{props.xAxisTitle}</div>}
       </div>
     );
   };
@@ -336,7 +343,7 @@ export const StudentSimulationView: React.FC = () => {
                   {elem.type === 'output-field' && elem.props.format === 'bar-chart' && (
                     <div className={`${styles.fieldElem} ${styles.outputElem}`}>
                       <label>{elem.props.label}</label>
-                      {renderBarChart(elem.props.cellRange || '')}
+                      {renderBarChart(elem.props)}
                     </div>
                   )}
                   {elem.type === 'output-field' && elem.props.format !== 'bar-chart' && (
