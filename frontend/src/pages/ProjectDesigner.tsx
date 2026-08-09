@@ -32,7 +32,7 @@ const newElemId = () => `elem_${++elemId}`;
 const ELEMENT_PALETTE: { type: ElementType; label: string; icon: React.ReactNode; defaultProps: Record<string, any> }[] = [
   { type: 'text', label: 'Text', icon: <Type size={20} />, defaultProps: { content: 'Text', fontSize: 16, color: '#111827', bold: false } },
   { type: 'input-field', label: 'Input', icon: <RectangleHorizontal size={20} />, defaultProps: { cellRef: '', label: 'Input', placeholder: 'Enter value...' } },
-  { type: 'output-field', label: 'Output', icon: <ChartBar size={20} />, defaultProps: { cellRef: '', label: 'Output', format: 'number' } },
+  { type: 'output-field', label: 'Output', icon: <ChartBar size={20} />, defaultProps: { cellRef: '', cellRange: '', label: 'Output', format: 'number' } },
   { type: 'image', label: 'Image', icon: <Image size={20} />, defaultProps: { src: 'https://placehold.co/400x200?text=Image', alt: '' } },
 ];
 
@@ -351,7 +351,19 @@ export const ProjectDesigner: React.FC = () => {
                     </div>
                   </div>
                 )}
-                {elem.type === 'output-field' && (
+                {elem.type === 'output-field' && elem.props.format === 'bar-chart' && (
+                  <div className={styles.elemField}>
+                    <label>{elem.props.label}</label>
+                    <div className={styles.barChartPreview}>
+                      <div className={styles.barChartPreviewBar} style={{ height: '40%' }} />
+                      <div className={styles.barChartPreviewBar} style={{ height: '65%' }} />
+                      <div className={styles.barChartPreviewBar} style={{ height: '50%' }} />
+                      <div className={styles.barChartPreviewBar} style={{ height: '85%' }} />
+                      <span className={styles.barChartPreviewLabel}>{elem.props.cellRange || 'no range'}</span>
+                    </div>
+                  </div>
+                )}
+                {elem.type === 'output-field' && elem.props.format !== 'bar-chart' && (
                   <div className={styles.elemField}>
                     <label>{elem.props.label}</label>
                     <div className={`${styles.fieldBox} ${styles.fieldOutput}`}>
@@ -426,18 +438,20 @@ export const ProjectDesigner: React.FC = () => {
                     <label>Label</label>
                     <input type="text" value={selectedElem.props.label || ''} onChange={e => updateElementProps(selectedElem.id, { label: e.target.value })} className={styles.propInput} />
                   </div>
-                  <div className={styles.propRow}>
-                    <label>Cell ref</label>
-                    <select value={selectedElem.props.cellRef || ''} onChange={e => updateElementProps(selectedElem.id, { cellRef: e.target.value })} className={styles.propInput}>
-                      <option value="">— Select cell —</option>
-                      {selectedElem.type === 'input-field' && inputCells.map((c: any) => (
-                        <option key={c.ref} value={c.ref}>{c.title || c.ref}{c.value !== undefined && c.value !== null ? ` (${c.value})` : ''}</option>
-                      ))}
-                      {selectedElem.type === 'output-field' && outputCells.map((c: any) => (
-                        <option key={c.ref} value={c.ref}>{c.title || c.ref}{c.formula ? ` (${c.formula})` : ''}</option>
-                      ))}
-                    </select>
-                  </div>
+                  {selectedElem.props.format !== 'bar-chart' && (
+                    <div className={styles.propRow}>
+                      <label>Cell ref</label>
+                      <select value={selectedElem.props.cellRef || ''} onChange={e => updateElementProps(selectedElem.id, { cellRef: e.target.value })} className={styles.propInput}>
+                        <option value="">-- Select cell --</option>
+                        {selectedElem.type === 'input-field' && inputCells.map((c: any) => (
+                          <option key={c.ref} value={c.ref}>{c.title || c.ref}{c.value !== undefined && c.value !== null ? ` (${c.value})` : ''}</option>
+                        ))}
+                        {selectedElem.type === 'output-field' && outputCells.map((c: any) => (
+                          <option key={c.ref} value={c.ref}>{c.title || c.ref}{c.formula ? ` (${c.formula})` : ''}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   {selectedElem.type === 'input-field' && (
                     <div className={styles.propRow}>
                       <label>Placeholder</label>
@@ -451,7 +465,20 @@ export const ProjectDesigner: React.FC = () => {
                         <option value="number">Number</option>
                         <option value="currency">Currency</option>
                         <option value="percentage">Percentage</option>
+                        <option value="bar-chart">Bar Chart</option>
                       </select>
+                    </div>
+                  )}
+                  {selectedElem.type === 'output-field' && selectedElem.props.format === 'bar-chart' && (
+                    <div className={styles.propRow}>
+                      <label>Cell range</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. B4:B8"
+                        value={selectedElem.props.cellRange || ''}
+                        onChange={e => updateElementProps(selectedElem.id, { cellRange: e.target.value })}
+                        className={styles.propInput}
+                      />
                     </div>
                   )}
                 </div>

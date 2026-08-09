@@ -25,7 +25,7 @@ function parseCellRef(ref: string): { col: number; row: number } | null {
 }
 
 // Expand a range like "A1:C3" into individual cell references (A1, A2, A3, B1, ...).
-function expandRange(range: string): string[] {
+export function expandRange(range: string): string[] {
   const parts = range.split(':');
   if (parts.length !== 2) return [range];
   const start = parseCellRef(parts[0]);

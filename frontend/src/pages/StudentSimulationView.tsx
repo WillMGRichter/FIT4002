@@ -5,7 +5,7 @@ import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 import { addRecent } from '../utils/projectStorage';
-import { recomputeAll, type CellMap } from '../utils/FormulaEngine';
+import { recomputeAll, expandRange, type CellMap } from '../utils/FormulaEngine';
 import styles from './StudentSimulationView.module.css';
 
 interface CanvasElement {
@@ -68,6 +68,16 @@ export const StudentSimulationView: React.FC = () => {
       }
     }
     return d;
+  }, [project]);
+
+  // Lookup of cell ref -> spreadsheet label, used to label bar chart bars
+  const cellTitles = useMemo(() => {
+    const titles: Record<string, string> = {};
+    const cells = [...(project?.excel_data?.inputCells || []), ...(project?.excel_data?.outputCells || [])];
+    for (const c of cells) {
+      if (c.ref && c.title) titles[c.ref.toUpperCase()] = c.title;
+    }
+    return titles;
   }, [project]);
 
   // Merge default cells with student input, then compute all formula outputs via topological sort
@@ -206,6 +216,27 @@ export const StudentSimulationView: React.FC = () => {
     }
   };
 
+  const renderBarChart = (cellRange: string) => {
+    const refs = expandRange(cellRange || '');
+    const bars = refs.map(ref => {
+      const upperRef = ref.toUpperCase();
+      return { ref: upperRef, value: Number(computedValues[upperRef]) || 0 };
+    });
+    const max = Math.max(1, ...bars.map(b => Math.abs(b.value)));
+
+    return (
+      <div className={styles.barChart}>
+        {bars.map(b => (
+          <div key={b.ref} className={styles.barChartCol}>
+            <span className={styles.barChartValue}>{formatValue(b.value)}</span>
+            <div className={styles.barChartBar} style={{ height: `${(Math.abs(b.value) / max) * 100}%` }} />
+            <span className={styles.barChartRefLabel}>{cellTitles[b.ref] || b.ref}</span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   if (loading) {
     return <AppShell title="Simulation"><div className={styles.state}>Loading simulation...</div></AppShell>;
   }
@@ -302,7 +333,13 @@ export const StudentSimulationView: React.FC = () => {
                       />
                     </div>
                   )}
-                  {elem.type === 'output-field' && (
+                  {elem.type === 'output-field' && elem.props.format === 'bar-chart' && (
+                    <div className={`${styles.fieldElem} ${styles.outputElem}`}>
+                      <label>{elem.props.label}</label>
+                      {renderBarChart(elem.props.cellRange || '')}
+                    </div>
+                  )}
+                  {elem.type === 'output-field' && elem.props.format !== 'bar-chart' && (
                     <div className={`${styles.fieldElem} ${styles.outputElem}`}>
                       <label>{elem.props.label}</label>
                       <div className={styles.outputValue}>
