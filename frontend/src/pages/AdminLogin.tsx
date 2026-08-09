@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
-import styles from './AdminLogin.module.css';
+import { useNavigate, Link } from 'react-router-dom';
+import { ShieldCheck } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
-// Minimal Green Shield Icon from the image
 const ShieldIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    <path d="M9 12l2 2 4-4" />
-  </svg>
+  <ShieldCheck size={34} color="#118a05" strokeWidth={1.9} />
 );
 
 const GoogleIcon = () => (
@@ -19,53 +17,164 @@ const GoogleIcon = () => (
 );
 
 export const AdminLogin: React.FC = () => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+  const { login } = useAuth();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (!username || !password) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await login(username, password);
+      navigate('/org-management');
+    } catch (err: any) {
+      setError(err.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = () => {
+    alert('Password reset feature coming soon!');
+  };
+
   return (
-    <div className={styles.page}>
-      <div className={styles.card}>
-        <div className={styles.icon}>
-          <ShieldIcon />
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#fafafa' }}>
+      <div style={{ width: '100%', maxWidth: '400px', padding: '2rem', background: 'white', borderRadius: '0.75rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        {/* Icon */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+          <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <ShieldIcon />
+          </div>
         </div>
 
-        <h1 className={styles.title}>Admin Login</h1>
-        <p className={styles.subtitle}>Sign in to your admin account to continue</p>
+        {/* Title */}
+        <h1 style={{ textAlign: 'center', fontSize: '1.5rem', fontWeight: 700, margin: '0 0 0.5rem', color: '#111' }}>
+          Admin Login
+        </h1>
+        <p style={{ textAlign: 'center', fontSize: '0.875rem', color: '#666', margin: '0 0 1.5rem' }}>
+          Sign in to your admin account to continue
+        </p>
 
-        <form className={styles.form}>
-          <div className={styles.fieldGroup}>
-            <label className={styles.fieldLabel}>Email</label>
-            <input 
-              type="email" 
-              placeholder="admin@example.com" 
-              style={{ padding: '0.75rem', borderRadius: '0.375rem', border: '1px solid #e5e7eb', background: '#f9fafb' }}
+        {/* Error Message */}
+        {error && (
+          <div style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#dc2626', padding: '0.75rem', borderRadius: '0.375rem', marginBottom: '1rem', fontSize: '0.875rem' }}>
+            {error}
+          </div>
+        )}
+
+        {/* Form */}
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: '1.25rem' }}>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: '#111' }}>
+              Username
+            </label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="admin"
+              disabled={loading}
+              style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', fontSize: '0.875rem', boxSizing: 'border-box' }}
             />
           </div>
 
-          <div className={styles.fieldGroup}>
-            <div className={styles.labelRow}>
-              <label className={styles.fieldLabel}>Password</label>
-              <button type="button" className={styles.forgotLink}>Forgot password?</button>
+          <div style={{ marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+              <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#111' }}>Password</label>
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', color: '#16a34a', fontWeight: 500 }}
+              >
+                Forgot password?
+              </button>
             </div>
-            <input 
-              type="password" 
-              placeholder="Enter your password" 
-              style={{ padding: '0.75rem', borderRadius: '0.375rem', border: '1px solid #e5e7eb', background: '#f9fafb' }}
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              disabled={loading}
+              style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', fontSize: '0.875rem', boxSizing: 'border-box' }}
             />
           </div>
 
-          <button type="submit" className={styles.signInBtn}>
-            Sign in
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              background: '#16a34a',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.375rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              marginTop: '1rem',
+              opacity: loading ? 0.6 : 1,
+            }}
+          >
+            {loading ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
 
-        <div className={styles.divider}>
-          <span>OR CONTINUE WITH</span>
+        {/* Divider */}
+        <div style={{ display: 'flex', alignItems: 'center', margin: '1.5rem 0', gap: '1rem' }}>
+          <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }}></div>
+          <span style={{ fontSize: '0.75rem', color: '#999', fontWeight: 600, textTransform: 'uppercase' }}>OR CONTINUE WITH</span>
+          <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }}></div>
         </div>
 
-        <button type="button" className={styles.googleBtn}>
-          <GoogleIcon /> Google
+        {/* Google Button */}
+        <button
+          type="button"
+          disabled={loading}
+          style={{
+            width: '100%',
+            padding: '0.75rem',
+            background: 'white',
+            border: '1px solid #d1d5db',
+            borderRadius: '0.375rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            fontSize: '0.875rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem',
+            color: '#111',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.background = '#f3f4f6';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.background = 'white';
+          }}
+        >
+          <GoogleIcon />
+          Google
         </button>
 
-        <p className={styles.signupText}>
-          Don't have an account? <button className={styles.signupLink}>Sign up</button>
+        {/* Signup Link */}
+        <p style={{ textAlign: 'center', fontSize: '0.875rem', color: '#666', margin: '1.5rem 0 0' }}>
+          Don't have an account?{' '}
+          <Link to="/signup" style={{ color: '#16a34a', fontWeight: 600, textDecoration: 'none' }}>
+            Sign up
+          </Link>
         </p>
       </div>
     </div>

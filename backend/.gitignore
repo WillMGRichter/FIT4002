@@ -21,3 +21,16 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+# dependencies
+node_modules/
+
+# env files
+.env
+.env.*
+
+# build outputs
+dist/
+build/
+
+# supabase local junk 
+.supabase/

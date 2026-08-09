@@ -1,4 +1,3 @@
-// excelParser.ts
 import { Router, Request, Response } from "express";
 import multer from "multer";
 import XLSX from "xlsx";
@@ -6,6 +5,12 @@ import XLSX from "xlsx";
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
+/**
+ * POST /excel/upload
+ * Accepts an .xlsx file upload and extracts all formulas with their cell references.
+ * Input: multipart/form-data with field "file"
+ * Output: Array of { sheet, formulas } where each formula has { cell, formula, references }
+ */
 router.post("/upload", upload.single("file"), (req: Request, res: Response) => {
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
@@ -17,6 +22,7 @@ router.post("/upload", upload.single("file"), (req: Request, res: Response) => {
     const formulas: any[] = [];
 
     for (const cellAddress in sheet) {
+      if (cellAddress[0] === '!') continue;
       const cell = sheet[cellAddress];
       if (cell.f) {
         const references = cell.f.match(/([A-Z]+[0-9]+)/g) || [];

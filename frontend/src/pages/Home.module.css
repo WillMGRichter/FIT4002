@@ -1,14 +1,62 @@
 .page {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 80px 40px;
   background-color: #ffffff;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid #e5e7eb;
+  background-color: #ffffff;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.nav {
+  display: flex;
+  gap: 1rem;
+}
+
+.navBtn {
+  background: none;
+  border: 1px solid #e5e7eb;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.navBtn:hover {
+  border-color: #16a34a;
+  color: #16a34a;
+}
+
+.navBtn.primary {
+  background-color: #16a34a;
+  color: white;
+  border-color: #16a34a;
+}
+
+.navBtn.primary:hover {
+  background-color: #15803d;
+  border-color: #15803d;
 }
 
 .hero {
   text-align: center;
-  margin-bottom: 60px;
+  padding: 80px 40px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .heroTitle {
@@ -23,71 +71,107 @@
   font-size: 18px;
   color: #6B7280;
   max-width: 600px;
-  margin: 0 auto;
+  margin: 0 auto 32px;
 }
 
-/* The central upload card from the design */
-.uploadCard {
-  background: #ffffff;
-  border: 1px solid #E5E7EB;
-  border-radius: 12px;
-  padding: 40px;
-  max-width: 500px;
-  margin: 0 auto 80px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  text-align: center;
+.heroActions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 32px;
 }
 
-.uploadBtn {
-  background-color: #16a34a; /* The specific green from the image */
+.btnPrimary {
+  background-color: #16a34a;
   color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btnPrimary:hover {
+  background-color: #15803d;
+}
+
+.btnSecondary {
+  background-color: transparent;
+  color: #111827;
+  border: 1px solid #e5e7eb;
   padding: 12px 24px;
   border-radius: 6px;
   font-weight: 600;
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: background 0.2s;
-  border: none;
-  width: 100%;
-  justify-content: center;
+  transition: all 0.2s;
 }
 
-.uploadBtn:hover {
-  background-color: #15803d;
-}
-
-.linksGrid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-}
-
-.linkCard {
-  padding: 24px;
-  background: #ffffff;
-  border: 1px solid #E5E7EB;
-  border-radius: 12px;
-  text-decoration: none;
-  transition: all 0.2s ease;
-}
-
-.linkCard:hover {
+.btnSecondary:hover {
   border-color: #16a34a;
-  transform: translateY(-2px);
+  color: #16a34a;
+}
+
+.features {
+  padding: 80px 40px;
+  background-color: #f9fafb;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.features h2 {
+  font-size: 36px;
+  font-weight: 700;
+  color: #111827;
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.featureGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 32px;
+}
+
+.featureCard {
+  background: #ffffff;
+  padding: 32px;
+  border-radius: 12px;
+  text-align: center;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s;
+}
+
+.featureCard:hover {
+  border-color: #16a34a;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 
-.linkLabel {
-  font-size: 16px;
-  font-weight: 600;
-  color: #111827;
-  display: block;
-  margin-bottom: 4px;
+.featureIcon {
+  font-size: 48px;
+  margin-bottom: 16px;
 }
 
-.linkDesc {
+.featureCard h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 8px;
+}
+
+.featureCard p {
   font-size: 14px;
   color: #6B7280;
+  line-height: 1.5;
+}
+
+.footer {
+  padding: 40px;
+  text-align: center;
+  border-top: 1px solid #e5e7eb;
+  background-color: #ffffff;
+  color: #6B7280;
+  font-size: 14px;
+  margin-top: auto;
 }
