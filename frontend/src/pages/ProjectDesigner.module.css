@@ -262,6 +262,7 @@
   border-radius: 4px;
   transition: box-shadow 0.1s;
   background: #ffffff;
+  overflow: hidden;
 }
 
 .canvasElem:hover {
@@ -305,12 +306,13 @@
 }
 
 .elemField {
-  padding: 8px 12px;
+  padding: 6px 12px;
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+  box-sizing: border-box;
 }
 
 .elemField label {
@@ -331,7 +333,8 @@
   background: #f9fafb;
   font-size: 13px;
   color: #9ca3af;
-  min-height: 32px;
+  min-height: 22px;
+  overflow: hidden;
 }
 
 .fieldOutput {

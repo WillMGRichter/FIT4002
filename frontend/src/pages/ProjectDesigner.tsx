@@ -175,7 +175,7 @@ export const ProjectDesigner: React.FC = () => {
       x: 40 + (activeElements.length * 20),
       y: 40 + (activeElements.length * 20),
       w: type === 'text' ? 200 : type === 'image' ? 300 : 220,
-      h: type === 'image' ? 180 : 48,
+      h: type === 'image' ? 180 : (type === 'input-field' || type === 'output-field') ? 64 : 48,
       props: { ...(paletteItem?.defaultProps || {}) },
     };
     const newElements = [...activeElements, newElem];
