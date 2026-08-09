@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Trash2, Plus, Eye, Save, GripVertical, Type, Image, RectangleHorizontal, ChartBar } from 'lucide-react';
+import { Trash2, Plus, Eye, Save, GripVertical, Type, Image, RectangleHorizontal, ChartBar, Table, X } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
@@ -49,6 +49,7 @@ export const ProjectDesigner: React.FC = () => {
   const [dragging, setDragging] = useState<{ elemId: string; startX: number; startY: number; elemX: number; elemY: number } | null>(null);
   const [resizing, setResizing] = useState<{ elemId: string; startX: number; startY: number; elemW: number; elemH: number } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showExcelPreview, setShowExcelPreview] = useState(false);
 
   useEffect(() => {
     if (!projectId || !token) return;
@@ -101,6 +102,17 @@ export const ProjectDesigner: React.FC = () => {
       .map(([ref, cell]: [string, any]) => ({ ref, formula: cell.formula, title: null, dependencies: {} }))
       .sort((a, b) => a.ref.localeCompare(b.ref, undefined, { numeric: true }));
   }, [project]);
+
+  // Combined list of every cell the app currently tracks from the sheet, for the "Preview Excel" table.
+  // Note: this only reflects cells the backend kept after upload (output/formula cells, plus input cells
+  // referenced by a formula) - unreferenced or label-only cells from the original sheet are not available.
+  const allTrackedCells = React.useMemo(() => {
+    const rows = [
+      ...inputCells.map((c: any) => ({ ref: c.ref, title: c.title, kind: 'Input', display: c.value })),
+      ...outputCells.map((c: any) => ({ ref: c.ref, title: c.title, kind: 'Output', display: c.formula })),
+    ];
+    return rows.sort((a, b) => a.ref.localeCompare(b.ref, undefined, { numeric: true }));
+  }, [inputCells, outputCells]);
 
   const [saving, setSaving] = useState(false);
 
@@ -322,7 +334,8 @@ export const ProjectDesigner: React.FC = () => {
             <div className={styles.toolbarGroup}>
               <div className={styles.toolbarDivider} />
               <button className={`${styles.actionBtn} ${styles.saveBtn}`} onClick={savePages} disabled={saving} title="Save"><Save size={16} /> {saving ? 'Saving...' : 'Save'}</button>
-              <button className={`${styles.actionBtn} ${styles.previewBtn}`} onClick={async () => { await savePages(); navigate(`/projects/${projectId}/play`, { state: { preview: true } }); }} title="Preview"><Eye size={16} /> Preview</button>
+              <button className={`${styles.actionBtn} ${styles.previewBtn}`} onClick={() => setShowExcelPreview(true)} title="Preview Excel"><Table size={16} /> Preview Excel</button>
+              <button className={`${styles.actionBtn} ${styles.previewBtn}`} onClick={async () => { await savePages(); navigate(`/projects/${projectId}/play`, { state: { preview: true } }); }} title="Preview Student View"><Eye size={16} /> Preview Student View</button>
             </div>
           </div>
 
@@ -504,6 +517,48 @@ export const ProjectDesigner: React.FC = () => {
           )}
         </aside>
       </div>
+
+      {/* THe section that shows preview of excel sheet values */}
+      {showExcelPreview && (
+        <div className="modal-overlay" onClick={() => setShowExcelPreview(false)}>
+          <div className={`modal ${styles.excelPreviewModal}`} onClick={e => e.stopPropagation()}>
+            <div className="modal__header">
+              <h3>Excel Sheet Values</h3>
+              <button className="modal__close" onClick={() => setShowExcelPreview(false)}><X size={18} /></button>
+            </div>
+            <div className={`modal__body ${styles.excelPreviewBody}`}>
+              <p className={styles.excelPreviewHint}>
+                Showing the cells currently used by this simulation - not the full original spreadsheet layout.
+              </p>
+              <table className={styles.excelPreviewTable}>
+                <thead>
+                  <tr>
+                    <th>Cell</th>
+                    <th>Title</th>
+                    <th>Type</th>
+                    <th>Value / Formula</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allTrackedCells.map(c => (
+                    <tr key={c.ref}>
+                      <td>{c.ref}</td>
+                      <td>{c.title || '-'}</td>
+                      <td>{c.kind}</td>
+                      <td>{c.display}</td>
+                    </tr>
+                  ))}
+                  {allTrackedCells.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className={styles.excelPreviewEmpty}>No spreadsheet data on this project.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 };

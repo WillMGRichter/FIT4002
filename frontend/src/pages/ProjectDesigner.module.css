@@ -4,6 +4,54 @@
   font-size: 14px;
 }
 
+.excelPreviewModal {
+  width: 640px;
+  max-width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.excelPreviewBody {
+  overflow-y: auto;
+}
+
+.excelPreviewHint {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.excelPreviewTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.excelPreviewTable th,
+.excelPreviewTable td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.excelPreviewTable th {
+  color: #6b7280;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.excelPreviewTable tr:last-child td {
+  border-bottom: none;
+}
+
+.excelPreviewEmpty {
+  text-align: center;
+  color: #9ca3af;
+  padding: 20px 0;
+}
+
 .designer {
   display: flex;
   height: calc(100vh - 48px);
