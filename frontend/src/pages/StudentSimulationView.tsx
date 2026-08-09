@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Send, AlertCircle } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
@@ -28,6 +28,8 @@ interface Page {
 export const StudentSimulationView: React.FC = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isPreview = Boolean((location.state as { preview?: boolean } | null)?.preview);
   const { token } = useAuth();
 
   const [pages, setPages] = useState<Page[]>([]);
@@ -241,14 +243,24 @@ export const StudentSimulationView: React.FC = () => {
       <div className={styles.simulation}>
         {/* ── Page indicator ── */}
         <div className={styles.pageIndicator}>
-          {pages.map((page, idx) => (
-            <div
-              key={page.id}
-              className={`${styles.pageDot} ${idx === currentPageIdx ? styles.pageDotActive : ''} ${idx < currentPageIdx ? styles.pageDotDone : ''}`}
-              onClick={() => handlePageChange(idx)}
-              title={page.name}
-            />
-          ))}
+          <div className={styles.pageIndicatorSide}>
+            {isPreview && (
+              <button className={styles.backToEditingBtn} onClick={() => navigate(`/projects/${projectId}/design`)}>
+                Back to Editing
+              </button>
+            )}
+          </div>
+          <div className={styles.pageDots}>
+            {pages.map((page, idx) => (
+              <div
+                key={page.id}
+                className={`${styles.pageDot} ${idx === currentPageIdx ? styles.pageDotActive : ''} ${idx < currentPageIdx ? styles.pageDotDone : ''}`}
+                onClick={() => handlePageChange(idx)}
+                title={page.name}
+              />
+            ))}
+          </div>
+          <div className={styles.pageIndicatorSide} />
         </div>
 
         {/* ── Slide area ── */}

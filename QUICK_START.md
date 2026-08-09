@@ -18,11 +18,14 @@
 
 ### Step 2: Setup Database (1 minute)
 
-1. In your Supabase dashboard, go to **SQL Editor**
-2. Click **New Query**
-3. Open [backend/migrations/001_initial_schema.sql](backend/migrations/001_initial_schema.sql)
-4. Copy and paste the entire SQL into the query box
-5. Click **Run** to create all tables
+Run each migration in order, in the Supabase **SQL Editor**:
+
+1. Click **New Query**
+2. Open [backend/migrations/001_initial_schema.sql](backend/migrations/001_initial_schema.sql), copy/paste the entire SQL, click **Run**
+3. Repeat for [backend/migrations/002_pages_and_student_state.sql](backend/migrations/002_pages_and_student_state.sql)
+4. Repeat for [backend/migrations/003_rpc_functions.sql](backend/migrations/003_rpc_functions.sql)
+
+All three must be run - skipping 002 or 003 will cause errors later (e.g. "Add Page" failing because the `project_pages` table doesn't exist).
 
 ### Step 3: Configure Backend (1 minute)
 

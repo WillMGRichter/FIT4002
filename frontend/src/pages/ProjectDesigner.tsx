@@ -322,7 +322,7 @@ export const ProjectDesigner: React.FC = () => {
             <div className={styles.toolbarGroup}>
               <div className={styles.toolbarDivider} />
               <button className={`${styles.actionBtn} ${styles.saveBtn}`} onClick={savePages} disabled={saving} title="Save"><Save size={16} /> {saving ? 'Saving...' : 'Save'}</button>
-              <button className={`${styles.actionBtn} ${styles.previewBtn}`} onClick={async () => { await savePages(); navigate(`/projects/${projectId}/play`); }} title="Preview"><Eye size={16} /> Preview</button>
+              <button className={`${styles.actionBtn} ${styles.previewBtn}`} onClick={async () => { await savePages(); navigate(`/projects/${projectId}/play`, { state: { preview: true } }); }} title="Preview"><Eye size={16} /> Preview</button>
             </div>
           </div>
 

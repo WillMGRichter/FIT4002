@@ -73,7 +73,7 @@ export const AppShell: React.FC<AppShellProps> = ({
 
         {showBack ? (
           <button className="app-shell__quiet-link" onClick={onBack || (() => navigate('/dashboard'))}>
-            <span aria-hidden="true">←</span>
+            <span aria-hidden="true">&lt;-</span>
             Back
           </button>
         ) : (
