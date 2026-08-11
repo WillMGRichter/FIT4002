@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Trash2, Plus, Eye, Save, GripVertical, Type, Image, RectangleHorizontal, ChartBar, Table, X } from 'lucide-react';
+import { Trash2, Plus, Eye, Save, GripVertical, Type, Image, RectangleHorizontal, ChartBar, Table, X, Sliders } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
@@ -359,9 +359,17 @@ export const ProjectDesigner: React.FC = () => {
                 {elem.type === 'input-field' && (
                   <div className={styles.elemField}>
                     <label>{elem.props.label}</label>
-                    <div className={styles.fieldBox}>
+                    {elem.props.format === 'slider' && (
+                      <div>
+                      <input type='range'></input>
+                      {/* render slider here */}
+                      </div>
+                    )}
+                    {elem.props.format !== 'slider' && (
+                      <div className={styles.fieldBox}>
                       <span className={styles.fieldPlaceholder}>{elem.props.placeholder} ({elem.props.cellRef || 'no cell'})</span>
                     </div>
+                    )}
                   </div>
                 )}
                 {elem.type === 'output-field' && elem.props.format === 'bar-chart' && (
@@ -466,10 +474,20 @@ export const ProjectDesigner: React.FC = () => {
                     </div>
                   )}
                   {selectedElem.type === 'input-field' && (
-                    <div className={styles.propRow}>
-                      <label>Placeholder</label>
-                      <input type="text" value={selectedElem.props.placeholder || ''} onChange={e => updateElementProps(selectedElem.id, { placeholder: e.target.value })} className={styles.propInput} />
-                    </div>
+                    <>
+                      <div className={styles.propRow}>
+                        <label>Placeholder</label>
+                        <input type="text" value={selectedElem.props.placeholder || ''} onChange={e => updateElementProps(selectedElem.id, { placeholder: e.target.value })} className={styles.propInput} />
+                      </div>
+                      {/* Specify format of the input type */}
+                      <div className={styles.propRow}>
+                        <label>Format</label>
+                          <select value={selectedElem.props.format || 'number'} onChange={e => updateElementProps(selectedElem.id, { format: e.target.value })} className={styles.propInput}>
+                            <option value="number">Number</option>
+                            <option value="slider">Slider</option>
+                          </select>
+                      </div>
+                    </>
                   )}
                   {selectedElem.type === 'output-field' && (
                     <div className={styles.propRow}>
@@ -523,6 +541,34 @@ export const ProjectDesigner: React.FC = () => {
                           onChange={e => updateElementProps(selectedElem.id, { yAxisTitle: e.target.value })}
                           className={styles.propInput}
                         />
+                      </div>
+                    </>
+                  )}
+                  {selectedElem.type === 'input-field' && selectedElem.props.format === 'slider' && (
+                    <>
+                      <div className={styles.propRow}>
+                        <label>Step Size</label>
+                        <input 
+                        type="text"
+                        placeholder='1'
+                        onChange={e => updateElementProps(selectedElem.id, { stepSize: e.target.value})}
+                        className={styles.propInput}/>
+                      </div>
+                      <div className={styles.propRow}>
+                        <label>Min</label>
+                        <input 
+                        type="text"
+                        placeholder='0'
+                        onChange={e => updateElementProps(selectedElem.id, { stepSize: e.target.value})}
+                        className={styles.propInput}/>
+                      </div>
+                      <div className={styles.propRow}>
+                        <label>Max</label>
+                        <input 
+                        type="text"
+                        placeholder='10'
+                        onChange={e => updateElementProps(selectedElem.id, { stepSize: e.target.value})}
+                        className={styles.propInput}/>
                       </div>
                     </>
                   )}
