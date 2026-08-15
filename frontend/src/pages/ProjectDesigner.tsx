@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Trash2, Plus, Eye, Save, GripVertical, Type, Image, RectangleHorizontal, ChartBar, Table, X, Sliders } from 'lucide-react';
+import { Trash2, Plus, Eye, Save, GripVertical, Type, Image, RectangleHorizontal, ChartBar, Table, X } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
@@ -361,7 +361,7 @@ export const ProjectDesigner: React.FC = () => {
                     <label>{elem.props.label}</label>
                     {elem.props.format === 'slider' && (
                       <div>
-                      <input type='range'></input>
+                      <input className={styles.fieldBox} type='range' step={1} min={0} max={10}></input>
                       {/* render slider here */}
                       </div>
                     )}
@@ -559,7 +559,7 @@ export const ProjectDesigner: React.FC = () => {
                         <input 
                         type="text"
                         placeholder='0'
-                        onChange={e => updateElementProps(selectedElem.id, { stepSize: e.target.value})}
+                        onChange={e => updateElementProps(selectedElem.id, { min: e.target.value})}
                         className={styles.propInput}/>
                       </div>
                       <div className={styles.propRow}>
@@ -567,7 +567,7 @@ export const ProjectDesigner: React.FC = () => {
                         <input 
                         type="text"
                         placeholder='10'
-                        onChange={e => updateElementProps(selectedElem.id, { stepSize: e.target.value})}
+                        onChange={e => updateElementProps(selectedElem.id, { max: e.target.value})}
                         className={styles.propInput}/>
                       </div>
                     </>
