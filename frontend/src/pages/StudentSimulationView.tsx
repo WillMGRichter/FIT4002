@@ -331,12 +331,13 @@ export const StudentSimulationView: React.FC = () => {
                     <div className={styles.fieldElem}>
                       <label>{elem.props.label}</label>
                       <input
-                        type="number"
+                        // spread props of input here equivalent to x = elem.props.x, y = elem.props.y.... etc
+                        {...elem.props}
+                        // override elem.props above if necessary
+                        type={elem.props.format}
                         className={styles.fieldInput}
-                        placeholder={elem.props.placeholder || 'Enter value...'}
                         value={inputValues[elem.props.cellRef?.toUpperCase() || ''] ?? ''}
                         onChange={e => handleInputChange(elem.props.cellRef || '', e.target.value)}
-                        step="any"
                       />
                     </div>
                   )}

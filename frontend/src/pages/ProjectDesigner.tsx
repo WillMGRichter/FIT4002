@@ -359,13 +359,12 @@ export const ProjectDesigner: React.FC = () => {
                 {elem.type === 'input-field' && (
                   <div className={styles.elemField}>
                     <label>{elem.props.label}</label>
-                    {elem.props.format === 'slider' && (
+                    {elem.props.format === 'range' && (
                       <div>
                       <input className={styles.fieldBox} type='range' step={1} min={0} max={10}></input>
-                      {/* render slider here */}
                       </div>
                     )}
-                    {elem.props.format !== 'slider' && (
+                    {elem.props.format !== 'range' && (
                       <div className={styles.fieldBox}>
                       <span className={styles.fieldPlaceholder}>{elem.props.placeholder} ({elem.props.cellRef || 'no cell'})</span>
                     </div>
@@ -484,7 +483,7 @@ export const ProjectDesigner: React.FC = () => {
                         <label>Format</label>
                           <select value={selectedElem.props.format || 'number'} onChange={e => updateElementProps(selectedElem.id, { format: e.target.value })} className={styles.propInput}>
                             <option value="number">Number</option>
-                            <option value="slider">Slider</option>
+                            <option value="range">Slider</option>
                           </select>
                       </div>
                     </>
@@ -544,7 +543,7 @@ export const ProjectDesigner: React.FC = () => {
                       </div>
                     </>
                   )}
-                  {selectedElem.type === 'input-field' && selectedElem.props.format === 'slider' && (
+                  {selectedElem.type === 'input-field' && selectedElem.props.format === 'range' && (
                     <>
                       <div className={styles.propRow}>
                         <label>Step Size</label>
