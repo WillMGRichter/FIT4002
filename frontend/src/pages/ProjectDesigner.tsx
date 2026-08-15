@@ -361,7 +361,8 @@ export const ProjectDesigner: React.FC = () => {
                     <label>{elem.props.label}</label>
                     {elem.props.format === 'range' && (
                       <div>
-                      <input className={styles.fieldBox} type='range' step={1} min={0} max={10}></input>
+                      <input className={styles.fieldBox} type='range' readOnly disabled></input>
+                      <span className={styles.sliderValue}>{elem.props.min ?? 0} - {elem.props.max ?? 10}</span>
                       </div>
                     )}
                     {elem.props.format !== 'range' && (
