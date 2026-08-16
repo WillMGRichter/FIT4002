@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import multer from "multer";
 import XLSX from "xlsx";
+import { extractFormulas } from "./formulaExtractor";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -15,6 +16,7 @@ router.post("/upload", upload.single("file"), (req: Request, res: Response) => {
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
   const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+  const rawFormulasBySheet = extractFormulas(req.file.buffer);
   const result: any[] = [];
 
   workbook.SheetNames.forEach(sheetName => {
@@ -32,6 +34,16 @@ router.post("/upload", upload.single("file"), (req: Request, res: Response) => {
           references,
         });
       }
+    }
+
+    const seen = new Set(formulas.map(f => f.cell));
+    for (const { cell, formula } of rawFormulasBySheet.get(sheetName) || []) {
+      if (seen.has(cell)) continue;
+      formulas.push({
+        cell,
+        formula,
+        references: formula.match(/([A-Z]+[0-9]+)/g) || [],
+      });
     }
 
     result.push({ sheet: sheetName, formulas });

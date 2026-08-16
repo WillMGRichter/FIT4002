@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import multer from 'multer';
 import XLSX from 'xlsx';
+import { extractFormulas } from '../excel/formulaExtractor';
 import { AuthRequest, authMiddleware } from '../middleware/authMiddleware';
 import {
   createProject,
@@ -43,7 +44,8 @@ router.post('/', authMiddleware, upload.single('file'), async (req: AuthRequest,
       const inputCells: { ref: string; value: any; title: string | null }[] = [];
       const outputCells: { ref: string; value: any; formula: string; title: string | null; dependencies: Record<string, number> }[] = [];
 
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const firstSheetName = workbook.SheetNames[0];
+      const firstSheet = workbook.Sheets[firstSheetName];
 
       // First pass: read all cells
       for (const cellAddress in firstSheet) {
@@ -54,6 +56,17 @@ router.post('/', authMiddleware, upload.single('file'), async (req: AuthRequest,
           formula: cell.f || null,
           type: cell.t || null,
         };
+      }
+
+      // The xlsx library drops formula cells that lack a cached value (e.g.
+      // openpyxl-generated files). Recover those formulas from the raw XML.
+      for (const { cell, formula } of extractFormulas(req.file.buffer).get(firstSheetName) || []) {
+        const existing = cells[cell];
+        if (existing) {
+          if (!existing.formula) existing.formula = formula;
+        } else {
+          cells[cell] = { value: null, formula, type: 'n' };
+        }
       }
 
       const colToIndex = (col: string): number => {
