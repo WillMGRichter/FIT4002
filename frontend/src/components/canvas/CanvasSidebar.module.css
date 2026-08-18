@@ -1,0 +1,119 @@
+.sidebar {
+  width: 180px;
+  flex-shrink: 0;
+  background: #ffffff;
+  border-right: 1px solid #E5E7EB;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding-bottom: 16px;
+}
+
+/* ── Header ── */
+.header {
+  padding: 12px 14px;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.backBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7280;
+  text-decoration: none;
+  padding: 4px 0;
+  transition: color 0.15s;
+}
+
+.backBtn:hover {
+  color: #111827;
+}
+
+/* ── Nav group ── */
+.navGroup {
+  padding: 12px 14px;
+  border-bottom: 1px solid #E5E7EB;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.navGroupLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9CA3AF;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.createBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  background: none;
+  border: none;
+  padding: 4px 0;
+  cursor: pointer;
+  transition: color 0.15s;
+  font-family: inherit;
+}
+
+.createBtn:hover {
+  color: #111827;
+}
+
+/* ── Shape sections ── */
+.section {
+  padding: 12px 14px 0;
+}
+
+.sectionLabel {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #9CA3AF;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+
+.itemList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.itemGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 8px;
+  border-radius: 8px;
+  border: 1px solid #F3F4F6;
+  background: #FAFAFA;
+  cursor: grab;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  user-select: none;
+}
+
+.item:hover {
+  border-color: #D1D5DB;
+  background: #F3F4F6;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.item:active {
+  cursor: grabbing;
+  background: #E9EAEC;
+}
