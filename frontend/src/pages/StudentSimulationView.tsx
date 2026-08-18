@@ -10,7 +10,7 @@ import styles from './StudentSimulationView.module.css';
 
 interface CanvasElement {
   id: string;
-  type: 'text' | 'input-field' | 'output-field' | 'image';
+  type: 'text' | 'input-field' | 'output-field' | 'image' | 'dropdown';
   x: number;
   y: number;
   w: number;
@@ -207,8 +207,9 @@ export const StudentSimulationView: React.FC = () => {
   const totalPages = pages.length;
 
   const formatValue = (value: any, fmt?: string) => {
+    if (fmt === 'text') return String(value ?? '');
     const num = typeof value === 'number' ? value : parseFloat(String(value));
-    if (isNaN(num)) return '0';
+    if (isNaN(num)) return String(value ?? '0');
     switch (fmt) {
       case 'currency': return `$${num.toFixed(2)}`;
       case 'percentage': return `${(num * 100).toFixed(1)}%`;
@@ -357,6 +358,21 @@ export const StudentSimulationView: React.FC = () => {
                   {elem.type === 'image' && (
                     <div className={styles.imageElem}>
                       <img src={elem.props.src} alt={elem.props.alt || ''} />
+                    </div>
+                  )}
+                  {elem.type === 'dropdown' && (
+                    <div className={styles.fieldElem}>
+                      <label>{elem.props.label}</label>
+                      <select
+                        className={styles.fieldInput}
+                        value={inputValues[elem.props.cellRef?.toUpperCase() || ''] ?? ''}
+                        onChange={e => handleInputChange(elem.props.cellRef || '', e.target.value)}
+                      >
+                        <option value="">{elem.props.placeholder || 'Choose...'}</option>
+                        {(elem.props.options || '').split(',').map((opt: string) => opt.trim()).filter(Boolean).map((opt: string) => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                      </select>
                     </div>
                   )}
                 </div>

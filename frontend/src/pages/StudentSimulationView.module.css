@@ -194,6 +194,11 @@
   background: white;
 }
 
+select.fieldInput {
+  appearance: auto;
+  cursor: pointer;
+}
+
 .outputElem label {
   color: #166534;
 }
