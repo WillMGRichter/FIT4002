@@ -312,7 +312,7 @@
 .pieChartRow {
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 16px;
   min-height: 0;
   padding: 8px 10px;
@@ -322,9 +322,11 @@
 }
 
 .pieChartCircle {
-  width: 64px;
-  height: 64px;
-  min-width: 64px;
+  height: 100%;
+  aspect-ratio: 1;
+  min-width: 32px;
+  max-width: 200px;
+  flex-shrink: 0;
   border-radius: 50%;
 }
 

@@ -167,9 +167,11 @@ export const StudentSimulationView: React.FC = () => {
   }, [saveInputValues]);
 
   const handleInputChange = (cellRef: string, value: string) => {
-    const num = parseFloat(value);
-    const cellValue = isNaN(num) ? value : num;
-    const newValues = { ...inputValues, [cellRef.toUpperCase()]: cellValue };
+    // Store the raw string as typed rather than eagerly parsing to a number - parseFloat("0.")
+    // collapses to 0 mid-keystroke, which snaps the controlled input back and strips the "."
+    // before the user can type a fractional digit. Downstream formula evaluation already
+    // coerces strings to numbers (see FormulaEngine.getCellValue), so this is safe either way.
+    const newValues = { ...inputValues, [cellRef.toUpperCase()]: value };
     setInputValues(newValues);
     debouncedSave(newValues);
   };
