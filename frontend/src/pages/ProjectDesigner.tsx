@@ -384,7 +384,16 @@ export const ProjectDesigner: React.FC = () => {
                     </div>
                   </div>
                 )}
-                {elem.type === 'output-field' && elem.props.format !== 'bar-chart' && (
+                {elem.type === 'output-field' && elem.props.format === 'pie-chart' && (
+                  <div className={styles.elemField}>
+                    <label>{elem.props.label}</label>
+                    <div className={styles.pieChartPreview}>
+                      <div className={styles.pieChartPreviewCircle} />
+                      <span className={styles.barChartPreviewLabel}>{elem.props.cellRange || 'no range'}</span>
+                    </div>
+                  </div>
+                )}
+                {elem.type === 'output-field' && elem.props.format !== 'bar-chart' && elem.props.format !== 'pie-chart' && (
                   <div className={styles.elemField}>
                     <label>{elem.props.label}</label>
                     <div className={`${styles.fieldBox} ${styles.fieldOutput}`}>
@@ -459,7 +468,7 @@ export const ProjectDesigner: React.FC = () => {
                     <label>Label</label>
                     <input type="text" value={selectedElem.props.label || ''} onChange={e => updateElementProps(selectedElem.id, { label: e.target.value })} className={styles.propInput} />
                   </div>
-                  {selectedElem.props.format !== 'bar-chart' && (
+                  {selectedElem.props.format !== 'bar-chart' && selectedElem.props.format !== 'pie-chart' && (
                     <div className={styles.propRow}>
                       <label>Cell ref</label>
                       <select value={selectedElem.props.cellRef || ''} onChange={e => updateElementProps(selectedElem.id, { cellRef: e.target.value })} className={styles.propInput}>
@@ -497,6 +506,7 @@ export const ProjectDesigner: React.FC = () => {
                         <option value="currency">Currency</option>
                         <option value="percentage">Percentage</option>
                         <option value="bar-chart">Bar Chart</option>
+                        <option value="pie-chart">Pie Chart</option>
                       </select>
                     </div>
                   )}
@@ -539,6 +549,30 @@ export const ProjectDesigner: React.FC = () => {
                           placeholder="e.g. Revenue ($)"
                           value={selectedElem.props.yAxisTitle || ''}
                           onChange={e => updateElementProps(selectedElem.id, { yAxisTitle: e.target.value })}
+                          className={styles.propInput}
+                        />
+                      </div>
+                    </>
+                  )}
+                  {selectedElem.type === 'output-field' && selectedElem.props.format === 'pie-chart' && (
+                    <>
+                      <div className={styles.propRow}>
+                        <label>Cell range</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. B8:B12"
+                          value={selectedElem.props.cellRange || ''}
+                          onChange={e => updateElementProps(selectedElem.id, { cellRange: e.target.value })}
+                          className={styles.propInput}
+                        />
+                      </div>
+                      <div className={styles.propRow}>
+                        <label>Chart title</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Budget by Channel"
+                          value={selectedElem.props.chartTitle || ''}
+                          onChange={e => updateElementProps(selectedElem.id, { chartTitle: e.target.value })}
                           className={styles.propInput}
                         />
                       </div>

@@ -25,6 +25,9 @@ interface Page {
   elements: CanvasElement[];
 }
 
+// Fixed slice colors for pie charts - not user-configurable yet, cycled in order per slice.
+const PIE_COLORS = ['#4ade80', '#60a5fa', '#f59e0b', '#f87171', '#a78bfa', '#22d3ee', '#fb923c', '#34d399'];
+
 export const StudentSimulationView: React.FC = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -244,6 +247,47 @@ export const StudentSimulationView: React.FC = () => {
     );
   };
 
+  const renderPieChart = (props: Record<string, any>) => {
+    const refs = expandRange(props.cellRange || '');
+    const slices = refs.map(ref => {
+      const upperRef = ref.toUpperCase();
+      return { ref: upperRef, value: Math.max(0, Number(computedValues[upperRef]) || 0) };
+    });
+    const total = slices.reduce((sum, s) => sum + s.value, 0);
+
+    let cursor = 0;
+    const gradientStops = slices.map((s, i) => {
+      const pct = total > 0 ? (s.value / total) * 100 : 0;
+      const start = cursor;
+      const end = cursor + pct;
+      cursor = end;
+      return `${PIE_COLORS[i % PIE_COLORS.length]} ${start}% ${end}%`;
+    });
+
+    return (
+      <div className={styles.pieChartWrap}>
+        {props.chartTitle && <div className={styles.barChartTitle}>{props.chartTitle}</div>}
+        <div className={styles.pieChartRow}>
+          <div
+            className={styles.pieChartCircle}
+            style={{ background: total > 0 ? `conic-gradient(${gradientStops.join(', ')})` : '#e5e7eb' }}
+          />
+          <div className={styles.pieChartLegend}>
+            {slices.map((s, i) => (
+              <div key={s.ref} className={styles.pieChartLegendRow}>
+                <span className={styles.pieChartSwatch} style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                <span className={styles.pieChartLegendLabel}>{cellTitles[s.ref] || s.ref}</span>
+                <span className={styles.pieChartLegendValue}>
+                  {formatValue(s.value)}{total > 0 ? ` (${((s.value / total) * 100).toFixed(0)}%)` : ''}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return <AppShell title="Simulation"><div className={styles.state}>Loading simulation...</div></AppShell>;
   }
@@ -352,7 +396,13 @@ export const StudentSimulationView: React.FC = () => {
                       {renderBarChart(elem.props)}
                     </div>
                   )}
-                  {elem.type === 'output-field' && elem.props.format !== 'bar-chart' && (
+                  {elem.type === 'output-field' && elem.props.format === 'pie-chart' && (
+                    <div className={`${styles.fieldElem} ${styles.outputElem}`}>
+                      <label>{elem.props.label}</label>
+                      {renderPieChart(elem.props)}
+                    </div>
+                  )}
+                  {elem.type === 'output-field' && elem.props.format !== 'bar-chart' && elem.props.format !== 'pie-chart' && (
                     <div className={`${styles.fieldElem} ${styles.outputElem}`}>
                       <label>{elem.props.label}</label>
                       <div className={styles.outputValue}>

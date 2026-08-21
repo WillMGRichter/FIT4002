@@ -301,6 +301,73 @@
   max-width: 100%;
 }
 
+.pieChartWrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+}
+
+.pieChartRow {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 0;
+  padding: 8px 10px;
+  border: 1px solid #86efac;
+  border-radius: 4px;
+  background: #f0fdf4;
+}
+
+.pieChartCircle {
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  border-radius: 50%;
+}
+
+.pieChartLegend {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.pieChartLegendRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pieChartSwatch {
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  border-radius: 2px;
+}
+
+.pieChartLegendLabel {
+  font-size: 11px;
+  color: #166534;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.pieChartLegendValue {
+  font-size: 11px;
+  color: #166534;
+  white-space: nowrap;
+}
+
 .imageElem {
   width: 100%;
   height: 100%;
