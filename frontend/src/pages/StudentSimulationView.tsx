@@ -211,16 +211,49 @@ export const StudentSimulationView: React.FC = () => {
   const currentPage = pages[currentPageIdx];
   const totalPages = pages.length;
 
+  // A bar/pie chart's configured w/h on the designer canvas is just a box size the teacher
+  // picked - it says nothing about how many bars/legend rows the chart actually ends up with.
+  // Without this, extra bars just get squeezed thinner (.barChartCol is flex:1) instead of the
+  // box - and the page - growing to fit them, and pie-chart legend rows get silently clipped
+  // (.pieChartLegend has overflow:hidden). This computes the size the chart actually needs.
+  const MIN_BAR_COL_WIDTH = 48;
+  const MIN_LEGEND_ROW_HEIGHT = 18;
+
+  const getEffectiveSize = useCallback((elem: CanvasElement) => {
+    if (elem.type !== 'output-field') return { w: elem.w, h: elem.h };
+
+    if (elem.props.format === 'bar-chart') {
+      const count = expandRange(elem.props.cellRange || '').length;
+      const yAxisAllowance = elem.props.yAxisTitle ? 24 : 0;
+      const minW = count * MIN_BAR_COL_WIDTH + Math.max(0, count - 1) * 8 + 20 + yAxisAllowance;
+      return { w: Math.max(elem.w, minW), h: elem.h };
+    }
+
+    if (elem.props.format === 'pie-chart') {
+      const count = expandRange(elem.props.cellRange || '').length;
+      const minH = count * MIN_LEGEND_ROW_HEIGHT + 40;
+      return { w: elem.w, h: Math.max(elem.h, minH) };
+    }
+
+    return { w: elem.w, h: elem.h };
+  }, []);
+
   // Elements keep the raw x/y/w/h they were given on the designer's canvas, which has no size cap.
   // The slide card below has a default max-width/min-height, so grow it to whatever the furthest
   // element actually needs - otherwise elements placed near the designer canvas's edges spill
   // outside the visible page card here.
   const pageBounds = useMemo(() => {
     const elements = currentPage?.elements || [];
-    const maxRight = elements.reduce((m, e) => Math.max(m, e.x + e.w), 0);
-    const maxBottom = elements.reduce((m, e) => Math.max(m, e.y + e.h), 0);
+    const maxRight = elements.reduce((m, e) => {
+      const { w } = getEffectiveSize(e);
+      return Math.max(m, e.x + w);
+    }, 0);
+    const maxBottom = elements.reduce((m, e) => {
+      const { h } = getEffectiveSize(e);
+      return Math.max(m, e.y + h);
+    }, 0);
     return { width: maxRight, height: maxBottom };
-  }, [currentPage]);
+  }, [currentPage, getEffectiveSize]);
 
   const formatValue = (value: any, fmt?: string) => {
     const num = typeof value === 'number' ? value : parseFloat(String(value));
@@ -373,11 +406,13 @@ export const StudentSimulationView: React.FC = () => {
             </div>
 
             <div className={styles.canvas} style={{ minHeight: Math.max(400, pageBounds.height) }}>
-              {currentPage?.elements.map(elem => (
+              {currentPage?.elements.map(elem => {
+                const { w: effectiveW, h: effectiveH } = getEffectiveSize(elem);
+                return (
                 <div
                   key={elem.id}
                   className={styles.canvasElem}
-                  style={{ left: elem.x, top: elem.y, width: elem.w, height: elem.h }}
+                  style={{ left: elem.x, top: elem.y, width: effectiveW, height: effectiveH }}
                 >
                   {elem.type === 'text' && (
                     <div className={styles.textElem} style={{ fontSize: elem.props.fontSize, color: elem.props.color, fontWeight: elem.props.bold ? 700 : 400 }}>
@@ -429,7 +464,8 @@ export const StudentSimulationView: React.FC = () => {
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

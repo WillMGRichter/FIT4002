@@ -51,8 +51,20 @@ export const ProjectDesigner: React.FC = () => {
   const [pages, setPages] = useState<Page[]>([]);
   const [activePageIdx, setActivePageIdx] = useState(0);
   const [selectedElemId, setSelectedElemId] = useState<string | null>(null);
-  const [dragging, setDragging] = useState<{ elemId: string; startX: number; startY: number; elemX: number; elemY: number } | null>(null);
-  const [resizing, setResizing] = useState<{ elemId: string; startX: number; startY: number; elemW: number; elemH: number } | null>(null);
+  // offsetX/Y is the grab point expressed relative to the element's own top-left corner, in
+  // canvas *content* coordinates (scrollLeft/Top + pointer-in-viewport) rather than raw client
+  // pixels - that makes position purely a function of (current scroll, current pointer), so
+  // programmatic auto-scroll during a drag (see the edge-pan effect below) moves the element
+  // along with the pan for free, with no separate delta bookkeeping needed.
+  const [dragging, setDragging] = useState<{ elemId: string; offsetX: number; offsetY: number } | null>(null);
+  // Same idea for resizing: offsetW/H let width/height be derived as (pointer content pos - anchor)
+  // so an edge-pan while resizing grows the box instead of leaving it stuck under the pointer.
+  const [resizing, setResizing] = useState<{ elemId: string; elemX: number; elemY: number; offsetW: number; offsetH: number } | null>(null);
+  // Mirrors of the two states above, read inside the rAF pan loop so it isn't recreated on every
+  // drag/resize position update - only when a drag/resize actually starts or ends.
+  const draggingRef = useRef(dragging);
+  const resizingRef = useRef(resizing);
+  const mousePosRef = useRef({ x: 0, y: 0 });
   const [loading, setLoading] = useState(true);
   const [showExcelPreview, setShowExcelPreview] = useState(false);
 
@@ -242,24 +254,58 @@ export const ProjectDesigner: React.FC = () => {
     setSelectedElemId(null);
   };
 
+  // Content-space position under the pointer: scroll offset + pointer's offset within the
+  // canvas viewport. Unlike raw clientX/Y, this stays correct across programmatic scrolling.
+  const contentPointFromClient = (clientX: number, clientY: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: clientX, y: clientY };
+    const rect = canvas.getBoundingClientRect();
+    return { x: canvas.scrollLeft + (clientX - rect.left), y: canvas.scrollTop + (clientY - rect.top) };
+  };
+
   const handleElemMouseDown = (e: React.MouseEvent, elem: CanvasElement) => {
     if ((e.target as HTMLElement).closest(`.${styles.resizeHandle}`)) return;
     e.stopPropagation();
     setSelectedElemId(elem.id);
-    setDragging({ elemId: elem.id, startX: e.clientX, startY: e.clientY, elemX: elem.x, elemY: elem.y });
+    mousePosRef.current = { x: e.clientX, y: e.clientY };
+    const point = contentPointFromClient(e.clientX, e.clientY);
+    setDragging({ elemId: elem.id, offsetX: point.x - elem.x, offsetY: point.y - elem.y });
   };
 
   const handleResizeMouseDown = (e: React.MouseEvent, elem: CanvasElement) => {
     e.stopPropagation();
-    setResizing({ elemId: elem.id, startX: e.clientX, startY: e.clientY, elemW: elem.w, elemH: elem.h });
+    mousePosRef.current = { x: e.clientX, y: e.clientY };
+    const point = contentPointFromClient(e.clientX, e.clientY);
+    setResizing({ elemId: elem.id, elemX: elem.x, elemY: elem.y, offsetW: elem.w - (point.x - elem.x), offsetH: elem.h - (point.y - elem.y) });
   };
+
+  const updateDragFromClient = useCallback((clientX: number, clientY: number) => {
+    const current = draggingRef.current;
+    if (!current) return;
+    const point = contentPointFromClient(clientX, clientY);
+    updateElementPosition(current.elemId, Math.max(0, point.x - current.offsetX), Math.max(0, point.y - current.offsetY));
+  }, [updateElementPosition]);
+
+  const updateResizeFromClient = useCallback((clientX: number, clientY: number) => {
+    const current = resizingRef.current;
+    if (!current) return;
+    const point = contentPointFromClient(clientX, clientY);
+    updateElementSize(current.elemId, point.x - current.elemX + current.offsetW, point.y - current.elemY + current.offsetH);
+  }, [updateElementSize]);
+
+  useEffect(() => {
+    draggingRef.current = dragging;
+  }, [dragging]);
+
+  useEffect(() => {
+    resizingRef.current = resizing;
+  }, [resizing]);
 
   useEffect(() => {
     if (!dragging) return;
     const handleMouseMove = (e: MouseEvent) => {
-      const dx = e.clientX - dragging.startX;
-      const dy = e.clientY - dragging.startY;
-      updateElementPosition(dragging.elemId, Math.max(0, dragging.elemX + dx), Math.max(0, dragging.elemY + dy));
+      mousePosRef.current = { x: e.clientX, y: e.clientY };
+      updateDragFromClient(e.clientX, e.clientY);
     };
     const handleMouseUp = () => setDragging(null);
     window.addEventListener('mousemove', handleMouseMove);
@@ -268,14 +314,13 @@ export const ProjectDesigner: React.FC = () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [dragging, updateElementPosition]);
+  }, [dragging, updateDragFromClient]);
 
   useEffect(() => {
     if (!resizing) return;
     const handleMouseMove = (e: MouseEvent) => {
-      const dw = e.clientX - resizing.startX;
-      const dh = e.clientY - resizing.startY;
-      updateElementSize(resizing.elemId, resizing.elemW + dw, resizing.elemH + dh);
+      mousePosRef.current = { x: e.clientX, y: e.clientY };
+      updateResizeFromClient(e.clientX, e.clientY);
     };
     const handleMouseUp = () => setResizing(null);
     window.addEventListener('mousemove', handleMouseMove);
@@ -284,7 +329,43 @@ export const ProjectDesigner: React.FC = () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [resizing, updateElementSize]);
+  }, [resizing, updateResizeFromClient]);
+
+  // Edge auto-pan: while dragging/resizing, holding the pointer near the canvas viewport's
+  // border scrolls the canvas toward that border every frame, even without further pointer
+  // movement. Position/size are re-derived from (scroll, last known pointer) each tick, so the
+  // element keeps growing outward with the pan instead of getting left behind.
+  useEffect(() => {
+    if (!dragging && !resizing) return;
+    const EDGE = 60; // px from viewport edge where panning starts
+    const MAX_SPEED = 11; // px scrolled per frame at/past the edge
+
+    const edgePanDelta = (pos: number, min: number, max: number) => {
+      if (pos > max - EDGE) return Math.min(MAX_SPEED, ((pos - (max - EDGE)) / EDGE) * MAX_SPEED);
+      if (pos < min + EDGE) return -Math.min(MAX_SPEED, (((min + EDGE) - pos) / EDGE) * MAX_SPEED);
+      return 0;
+    };
+
+    let rafId: number;
+    const tick = () => {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect();
+        const { x: mx, y: my } = mousePosRef.current;
+        const dx = edgePanDelta(mx, rect.left, rect.right);
+        const dy = edgePanDelta(my, rect.top, rect.bottom);
+        if (dx !== 0 || dy !== 0) {
+          canvas.scrollLeft += dx;
+          canvas.scrollTop += dy;
+          if (dragging) updateDragFromClient(mx, my);
+          if (resizing) updateResizeFromClient(mx, my);
+        }
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [dragging, resizing, updateDragFromClient, updateResizeFromClient]);
 
   const selectedElem = activeElements.find(e => e.id === selectedElemId);
 
