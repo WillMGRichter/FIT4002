@@ -530,7 +530,7 @@ export const ProjectDesigner: React.FC = () => {
                         <label>Cell range</label>
                         <input
                           type="text"
-                          placeholder="e.g. B4:B8"
+                          placeholder="e.g. B4:B8 or B1:B3,B5:B7"
                           value={selectedElem.props.cellRange || ''}
                           onChange={e => updateElementProps(selectedElem.id, { cellRange: e.target.value })}
                           className={styles.propInput}
@@ -574,7 +574,7 @@ export const ProjectDesigner: React.FC = () => {
                         <label>Cell range</label>
                         <input
                           type="text"
-                          placeholder="e.g. B8:B12"
+                          placeholder="e.g. B8:B12 or B1:B3,B5:B7"
                           value={selectedElem.props.cellRange || ''}
                           onChange={e => updateElementProps(selectedElem.id, { cellRange: e.target.value })}
                           className={styles.propInput}
