@@ -5,9 +5,14 @@ import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 import { addRecent } from '../utils/projectStorage';
+import { expandRange } from '../utils/FormulaEngine';
 import styles from './ProjectDesigner.module.css';
 
 type ElementType = 'text' | 'input-field' | 'output-field' | 'image';
+
+// Matches PIE_COLORS in StudentSimulationView.tsx, so this canvas preview's slice colors
+// line up with what the actual student-facing pie chart will render.
+const PIE_COLORS = ['#4ade80', '#60a5fa', '#f59e0b', '#f87171', '#a78bfa', '#22d3ee', '#fb923c', '#34d399'];
 
 interface CanvasElement {
   id: string;
@@ -389,7 +394,16 @@ export const ProjectDesigner: React.FC = () => {
                     <label>{elem.props.label}</label>
                     <div className={styles.pieChartPreview}>
                       <div className={styles.pieChartPreviewCircle} />
-                      <span className={styles.barChartPreviewLabel}>{elem.props.cellRange || 'no range'}</span>
+                      <div className={styles.pieChartPreviewLegend}>
+                        {elem.props.cellRange
+                          ? expandRange(elem.props.cellRange).map((ref, i) => (
+                              <div key={ref} className={styles.pieChartPreviewLegendRow}>
+                                <span className={styles.pieChartPreviewSwatch} style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                                <span className={styles.pieChartPreviewLegendLabel}>Legend {i + 1}</span>
+                              </div>
+                            ))
+                          : <span className={styles.barChartPreviewLabel}>no range</span>}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -474,10 +488,10 @@ export const ProjectDesigner: React.FC = () => {
                       <select value={selectedElem.props.cellRef || ''} onChange={e => updateElementProps(selectedElem.id, { cellRef: e.target.value })} className={styles.propInput}>
                         <option value="">-- Select cell --</option>
                         {selectedElem.type === 'input-field' && inputCells.map((c: any) => (
-                          <option key={c.ref} value={c.ref}>{c.title || c.ref}{c.value !== undefined && c.value !== null ? ` (${c.value})` : ''}</option>
+                          <option key={c.ref} value={c.ref}>{c.ref} | {c.title || c.ref}{c.value !== undefined && c.value !== null ? ` | ${c.value}` : ''}</option>
                         ))}
                         {selectedElem.type === 'output-field' && outputCells.map((c: any) => (
-                          <option key={c.ref} value={c.ref}>{c.title || c.ref}{c.formula ? ` (${c.formula})` : ''}</option>
+                          <option key={c.ref} value={c.ref}>{c.ref} | {c.title || c.ref}{c.formula ? ` | ${c.formula}` : ''}</option>
                         ))}
                       </select>
                     </div>
