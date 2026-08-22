@@ -211,6 +211,17 @@ export const StudentSimulationView: React.FC = () => {
   const currentPage = pages[currentPageIdx];
   const totalPages = pages.length;
 
+  // Elements keep the raw x/y/w/h they were given on the designer's canvas, which has no size cap.
+  // The slide card below has a default max-width/min-height, so grow it to whatever the furthest
+  // element actually needs - otherwise elements placed near the designer canvas's edges spill
+  // outside the visible page card here.
+  const pageBounds = useMemo(() => {
+    const elements = currentPage?.elements || [];
+    const maxRight = elements.reduce((m, e) => Math.max(m, e.x + e.w), 0);
+    const maxBottom = elements.reduce((m, e) => Math.max(m, e.y + e.h), 0);
+    return { width: maxRight, height: maxBottom };
+  }, [currentPage]);
+
   const formatValue = (value: any, fmt?: string) => {
     const num = typeof value === 'number' ? value : parseFloat(String(value));
     if (isNaN(num)) return '0';
@@ -355,13 +366,13 @@ export const StudentSimulationView: React.FC = () => {
             </div>
           )}
 
-          <div className={styles.slide}>
+          <div className={styles.slide} style={{ width: Math.max(900, pageBounds.width + 48) }}>
             <div className={styles.slideHeader}>
               <h2>{currentPage?.name || 'Untitled'}</h2>
               <span className={styles.slideCounter}>{currentPageIdx + 1} / {totalPages}</span>
             </div>
 
-            <div className={styles.canvas}>
+            <div className={styles.canvas} style={{ minHeight: Math.max(400, pageBounds.height) }}>
               {currentPage?.elements.map(elem => (
                 <div
                   key={elem.id}
