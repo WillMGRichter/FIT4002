@@ -331,6 +331,23 @@ export const ProjectDesigner: React.FC = () => {
     };
   }, [resizing, updateResizeFromClient]);
 
+  // Delete/Backspace deletes the selected canvas element - skipped while focus is in a text
+  // field (Label, Cell range, etc. in the properties panel), so editing text can still use
+  // those keys normally instead of deleting the whole element out from under the user.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!selectedElemId) return;
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+      const target = e.target as HTMLElement;
+      const isEditableTarget = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable;
+      if (isEditableTarget) return;
+      e.preventDefault();
+      deleteElement(selectedElemId);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedElemId, deleteElement]);
+
   // Edge auto-pan: while dragging/resizing, holding the pointer near the canvas viewport's
   // border scrolls the canvas toward that border every frame, even without further pointer
   // movement. Position/size are re-derived from (scroll, last known pointer) each tick, so the
