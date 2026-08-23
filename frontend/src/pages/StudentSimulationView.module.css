@@ -90,8 +90,12 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  /* flex-start on both axes, not center: centering a child bigger than this container traps
+     part of its overflow on the unreachable leading side (above/left) - overflow:auto here
+     only reliably scrolls into the trailing (bottom/right) side. The slide centers itself
+     instead via margin:auto, which degrades gracefully (no trap) when it's the bigger one. */
+  align-items: flex-start;
+  justify-content: flex-start;
   padding: 24px;
   overflow: auto;
   position: relative;
@@ -110,8 +114,16 @@
 }
 
 .slide {
-  width: 100%;
-  max-width: 900px;
+  /* width comes from an inline style (StudentSimulationView.tsx), sized to fit the furthest
+     element on the page - margin:auto centers it when it's narrower than .slideArea, and
+     degrades to 0 (flush left, scrollable right) without clipping when it's wider. */
+  margin: 0 auto;
+  /* .slideArea is a column flex container, so height is its main axis - without this, the
+     default flex-shrink:1 lets the browser compress .slide back toward its own min-height
+     whenever .slideArea's available space (bounded by .simulation's fixed height) is smaller
+     than what .canvas inside actually needs, leaving .canvas's content visually overflowing
+     past this box's white background instead of the box growing to include it. */
+  flex-shrink: 0;
   background: white;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
@@ -299,6 +311,75 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
+}
+
+.pieChartWrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+}
+
+.pieChartRow {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  min-height: 0;
+  padding: 8px 10px;
+  border: 1px solid #86efac;
+  border-radius: 4px;
+  background: #f0fdf4;
+}
+
+.pieChartCircle {
+  height: 100%;
+  aspect-ratio: 1;
+  min-width: 32px;
+  max-width: 200px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+.pieChartLegend {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.pieChartLegendRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pieChartSwatch {
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  border-radius: 2px;
+}
+
+.pieChartLegendLabel {
+  font-size: 11px;
+  color: #166534;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.pieChartLegendValue {
+  font-size: 11px;
+  color: #166534;
+  white-space: nowrap;
 }
 
 .imageElem {
