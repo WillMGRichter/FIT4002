@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Trash2, Plus, Eye, Save, GripVertical, Type, Image, RectangleHorizontal, ChartBar, Table, X, ListFilter } from 'lucide-react';
+import { Trash2, Plus, Eye, Save, GripVertical, Type, Image, RectangleHorizontal, ChartBar, Table, X } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
@@ -8,7 +8,7 @@ import { addRecent } from '../utils/projectStorage';
 import { expandRange } from '../utils/FormulaEngine';
 import styles from './ProjectDesigner.module.css';
 
-type ElementType = 'text' | 'input-field' | 'output-field' | 'image' | 'dropdown';
+type ElementType = 'text' | 'input-field' | 'output-field' | 'image';
 
 // Matches PIE_COLORS in StudentSimulationView.tsx, so this canvas preview's slice colors
 // line up with what the actual student-facing pie chart will render.
@@ -39,7 +39,6 @@ const ELEMENT_PALETTE: { type: ElementType; label: string; icon: React.ReactNode
   { type: 'input-field', label: 'Input', icon: <RectangleHorizontal size={20} />, defaultProps: { cellRef: '', label: 'Input', placeholder: 'Enter value...' } },
   { type: 'output-field', label: 'Output', icon: <ChartBar size={20} />, defaultProps: { cellRef: '', cellRange: '', label: 'Output', format: 'number', chartTitle: '', xAxisTitle: '', yAxisTitle: '' } },
   { type: 'image', label: 'Image', icon: <Image size={20} />, defaultProps: { src: 'https://placehold.co/400x200?text=Image', alt: '' } },
-  { type: 'dropdown', label: 'Dropdown', icon: <ListFilter size={20} />, defaultProps: { cellRef: '', label: 'Select', options: 'Option 1, Option 2, Option 3', placeholder: 'Choose...' } },
 ];
 
 export const ProjectDesigner: React.FC = () => {
@@ -205,7 +204,7 @@ export const ProjectDesigner: React.FC = () => {
       x: 40 + (activeElements.length * 20),
       y: 40 + (activeElements.length * 20),
       w: type === 'text' ? 200 : type === 'image' ? 300 : 220,
-      h: type === 'image' ? 180 : (type === 'input-field' || type === 'output-field' || type === 'dropdown') ? 64 : 48,
+      h: type === 'image' ? 180 : (type === 'input-field' || type === 'output-field') ? 64 : 48,
       props: { ...(paletteItem?.defaultProps || {}) },
     };
     const newElements = [...activeElements, newElem];
@@ -469,7 +468,12 @@ export const ProjectDesigner: React.FC = () => {
                       <span className={styles.sliderValue}>{elem.props.min ?? 0} - {elem.props.max ?? 10}</span>
                       </div>
                     )}
-                    {elem.props.format !== 'range' && (
+                    {elem.props.format === 'dropdown' && (
+                      <div className={styles.fieldBox}>
+                        <span className={styles.fieldPlaceholder}>{elem.props.placeholder || 'Choose...'} ({elem.props.cellRef || 'no cell'})</span>
+                      </div>
+                    )}
+                    {elem.props.format !== 'range' && elem.props.format !== 'dropdown' && (
                       <div className={styles.fieldBox}>
                       <span className={styles.fieldPlaceholder}>{elem.props.placeholder} ({elem.props.cellRef || 'no cell'})</span>
                     </div>
@@ -517,14 +521,6 @@ export const ProjectDesigner: React.FC = () => {
                 {elem.type === 'image' && (
                   <div className={styles.elemImage}>
                     <img src={elem.props.src} alt={elem.props.alt} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                )}
-                {elem.type === 'dropdown' && (
-                  <div className={styles.elemField}>
-                    <label>{elem.props.label}</label>
-                    <div className={styles.fieldBox}>
-                      <span className={styles.fieldPlaceholder}>{elem.props.placeholder || 'Choose...'} ({elem.props.cellRef || 'no cell'})</span>
-                    </div>
                   </div>
                 )}
                 <div className={styles.resizeHandle} onMouseDown={e => handleResizeMouseDown(e, elem)} />
@@ -615,6 +611,7 @@ export const ProjectDesigner: React.FC = () => {
                           <select value={selectedElem.props.format || 'number'} onChange={e => updateElementProps(selectedElem.id, { format: e.target.value })} className={styles.propInput}>
                             <option value="number">Number</option>
                             <option value="range">Slider</option>
+                            <option value="dropdown">Dropdown</option>
                           </select>
                       </div>
                     </>
@@ -728,6 +725,12 @@ export const ProjectDesigner: React.FC = () => {
                       </div>
                     </>
                   )}
+                  {selectedElem.type === 'input-field' && selectedElem.props.format === 'dropdown' && (
+                    <div className={styles.propRow}>
+                      <label>Options</label>
+                      <input type="text" value={selectedElem.props.options || ''} onChange={e => updateElementProps(selectedElem.id, { options: e.target.value })} className={styles.propInput} placeholder="Comma-separated" />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -737,33 +740,6 @@ export const ProjectDesigner: React.FC = () => {
                   <div className={styles.propRow}>
                     <label>Image URL</label>
                     <input type="text" value={selectedElem.props.src || ''} onChange={e => updateElementProps(selectedElem.id, { src: e.target.value })} className={styles.propInput} />
-                  </div>
-                </div>
-              )}
-
-              {selectedElem.type === 'dropdown' && (
-                <div className={styles.propsSection}>
-                  <div className={styles.propsSectionTitle}>Dropdown</div>
-                  <div className={styles.propRow}>
-                    <label>Label</label>
-                    <input type="text" value={selectedElem.props.label || ''} onChange={e => updateElementProps(selectedElem.id, { label: e.target.value })} className={styles.propInput} />
-                  </div>
-                  <div className={styles.propRow}>
-                    <label>Cell ref</label>
-                    <select value={selectedElem.props.cellRef || ''} onChange={e => updateElementProps(selectedElem.id, { cellRef: e.target.value })} className={styles.propInput}>
-                      <option value="">-- Select cell --</option>
-                      {inputCells.map((c: any) => (
-                        <option key={c.ref} value={c.ref}>{c.title || c.ref}{c.value !== undefined && c.value !== null ? ` (${c.value})` : ''}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className={styles.propRow}>
-                    <label>Placeholder</label>
-                    <input type="text" value={selectedElem.props.placeholder || ''} onChange={e => updateElementProps(selectedElem.id, { placeholder: e.target.value })} className={styles.propInput} />
-                  </div>
-                  <div className={styles.propRow}>
-                    <label>Options</label>
-                    <input type="text" value={selectedElem.props.options || ''} onChange={e => updateElementProps(selectedElem.id, { options: e.target.value })} className={styles.propInput} placeholder="Comma-separated" />
                   </div>
                 </div>
               )}

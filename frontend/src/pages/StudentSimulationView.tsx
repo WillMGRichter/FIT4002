@@ -10,7 +10,7 @@ import styles from './StudentSimulationView.module.css';
 
 interface CanvasElement {
   id: string;
-  type: 'text' | 'input-field' | 'output-field' | 'image' | 'dropdown';
+  type: 'text' | 'input-field' | 'output-field' | 'image';
   x: number;
   y: number;
   w: number;
@@ -423,15 +423,28 @@ export const StudentSimulationView: React.FC = () => {
                   {elem.type === 'input-field' && (
                     <div className={styles.fieldElem}>
                       <label>{elem.props.label}</label>
-                        <input
-                          // spread props of input here equivalent to x = elem.props.x, y = elem.props.y.... etc
-                          {...elem.props}
-                          // override elem.props above if necessary
-                          type={elem.props.format}
-                          className={styles.fieldInput}
-                          value={inputValues[elem.props.cellRef?.toUpperCase() || ''] ?? ''}
-                          onChange={e => handleInputChange(elem.props.cellRef || '', e.target.value)}
-                        />
+                        {elem.props.format === 'dropdown' ? (
+                          <select
+                            className={styles.fieldInput}
+                            value={inputValues[elem.props.cellRef?.toUpperCase() || ''] ?? ''}
+                            onChange={e => handleInputChange(elem.props.cellRef || '', e.target.value)}
+                          >
+                            <option value="">{elem.props.placeholder || 'Choose...'}</option>
+                            {(elem.props.options || '').split(',').map((opt: string) => opt.trim()).filter(Boolean).map((opt: string) => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            // spread props of input here equivalent to x = elem.props.x, y = elem.props.y.... etc
+                            {...elem.props}
+                            // override elem.props above if necessary
+                            type={elem.props.format}
+                            className={styles.fieldInput}
+                            value={inputValues[elem.props.cellRef?.toUpperCase() || ''] ?? ''}
+                            onChange={e => handleInputChange(elem.props.cellRef || '', e.target.value)}
+                          />
+                        )}
                         {elem.props.format === 'range'
                          && (<span className={styles.sliderValue}>
                           {inputValues[elem.props.cellRef?.toUpperCase() || ''] ?? elem.props.min ?? 0}
@@ -462,21 +475,6 @@ export const StudentSimulationView: React.FC = () => {
                   {elem.type === 'image' && (
                     <div className={styles.imageElem}>
                       <img src={elem.props.src} alt={elem.props.alt || ''} />
-                    </div>
-                  )}
-                  {elem.type === 'dropdown' && (
-                    <div className={styles.fieldElem}>
-                      <label>{elem.props.label}</label>
-                      <select
-                        className={styles.fieldInput}
-                        value={inputValues[elem.props.cellRef?.toUpperCase() || ''] ?? ''}
-                        onChange={e => handleInputChange(elem.props.cellRef || '', e.target.value)}
-                      >
-                        <option value="">{elem.props.placeholder || 'Choose...'}</option>
-                        {(elem.props.options || '').split(',').map((opt: string) => opt.trim()).filter(Boolean).map((opt: string) => (
-                          <option key={opt} value={opt}>{opt}</option>
-                        ))}
-                      </select>
                     </div>
                   )}
                 </div>
