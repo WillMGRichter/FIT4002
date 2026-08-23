@@ -433,7 +433,7 @@ export const StudentSimulationView: React.FC = () => {
                         />
                         {elem.props.format === 'range'
                          && (<span className={styles.sliderValue}>
-                          {inputValues[elem.props.cellRef?.toUpperCase() || ''] ?? elem.props.max/2 }
+                          {inputValues[elem.props.cellRef?.toUpperCase() || ''] ?? (elem.props.min + elem.props.max)/2 }
                          </span> 
                         )
                         }
