@@ -54,6 +54,12 @@ function getCellValue(cellRef: string, cells: CellMap): number {
   return isNaN(num) ? 0 : num;
 }
 
+function getCellRawValue(cellRef: string, cells: CellMap): number | string {
+  const val = cells[cellRef.toUpperCase()];
+  if (val === undefined || val === null) return 0;
+  return val;
+}
+
 function evaluateFunction(name: string, range: string, cells: CellMap): number {
   const refs = expandRange(range);
   const values = refs.map(r => getCellValue(r, cells));
@@ -152,14 +158,18 @@ function evaluateExpression(tokens: string[], cells: CellMap): number {
 }
 
 // Evaluate a single formula (e.g. "=A1+B2*2") against the given cell values.
-// Pipeline: strip '=' -> expand range functions (SUM, AVERAGE, etc.) -> substitute cell refs -> evaluate infix expression via shunting-yard.
-export function evaluateFormula(formula: string, cells: CellMap): number {
+// Pipeline: strip '=' -> handle IF -> expand range functions (SUM, AVERAGE, etc.) -> substitute cell refs -> evaluate infix expression via shunting-yard.
+export function evaluateFormula(formula: string, cells: CellMap): number | string {
   if (!formula || !formula.toString().startsWith('=')) {
     const num = parseFloat(String(formula));
-    return isNaN(num) ? 0 : num;
+    return isNaN(num) ? String(formula) : num;
   }
 
   let expr = formula.toString().substring(1);
+
+  // Handle IF(condition, trueVal, falseVal) - supports nested IF
+  const ifResult = tryEvaluateIf(expr, cells);
+  if (ifResult !== null) return ifResult;
 
   expr = expr.replace(FUNC_REGEX, (_match, name: string, range: string) => {
     return String(evaluateFunction(name, range.trim(), cells));
@@ -172,6 +182,149 @@ export function evaluateFormula(formula: string, cells: CellMap): number {
 
   const tokens = tokenize(expr);
   return evaluateExpression(tokens, cells);
+}
+
+// Parse IF(condition, trueValue, falseValue) with support for nested IFs and string literals
+function tryEvaluateIf(expr: string, cells: CellMap): number | string | null {
+  const trimmed = expr.trim();
+  if (!trimmed.toUpperCase().startsWith('IF(')) return null;
+
+  // Extract the content inside IF(...)
+  const inner = extractParenContent(trimmed, 2);
+  if (inner === null) return null;
+
+  // Split into 3 arguments by commas, respecting nesting and quotes
+  const args = splitIfArgs(inner);
+  if (args.length < 3) return null;
+
+  const condition = evaluateCondition(args[0].trim(), cells);
+  const branch = condition ? args[1].trim() : args[2].trim();
+
+  return evaluateIfBranch(branch, cells);
+}
+
+// Extract content inside parentheses starting at position startIdx
+function extractParenContent(str: string, startIdx: number): string | null {
+  const openIdx = str.indexOf('(', startIdx);
+  if (openIdx === -1) return null;
+
+  let depth = 0;
+  for (let i = openIdx; i < str.length; i++) {
+    if (str[i] === '(') depth++;
+    else if (str[i] === ')') {
+      depth--;
+      if (depth === 0) return str.substring(openIdx + 1, i);
+    }
+  }
+  return null;
+}
+
+// Split IF arguments respecting nested parentheses and quoted strings
+function splitIfArgs(str: string): string[] {
+  const args: string[] = [];
+  let depth = 0;
+  let inQuote = false;
+  let quoteChar = '';
+  let current = '';
+
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+
+    if (inQuote) {
+      current += ch;
+      if (ch === quoteChar) inQuote = false;
+      continue;
+    }
+
+    if (ch === '"' || ch === "'") {
+      inQuote = true;
+      quoteChar = ch;
+      current += ch;
+    } else if (ch === '(') {
+      depth++;
+      current += ch;
+    } else if (ch === ')') {
+      depth--;
+      current += ch;
+    } else if (ch === ',' && depth === 0) {
+      args.push(current);
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  if (current) args.push(current);
+  return args;
+}
+
+// Evaluate a condition like "B1=1", "B1>2", "B1<>0"
+function evaluateCondition(condition: string, cells: CellMap): boolean {
+  // Support operators: =, <>, >=, <=, >, <
+  const operators = ['<>', '>=', '<=', '>', '<', '='];
+  for (const op of operators) {
+    const idx = condition.indexOf(op);
+    if (idx !== -1) {
+      const left = resolveValue(condition.substring(0, idx).trim(), cells);
+      const right = resolveValue(condition.substring(idx + op.length).trim(), cells);
+      const leftNum = typeof left === 'number' ? left : parseFloat(String(left));
+      const rightNum = typeof right === 'number' ? right : parseFloat(String(right));
+
+      switch (op) {
+        case '=': return leftNum === rightNum || String(left) === String(right);
+        case '<>': return leftNum !== rightNum && String(left) !== String(right);
+        case '>=': return leftNum >= rightNum;
+        case '<=': return leftNum <= rightNum;
+        case '>': return leftNum > rightNum;
+        case '<': return leftNum < rightNum;
+      }
+    }
+  }
+  return false;
+}
+
+// Resolve a value - could be a cell ref, number, or quoted string
+function resolveValue(val: string, cells: CellMap): number | string {
+  // Quoted string
+  if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+    return val.slice(1, -1);
+  }
+  // Number literal
+  const num = parseFloat(val);
+  if (!isNaN(num) && val.match(/^-?\d*\.?\d+$/)) return num;
+  // Cell reference
+  if (val.match(/^\$?[A-Z]+\$?\d+$/i)) {
+    return getCellRawValue(val.replace(/\$/g, ''), cells);
+  }
+  return val;
+}
+
+// Evaluate an IF branch - could be a nested IF, a string literal, a number, or a cell ref
+function evaluateIfBranch(branch: string, cells: CellMap): number | string {
+  const trimmed = branch.trim();
+
+  // Nested IF
+  if (trimmed.toUpperCase().startsWith('IF(')) {
+    const result = tryEvaluateIf(trimmed, cells);
+    if (result !== null) return result;
+  }
+
+  // Quoted string literal
+  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    return trimmed.slice(1, -1);
+  }
+
+  // Number literal
+  const num = parseFloat(trimmed);
+  if (!isNaN(num) && trimmed.match(/^-?\d*\.?\d+$/)) return num;
+
+  // Cell reference
+  if (trimmed.match(/^\$?[A-Z]+\$?\d+$/i)) {
+    return getCellRawValue(trimmed.replace(/\$/g, ''), cells);
+  }
+
+  // Expression - evaluate numerically
+  const formula = '=' + trimmed;
+  return evaluateFormula(formula, cells);
 }
 
 export function getAllCellRefs(formula: string): string[] {

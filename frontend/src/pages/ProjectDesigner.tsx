@@ -468,7 +468,12 @@ export const ProjectDesigner: React.FC = () => {
                       <span className={styles.sliderValue}>{elem.props.min ?? 0} - {elem.props.max ?? 10}</span>
                       </div>
                     )}
-                    {elem.props.format !== 'range' && (
+                    {elem.props.format === 'dropdown' && (
+                      <div className={styles.fieldBox}>
+                        <span className={styles.fieldPlaceholder}>{elem.props.placeholder || 'Choose...'} ({elem.props.cellRef || 'no cell'})</span>
+                      </div>
+                    )}
+                    {elem.props.format !== 'range' && elem.props.format !== 'dropdown' && (
                       <div className={styles.fieldBox}>
                       <span className={styles.fieldPlaceholder}>{elem.props.placeholder} ({elem.props.cellRef || 'no cell'})</span>
                     </div>
@@ -606,6 +611,7 @@ export const ProjectDesigner: React.FC = () => {
                           <select value={selectedElem.props.format || 'number'} onChange={e => updateElementProps(selectedElem.id, { format: e.target.value })} className={styles.propInput}>
                             <option value="number">Number</option>
                             <option value="range">Slider</option>
+                            <option value="dropdown">Dropdown</option>
                           </select>
                       </div>
                     </>
@@ -615,6 +621,7 @@ export const ProjectDesigner: React.FC = () => {
                       <label>Format</label>
                       <select value={selectedElem.props.format || 'number'} onChange={e => updateElementProps(selectedElem.id, { format: e.target.value })} className={styles.propInput}>
                         <option value="number">Number</option>
+                        <option value="text">Text</option>
                         <option value="currency">Currency</option>
                         <option value="percentage">Percentage</option>
                         <option value="bar-chart">Bar Chart</option>
@@ -720,6 +727,12 @@ export const ProjectDesigner: React.FC = () => {
                         className={styles.propInput}/>
                       </div>
                     </>
+                  )}
+                  {selectedElem.type === 'input-field' && selectedElem.props.format === 'dropdown' && (
+                    <div className={styles.propRow}>
+                      <label>Options</label>
+                      <input type="text" value={selectedElem.props.options || ''} onChange={e => updateElementProps(selectedElem.id, { options: e.target.value })} className={styles.propInput} placeholder="Comma-separated" />
+                    </div>
                   )}
                 </div>
               )}
