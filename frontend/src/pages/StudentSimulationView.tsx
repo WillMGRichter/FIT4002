@@ -331,16 +331,22 @@ export const StudentSimulationView: React.FC = () => {
                   {elem.type === 'input-field' && (
                     <div className={styles.fieldElem}>
                       <label>{elem.props.label}</label>
-                      <input
-                        type="number"
-                        className={styles.fieldInput}
-                        placeholder={elem.props.placeholder || 'Enter value...'}
-                        value={inputValues[elem.props.cellRef?.toUpperCase() || ''] ?? ''}
-                        onChange={e => handleInputChange(elem.props.cellRef || '', e.target.value)}
-                        step="any"
-                      />
+                        <input
+                          // spread props of input here equivalent to x = elem.props.x, y = elem.props.y.... etc
+                          {...elem.props}
+                          // override elem.props above if necessary
+                          type={elem.props.format}
+                          className={styles.fieldInput}
+                          value={inputValues[elem.props.cellRef?.toUpperCase() || ''] ?? ''}
+                          onChange={e => handleInputChange(elem.props.cellRef || '', e.target.value)}
+                        />
+                        {elem.props.format === 'range'
+                         && (<span className={styles.sliderValue}>
+                          {inputValues[elem.props.cellRef?.toUpperCase() || ''] ?? elem.props.min ?? 0}
+                         </span>)
+                        }
                     </div>
-                  )}
+                    )}
                   {elem.type === 'output-field' && elem.props.format === 'bar-chart' && (
                     <div className={`${styles.fieldElem} ${styles.outputElem}`}>
                       <label>{elem.props.label}</label>

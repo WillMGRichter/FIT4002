@@ -438,3 +438,12 @@ select.fieldInput {
 .backBtn:hover {
   background: #0f7a04;
 }
+
+.sliderValue {
+  align-self: center;
+  display: inherit;
+  min-width: 32px;
+  text-align: center;
+  font-size: 13px;
+  color: #374151;
+}
