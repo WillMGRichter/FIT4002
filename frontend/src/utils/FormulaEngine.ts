@@ -24,8 +24,9 @@ function parseCellRef(ref: string): { col: number; row: number } | null {
   return { col: colToIndex(match[2].toUpperCase()), row: parseInt(match[4], 10) };
 }
 
-// Expand a range like "A1:C3" into individual cell references (A1, A2, A3, B1, ...).
-export function expandRange(range: string): string[] {
+// Expand a single range like "A1:C3" into individual cell references (A1, A2, A3, B1, ...),
+// or a lone cell ref like "A1" into itself.
+function expandSingleRange(range: string): string[] {
   const parts = range.split(':');
   if (parts.length !== 2) return [range];
   const start = parseCellRef(parts[0]);
@@ -39,6 +40,12 @@ export function expandRange(range: string): string[] {
     }
   }
   return cells;
+}
+
+// Expand a comma-separated list of ranges/cells, e.g. "B1:B3,B5:B7" -> flattened cell refs,
+// so a chart (or SUM/AVERAGE/etc argument) can skip cells by omitting them from the list.
+export function expandRange(range: string): string[] {
+  return range.split(',').flatMap(part => expandSingleRange(part.trim()));
 }
 
 function getCellValue(cellRef: string, cells: CellMap): number {

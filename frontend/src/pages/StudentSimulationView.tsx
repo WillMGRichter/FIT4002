@@ -25,6 +25,9 @@ interface Page {
   elements: CanvasElement[];
 }
 
+// Fixed slice colors for pie charts - not user-configurable yet, cycled in order per slice.
+const PIE_COLORS = ['#4ade80', '#60a5fa', '#f59e0b', '#f87171', '#a78bfa', '#22d3ee', '#fb923c', '#34d399'];
+
 export const StudentSimulationView: React.FC = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -164,9 +167,11 @@ export const StudentSimulationView: React.FC = () => {
   }, [saveInputValues]);
 
   const handleInputChange = (cellRef: string, value: string) => {
-    const num = parseFloat(value);
-    const cellValue = isNaN(num) ? value : num;
-    const newValues = { ...inputValues, [cellRef.toUpperCase()]: cellValue };
+    // Store the raw string as typed rather than eagerly parsing to a number - parseFloat("0.")
+    // collapses to 0 mid-keystroke, which snaps the controlled input back and strips the "."
+    // before the user can type a fractional digit. Downstream formula evaluation already
+    // coerces strings to numbers (see FormulaEngine.getCellValue), so this is safe either way.
+    const newValues = { ...inputValues, [cellRef.toUpperCase()]: value };
     setInputValues(newValues);
     debouncedSave(newValues);
   };
@@ -206,6 +211,50 @@ export const StudentSimulationView: React.FC = () => {
   const currentPage = pages[currentPageIdx];
   const totalPages = pages.length;
 
+  // A bar/pie chart's configured w/h on the designer canvas is just a box size the teacher
+  // picked - it says nothing about how many bars/legend rows the chart actually ends up with.
+  // Without this, extra bars just get squeezed thinner (.barChartCol is flex:1) instead of the
+  // box - and the page - growing to fit them, and pie-chart legend rows get silently clipped
+  // (.pieChartLegend has overflow:hidden). This computes the size the chart actually needs.
+  const MIN_BAR_COL_WIDTH = 48;
+  const MIN_LEGEND_ROW_HEIGHT = 18;
+
+  const getEffectiveSize = useCallback((elem: CanvasElement) => {
+    if (elem.type !== 'output-field') return { w: elem.w, h: elem.h };
+
+    if (elem.props.format === 'bar-chart') {
+      const count = expandRange(elem.props.cellRange || '').length;
+      const yAxisAllowance = elem.props.yAxisTitle ? 24 : 0;
+      const minW = count * MIN_BAR_COL_WIDTH + Math.max(0, count - 1) * 8 + 20 + yAxisAllowance;
+      return { w: Math.max(elem.w, minW), h: elem.h };
+    }
+
+    if (elem.props.format === 'pie-chart') {
+      const count = expandRange(elem.props.cellRange || '').length;
+      const minH = count * MIN_LEGEND_ROW_HEIGHT + 40;
+      return { w: elem.w, h: Math.max(elem.h, minH) };
+    }
+
+    return { w: elem.w, h: elem.h };
+  }, []);
+
+  // Elements keep the raw x/y/w/h they were given on the designer's canvas, which has no size cap.
+  // The slide card below has a default max-width/min-height, so grow it to whatever the furthest
+  // element actually needs - otherwise elements placed near the designer canvas's edges spill
+  // outside the visible page card here.
+  const pageBounds = useMemo(() => {
+    const elements = currentPage?.elements || [];
+    const maxRight = elements.reduce((m, e) => {
+      const { w } = getEffectiveSize(e);
+      return Math.max(m, e.x + w);
+    }, 0);
+    const maxBottom = elements.reduce((m, e) => {
+      const { h } = getEffectiveSize(e);
+      return Math.max(m, e.y + h);
+    }, 0);
+    return { width: maxRight, height: maxBottom };
+  }, [currentPage, getEffectiveSize]);
+
   const formatValue = (value: any, fmt?: string) => {
     if (fmt === 'text') return String(value ?? '');
     const num = typeof value === 'number' ? value : parseFloat(String(value));
@@ -241,6 +290,47 @@ export const StudentSimulationView: React.FC = () => {
           </div>
         </div>
         {props.xAxisTitle && <div className={styles.barChartXAxisTitle}>{props.xAxisTitle}</div>}
+      </div>
+    );
+  };
+
+  const renderPieChart = (props: Record<string, any>) => {
+    const refs = expandRange(props.cellRange || '');
+    const slices = refs.map(ref => {
+      const upperRef = ref.toUpperCase();
+      return { ref: upperRef, value: Math.max(0, Number(computedValues[upperRef]) || 0) };
+    });
+    const total = slices.reduce((sum, s) => sum + s.value, 0);
+
+    let cursor = 0;
+    const gradientStops = slices.map((s, i) => {
+      const pct = total > 0 ? (s.value / total) * 100 : 0;
+      const start = cursor;
+      const end = cursor + pct;
+      cursor = end;
+      return `${PIE_COLORS[i % PIE_COLORS.length]} ${start}% ${end}%`;
+    });
+
+    return (
+      <div className={styles.pieChartWrap}>
+        {props.chartTitle && <div className={styles.barChartTitle}>{props.chartTitle}</div>}
+        <div className={styles.pieChartRow}>
+          <div
+            className={styles.pieChartCircle}
+            style={{ background: total > 0 ? `conic-gradient(${gradientStops.join(', ')})` : '#e5e7eb' }}
+          />
+          <div className={styles.pieChartLegend}>
+            {slices.map((s, i) => (
+              <div key={s.ref} className={styles.pieChartLegendRow}>
+                <span className={styles.pieChartSwatch} style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                <span className={styles.pieChartLegendLabel}>{cellTitles[s.ref] || s.ref}</span>
+                <span className={styles.pieChartLegendValue}>
+                  {formatValue(s.value)}{total > 0 ? ` (${((s.value / total) * 100).toFixed(0)}%)` : ''}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   };
@@ -310,18 +400,20 @@ export const StudentSimulationView: React.FC = () => {
             </div>
           )}
 
-          <div className={styles.slide}>
+          <div className={styles.slide} style={{ width: Math.max(900, pageBounds.width + 48) }}>
             <div className={styles.slideHeader}>
               <h2>{currentPage?.name || 'Untitled'}</h2>
               <span className={styles.slideCounter}>{currentPageIdx + 1} / {totalPages}</span>
             </div>
 
-            <div className={styles.canvas}>
-              {currentPage?.elements.map(elem => (
+            <div className={styles.canvas} style={{ minHeight: Math.max(400, pageBounds.height) }}>
+              {currentPage?.elements.map(elem => {
+                const { w: effectiveW, h: effectiveH } = getEffectiveSize(elem);
+                return (
                 <div
                   key={elem.id}
                   className={styles.canvasElem}
-                  style={{ left: elem.x, top: elem.y, width: elem.w, height: elem.h }}
+                  style={{ left: elem.x, top: elem.y, width: effectiveW, height: effectiveH }}
                 >
                   {elem.type === 'text' && (
                     <div className={styles.textElem} style={{ fontSize: elem.props.fontSize, color: elem.props.color, fontWeight: elem.props.bold ? 700 : 400 }}>
@@ -353,7 +445,13 @@ export const StudentSimulationView: React.FC = () => {
                       {renderBarChart(elem.props)}
                     </div>
                   )}
-                  {elem.type === 'output-field' && elem.props.format !== 'bar-chart' && (
+                  {elem.type === 'output-field' && elem.props.format === 'pie-chart' && (
+                    <div className={`${styles.fieldElem} ${styles.outputElem}`}>
+                      <label>{elem.props.label}</label>
+                      {renderPieChart(elem.props)}
+                    </div>
+                  )}
+                  {elem.type === 'output-field' && elem.props.format !== 'bar-chart' && elem.props.format !== 'pie-chart' && (
                     <div className={`${styles.fieldElem} ${styles.outputElem}`}>
                       <label>{elem.props.label}</label>
                       <div className={styles.outputValue}>
@@ -382,7 +480,8 @@ export const StudentSimulationView: React.FC = () => {
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
