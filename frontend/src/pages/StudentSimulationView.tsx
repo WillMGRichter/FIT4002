@@ -344,7 +344,7 @@ export const StudentSimulationView: React.FC = () => {
         <table className={styles.outputTable}>
           <thead>
             <tr>
-              <th>Cell</th>
+              {props.showCellRef !== false && <th>Cell</th>}
               <th>Label</th>
               <th>Value</th>
             </tr>
@@ -354,7 +354,7 @@ export const StudentSimulationView: React.FC = () => {
               const upperRef = ref.toUpperCase();
               return (
                 <tr key={upperRef}>
-                  <td>{upperRef}</td>
+                  {props.showCellRef !== false && <td>{upperRef}</td>}
                   <td>{cellTitles[upperRef] || upperRef}</td>
                   <td>{formatValue(computedValues[upperRef] ?? 0)}</td>
                 </tr>

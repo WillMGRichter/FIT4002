@@ -514,9 +514,15 @@ export const ProjectDesigner: React.FC = () => {
                   <div className={styles.elemField}>
                     <label>{elem.props.label}</label>
                     <div className={styles.tablePreview}>
-                      <div className={styles.tablePreviewHeader}><span>Cell</span><span>Value</span></div>
+                      <div className={styles.tablePreviewHeader}>
+                        {elem.props.showCellRef !== false && <span>Cell</span>}
+                        <span>Value</span>
+                      </div>
                       {(elem.props.cellRange ? expandRange(elem.props.cellRange).slice(0, 3) : []).map(ref => (
-                        <div key={ref} className={styles.tablePreviewRow}><span>{ref}</span><span>0</span></div>
+                        <div key={ref} className={styles.tablePreviewRow}>
+                          {elem.props.showCellRef !== false && <span>{ref}</span>}
+                          <span>0</span>
+                        </div>
                       ))}
                       {!elem.props.cellRange && <span className={styles.barChartPreviewLabel}>no range</span>}
                     </div>
@@ -729,6 +735,15 @@ export const ProjectDesigner: React.FC = () => {
                           placeholder="e.g. Revenue by Year"
                           value={selectedElem.props.chartTitle || ''}
                           onChange={e => updateElementProps(selectedElem.id, { chartTitle: e.target.value })}
+                          className={styles.propInput}
+                        />
+                      </div>
+                      <div className={styles.propRow}>
+                        <label>Show cell reference</label>
+                        <input
+                          type="checkbox"
+                          checked={selectedElem.props.showCellRef !== false}
+                          onChange={e => updateElementProps(selectedElem.id, { showCellRef: e.target.checked })}
                           className={styles.propInput}
                         />
                       </div>
