@@ -510,7 +510,19 @@ export const ProjectDesigner: React.FC = () => {
                     </div>
                   </div>
                 )}
-                {elem.type === 'output-field' && elem.props.format !== 'bar-chart' && elem.props.format !== 'pie-chart' && (
+                {elem.type === 'output-field' && elem.props.format === 'table' && (
+                  <div className={styles.elemField}>
+                    <label>{elem.props.label}</label>
+                    <div className={styles.tablePreview}>
+                      <div className={styles.tablePreviewHeader}><span>Cell</span><span>Value</span></div>
+                      {(elem.props.cellRange ? expandRange(elem.props.cellRange).slice(0, 3) : []).map(ref => (
+                        <div key={ref} className={styles.tablePreviewRow}><span>{ref}</span><span>0</span></div>
+                      ))}
+                      {!elem.props.cellRange && <span className={styles.barChartPreviewLabel}>no range</span>}
+                    </div>
+                  </div>
+                )}
+                {elem.type === 'output-field' && elem.props.format !== 'bar-chart' && elem.props.format !== 'pie-chart' && elem.props.format !== 'table' && (
                   <div className={styles.elemField}>
                     <label>{elem.props.label}</label>
                     <div className={`${styles.fieldBox} ${styles.fieldOutput}`}>
@@ -585,7 +597,7 @@ export const ProjectDesigner: React.FC = () => {
                     <label>Label</label>
                     <input type="text" value={selectedElem.props.label || ''} onChange={e => updateElementProps(selectedElem.id, { label: e.target.value })} className={styles.propInput} />
                   </div>
-                  {selectedElem.props.format !== 'bar-chart' && selectedElem.props.format !== 'pie-chart' && (
+                  {selectedElem.props.format !== 'bar-chart' && selectedElem.props.format !== 'pie-chart' && selectedElem.props.format !== 'table' && (
                     <div className={styles.propRow}>
                       <label>Cell ref</label>
                       <select value={selectedElem.props.cellRef || ''} onChange={e => updateElementProps(selectedElem.id, { cellRef: e.target.value })} className={styles.propInput}>
@@ -626,6 +638,7 @@ export const ProjectDesigner: React.FC = () => {
                         <option value="percentage">Percentage</option>
                         <option value="bar-chart">Bar Chart</option>
                         <option value="pie-chart">Pie Chart</option>
+                        <option value="table">Table</option>
                       </select>
                     </div>
                   )}
@@ -690,6 +703,30 @@ export const ProjectDesigner: React.FC = () => {
                         <input
                           type="text"
                           placeholder="e.g. Budget by Channel"
+                          value={selectedElem.props.chartTitle || ''}
+                          onChange={e => updateElementProps(selectedElem.id, { chartTitle: e.target.value })}
+                          className={styles.propInput}
+                        />
+                      </div>
+                    </>
+                  )}
+                  {selectedElem.type === 'output-field' && selectedElem.props.format === 'table' && (
+                    <>
+                      <div className={styles.propRow}>
+                        <label>Cell range</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. B4:B8 or B1:B3,B5:B7"
+                          value={selectedElem.props.cellRange || ''}
+                          onChange={e => updateElementProps(selectedElem.id, { cellRange: e.target.value })}
+                          className={styles.propInput}
+                        />
+                      </div>
+                      <div className={styles.propRow}>
+                        <label>Table title</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Revenue by Year"
                           value={selectedElem.props.chartTitle || ''}
                           onChange={e => updateElementProps(selectedElem.id, { chartTitle: e.target.value })}
                           className={styles.propInput}

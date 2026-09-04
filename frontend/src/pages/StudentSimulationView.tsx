@@ -335,6 +335,37 @@ export const StudentSimulationView: React.FC = () => {
     );
   };
 
+  const renderTable = (props: Record<string, any>) => {
+    const refs = expandRange(props.cellRange || '');
+
+    return (
+      <div className={styles.tableWrap}>
+        {props.chartTitle && <div className={styles.barChartTitle}>{props.chartTitle}</div>}
+        <table className={styles.outputTable}>
+          <thead>
+            <tr>
+              <th>Cell</th>
+              <th>Label</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            {refs.map(ref => {
+              const upperRef = ref.toUpperCase();
+              return (
+                <tr key={upperRef}>
+                  <td>{upperRef}</td>
+                  <td>{cellTitles[upperRef] || upperRef}</td>
+                  <td>{formatValue(computedValues[upperRef] ?? 0)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
   if (loading) {
     return <AppShell title="Simulation"><div className={styles.state}>Loading simulation...</div></AppShell>;
   }
@@ -465,7 +496,13 @@ export const StudentSimulationView: React.FC = () => {
                       {renderPieChart(elem.props)}
                     </div>
                   )}
-                  {elem.type === 'output-field' && elem.props.format !== 'bar-chart' && elem.props.format !== 'pie-chart' && (
+                  {elem.type === 'output-field' && elem.props.format === 'table' && (
+                    <div className={`${styles.fieldElem} ${styles.outputElem}`}>
+                      <label>{elem.props.label}</label>
+                      {renderTable(elem.props)}
+                    </div>
+                  )}
+                  {elem.type === 'output-field' && elem.props.format !== 'bar-chart' && elem.props.format !== 'pie-chart' && elem.props.format !== 'table' && (
                     <div className={`${styles.fieldElem} ${styles.outputElem}`}>
                       <label>{elem.props.label}</label>
                       <div className={styles.outputValue}>
