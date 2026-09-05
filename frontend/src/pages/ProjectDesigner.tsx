@@ -767,6 +767,13 @@ export const ProjectDesigner: React.FC = () => {
               <button className="modal__close" onClick={() => setShowExcelPreview(false)}><X size={18} /></button>
             </div>
             <div className={`modal__body ${styles.excelPreviewBody}`}>
+              {project?.excel_data?.multiSheet && (
+                <p className={styles.excelMultiSheetNotice}>
+                  This workbook has {project.excel_data.sheets?.length || 'multiple'} sheets
+                  {project.excel_data.sheets?.length ? ` (${project.excel_data.sheets.join(', ')})` : ''}.
+                  Cell references are shown as <code>Sheet!Cell</code>, and cross-sheet formulas are supported.
+                </p>
+              )}
               <p className={styles.excelPreviewHint}>
                 Showing the cells currently used by this simulation - not the full original spreadsheet layout.
               </p>

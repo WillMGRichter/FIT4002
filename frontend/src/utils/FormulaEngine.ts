@@ -18,14 +18,24 @@ function indexToCol(index: number): string {
   return col;
 }
 
+// A cell reference may be sheet-qualified (multi-sheet workbooks), e.g. "SALES!B3".
+// This splits an optional "SHEET!" prefix from the bare "B3" portion.
+function splitSheetRef(ref: string): { sheet: string; cell: string } {
+  const bangIdx = ref.lastIndexOf('!');
+  if (bangIdx === -1) return { sheet: '', cell: ref };
+  return { sheet: ref.slice(0, bangIdx + 1), cell: ref.slice(bangIdx + 1) };
+}
+
 function parseCellRef(ref: string): { col: number; row: number } | null {
-  const match = ref.match(/^(\$?)([A-Z]+)(\$?)(\d+)$/i);
+  const { cell } = splitSheetRef(ref);
+  const match = cell.match(/^(\$?)([A-Z]+)(\$?)(\d+)$/i);
   if (!match) return null;
   return { col: colToIndex(match[2].toUpperCase()), row: parseInt(match[4], 10) };
 }
 
 // Expand a single range like "A1:C3" into individual cell references (A1, A2, A3, B1, ...),
-// or a lone cell ref like "A1" into itself.
+// or a lone cell ref like "A1" into itself. Preserves a sheet prefix on the range,
+// e.g. "SALES!B4:B7" -> ["SALES!B4", "SALES!B5", ...].
 function expandSingleRange(range: string): string[] {
   const parts = range.split(':');
   if (parts.length !== 2) return [range];
@@ -33,10 +43,13 @@ function expandSingleRange(range: string): string[] {
   const end = parseCellRef(parts[1]);
   if (!start || !end) return [range];
 
+  // Carry the sheet prefix from the start of the range onto each expanded cell.
+  const { sheet } = splitSheetRef(parts[0].trim());
+
   const cells: string[] = [];
   for (let r = Math.min(start.row, end.row); r <= Math.max(start.row, end.row); r++) {
     for (let c = Math.min(start.col, end.col); c <= Math.max(start.col, end.col); c++) {
-      cells.push(`${indexToCol(c)}${r}`);
+      cells.push(`${sheet}${indexToCol(c)}${r}`);
     }
   }
   return cells;
@@ -84,7 +97,8 @@ function evaluateFunction(name: string, range: string, cells: CellMap): number {
 }
 
 const FUNC_REGEX = /(SUM|AVERAGE|AVG|MIN|MAX|COUNT|PRODUCT)\(([^)]+)\)/gi;
-const CELL_REGEX = /\$?[A-Z]+\$?\d+/gi;
+// Matches a cell ref with an optional sheet prefix, e.g. "B3" or "SALES!B3".
+const CELL_REGEX = /(?:[A-Za-z0-9_]+!)?\$?[A-Z]+\$?\d+/gi;
 
 function tokenize(expr: string): string[] {
   const tokens: string[] = [];
@@ -291,8 +305,8 @@ function resolveValue(val: string, cells: CellMap): number | string {
   // Number literal
   const num = parseFloat(val);
   if (!isNaN(num) && val.match(/^-?\d*\.?\d+$/)) return num;
-  // Cell reference
-  if (val.match(/^\$?[A-Z]+\$?\d+$/i)) {
+  // Cell reference (optionally sheet-qualified, e.g. SALES!B3)
+  if (val.match(/^(?:[A-Za-z0-9_]+!)?\$?[A-Z]+\$?\d+$/i)) {
     return getCellRawValue(val.replace(/\$/g, ''), cells);
   }
   return val;
@@ -317,8 +331,8 @@ function evaluateIfBranch(branch: string, cells: CellMap): number | string {
   const num = parseFloat(trimmed);
   if (!isNaN(num) && trimmed.match(/^-?\d*\.?\d+$/)) return num;
 
-  // Cell reference
-  if (trimmed.match(/^\$?[A-Z]+\$?\d+$/i)) {
+  // Cell reference (optionally sheet-qualified, e.g. SALES!B3)
+  if (trimmed.match(/^(?:[A-Za-z0-9_]+!)?\$?[A-Z]+\$?\d+$/i)) {
     return getCellRawValue(trimmed.replace(/\$/g, ''), cells);
   }
 
@@ -332,9 +346,11 @@ export function getAllCellRefs(formula: string): string[] {
   const expr = formula.toString().substring(1);
   const refs: string[] = [];
   let match;
-  const cellRegex = /\$?([A-Z]+)\$?(\d+)/gi;
+  // Capture an optional sheet prefix so dependency keys match the qualified
+  // keys used in the formulas map (e.g. "SALES!B3") for multi-sheet workbooks.
+  const cellRegex = /((?:[A-Za-z0-9_]+!)?)\$?([A-Z]+)\$?(\d+)/gi;
   while ((match = cellRegex.exec(expr)) !== null) {
-    const ref = match[1].toUpperCase() + match[2];
+    const ref = (match[1] || '').toUpperCase() + match[2].toUpperCase() + match[3];
     if (!refs.includes(ref)) refs.push(ref);
   }
   return refs;

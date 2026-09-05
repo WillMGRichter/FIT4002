@@ -22,6 +22,24 @@
   color: #9ca3af;
 }
 
+.excelMultiSheetNotice {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #1e40af;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+}
+
+.excelMultiSheetNotice code {
+  background: #dbeafe;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+
 .excelPreviewTable {
   width: 100%;
   border-collapse: collapse;
