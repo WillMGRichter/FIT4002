@@ -498,6 +498,35 @@
   white-space: nowrap;
 }
 
+.tablePreview {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #86efac;
+  border-radius: 4px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 10px;
+}
+
+.tablePreviewHeader,
+.tablePreviewRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 3px 6px;
+  border-bottom: 1px solid #bbf7d0;
+}
+
+.tablePreviewHeader {
+  background: #dcfce7;
+  font-weight: 700;
+}
+
+.tablePreviewRow:last-child {
+  border-bottom: 0;
+}
+
 .elemImage {
   width: 100%;
   height: 100%;
