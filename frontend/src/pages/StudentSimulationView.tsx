@@ -28,6 +28,38 @@ interface Page {
 // Fixed slice colors for pie charts - not user-configurable yet, cycled in order per slice.
 const PIE_COLORS = ['#4ade80', '#60a5fa', '#f59e0b', '#f87171', '#a78bfa', '#22d3ee', '#fb923c', '#34d399'];
 
+type PerPageInputs = Record<string, Record<string, number | string>>;
+
+/**
+ * Normalise a stored `input_values` blob into the per-page shape
+ * `{ [pageId]: { ref: value } }`.
+ *
+ * Backward compatibility: older saved states used a single flat map
+ * `{ ref: value }` shared across all pages. When we detect that shape (top-level
+ * values are primitives rather than objects), we seed the FIRST page with those
+ * values so existing in-progress attempts aren't lost.
+ */
+function migrateInputValues(stored: any, pages: Page[]): PerPageInputs {
+  if (!stored || typeof stored !== 'object') return {};
+
+  const values = Object.values(stored);
+  const looksPerPage =
+    values.length > 0 && values.every(v => v !== null && typeof v === 'object' && !Array.isArray(v));
+
+  if (looksPerPage) {
+    // Already the per-page shape - keep only entries that are objects.
+    const result: PerPageInputs = {};
+    for (const [pageId, refMap] of Object.entries(stored)) {
+      if (refMap && typeof refMap === 'object') result[pageId] = refMap as Record<string, number | string>;
+    }
+    return result;
+  }
+
+  // Legacy flat shape: assign to the first page.
+  const firstPageId = pages[0]?.id;
+  return firstPageId ? { [firstPageId]: stored as Record<string, number | string> } : {};
+}
+
 export const StudentSimulationView: React.FC = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -37,7 +69,9 @@ export const StudentSimulationView: React.FC = () => {
 
   const [pages, setPages] = useState<Page[]>([]);
   const [currentPageIdx, setCurrentPageIdx] = useState(0);
-  const [inputValues, setInputValues] = useState<Record<string, number | string>>({});
+  // Fully-isolated per-page values: each page has its own copy of cell inputs,
+  // keyed by page id. A change on one page never affects another page's cells.
+  const [inputValuesByPage, setInputValuesByPage] = useState<Record<string, Record<string, number | string>>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -47,6 +81,13 @@ export const StudentSimulationView: React.FC = () => {
   const stateIdRef = useRef<string | null>(null);
 
   const autoSaveTimer = useRef<number | null>(null);
+
+  const currentPageId = pages[currentPageIdx]?.id || '';
+  // The current page's own input values (its isolated copy of the shared cells).
+  const inputValues = useMemo(
+    () => inputValuesByPage[currentPageId] || {},
+    [inputValuesByPage, currentPageId]
+  );
 
   // Extract formula strings from the project's excel_data for client-side recomputation
   const formulas = useMemo(() => {
@@ -83,7 +124,9 @@ export const StudentSimulationView: React.FC = () => {
     return titles;
   }, [project]);
 
-  // Merge default cells with student input, then compute all formula outputs via topological sort
+  // Merge default cells with THIS PAGE's inputs, then compute all formula outputs.
+  // Each page recomputes independently from the shared formulas/defaults, so pages
+  // that reference the same cell do not interfere with one another.
   const computedValues = useMemo(() => {
     const allCells: CellMap = { ...defaultCells, ...inputValues };
     return recomputeAll(allCells, formulas);
@@ -123,7 +166,7 @@ export const StudentSimulationView: React.FC = () => {
           stateIdRef.current = state.id;
           setAttemptInfo({ attemptNumber: state.attempt_number, maxAttempts: 0 });
           if (state.input_values && Object.keys(state.input_values).length > 0) {
-            setInputValues(state.input_values);
+            setInputValuesByPage(migrateInputValues(state.input_values, pgs));
           }
           if (state.current_page_id && pgs.length > 0) {
             const idx = pgs.findIndex((p: Page) => p.id === state.current_page_id);
@@ -149,8 +192,8 @@ export const StudentSimulationView: React.FC = () => {
     load();
   }, [projectId, token]);
 
-  // Persist current input values to the server (debounced) for resume across sessions
-  const saveInputValues = useCallback(async (values: Record<string, number | string>) => {
+  // Persist the full per-page input values to the server (debounced) for resume across sessions
+  const saveInputValues = useCallback(async (values: Record<string, Record<string, number | string>>) => {
     if (!stateIdRef.current || !projectId || !token) return;
     try {
       await fetch(`${API_URL}/student-state/${projectId}/state/inputs`, {
@@ -161,7 +204,7 @@ export const StudentSimulationView: React.FC = () => {
     } catch { /* silent */ }
   }, [projectId, token]);
 
-  const debouncedSave = useCallback((values: Record<string, number | string>) => {
+  const debouncedSave = useCallback((values: Record<string, Record<string, number | string>>) => {
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = window.setTimeout(() => saveInputValues(values), 1000);
   }, [saveInputValues]);
@@ -171,9 +214,16 @@ export const StudentSimulationView: React.FC = () => {
     // collapses to 0 mid-keystroke, which snaps the controlled input back and strips the "."
     // before the user can type a fractional digit. Downstream formula evaluation already
     // coerces strings to numbers (see FormulaEngine.getCellValue), so this is safe either way.
-    const newValues = { ...inputValues, [cellRef.toUpperCase()]: value };
-    setInputValues(newValues);
-    debouncedSave(newValues);
+    // Writes only into the CURRENT page's isolated value map.
+    if (!currentPageId) return;
+    setInputValuesByPage(prev => {
+      const next = {
+        ...prev,
+        [currentPageId]: { ...(prev[currentPageId] || {}), [cellRef.toUpperCase()]: value },
+      };
+      debouncedSave(next);
+      return next;
+    });
   };
 
   const handlePageChange = async (newIdx: number) => {
@@ -193,11 +243,11 @@ export const StudentSimulationView: React.FC = () => {
     if (!stateIdRef.current || !projectId || !token) return;
     setSubmitting(true);
     try {
-      await saveInputValues(inputValues);
+      await saveInputValues(inputValuesByPage);
       const res = await fetch(`${API_URL}/student-state/${projectId}/state/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ stateId: stateIdRef.current, inputValues }),
+        body: JSON.stringify({ stateId: stateIdRef.current, inputValues: inputValuesByPage }),
       });
       if (!res.ok) throw new Error('Failed to submit');
       setSubmitted(true);
