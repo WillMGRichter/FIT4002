@@ -18,6 +18,15 @@ export interface InputCell {
   ref: string;
   value: any;
   title: string | null;
+  /**
+   * True when this input is actually a FORMULA cell being exposed as an
+   * overridable input (it has a formula, but another formula depends on it).
+   * A student-entered value overrides the formula; changing any upstream input
+   * auto-reverts the override. Plain literal inputs have this false/undefined.
+   */
+  overridable?: boolean;
+  /** For overridable cells, the formula (normalised, with leading '='). */
+  formula?: string;
 }
 
 export interface OutputCell {
@@ -318,6 +327,22 @@ export function buildExcelData(buffer: Buffer): ExcelData {
   }
   const relevantInputCells = inputCells.filter(ic => referencedCells.has(ic.ref));
 
+  // Also expose FORMULA cells as OVERRIDABLE inputs when another formula depends
+  // on them (i.e. they feed downstream calculations). A student can override such
+  // a cell's computed value; the frontend reverts the override if an upstream
+  // input changes. Terminal outputs (referenced by nothing) are NOT overridable.
+  const overridableInputCells: InputCell[] = outputCells
+    .filter(oc => referencedCells.has(oc.ref))
+    .map(oc => ({
+      ref: oc.ref,
+      value: oc.value,
+      title: oc.title,
+      overridable: true,
+      formula: oc.formula,
+    }));
+
+  const allInputCells = [...relevantInputCells, ...overridableInputCells];
+
   // Build minimal cells map (inputs referenced by formulas + outputs).
   const filteredCells: Record<string, any> = {};
   for (const ic of relevantInputCells) {
@@ -331,7 +356,7 @@ export function buildExcelData(buffer: Buffer): ExcelData {
     cells: filteredCells,
     sheets: sheetNames,
     multiSheet,
-    inputCells: relevantInputCells,
+    inputCells: allInputCells,
     outputCells,
   };
 }

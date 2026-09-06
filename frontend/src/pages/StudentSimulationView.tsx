@@ -5,7 +5,7 @@ import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 import { addRecent } from '../utils/projectStorage';
-import { recomputeAll, expandRange, type CellMap } from '../utils/FormulaEngine';
+import { recomputeAll, expandRange, getTransitiveDependencies, type CellMap } from '../utils/FormulaEngine';
 import styles from './StudentSimulationView.module.css';
 
 interface CanvasElement {
@@ -129,7 +129,14 @@ export const StudentSimulationView: React.FC = () => {
   // that reference the same cell do not interfere with one another.
   const computedValues = useMemo(() => {
     const allCells: CellMap = { ...defaultCells, ...inputValues };
-    return recomputeAll(allCells, formulas);
+    // An override is any current-page input whose ref also has a formula: the
+    // student is pinning a computed cell to a manual value. recomputeAll keeps
+    // that value instead of evaluating its formula.
+    const overrides = new Set<string>();
+    for (const ref of Object.keys(inputValues)) {
+      if (formulas[ref.toUpperCase()]) overrides.add(ref.toUpperCase());
+    }
+    return recomputeAll(allCells, formulas, overrides);
   }, [inputValues, formulas, defaultCells]);
 
   useEffect(() => {
@@ -216,11 +223,37 @@ export const StudentSimulationView: React.FC = () => {
     // coerces strings to numbers (see FormulaEngine.getCellValue), so this is safe either way.
     // Writes only into the CURRENT page's isolated value map.
     if (!currentPageId) return;
+    const upper = cellRef.toUpperCase();
     setInputValuesByPage(prev => {
-      const next = {
-        ...prev,
-        [currentPageId]: { ...(prev[currentPageId] || {}), [cellRef.toUpperCase()]: value },
-      };
+      const pageVals = { ...(prev[currentPageId] || {}), [upper]: value };
+
+      // Auto-revert overrides (mitigation): if the student changed a NON-formula
+      // input, drop any active formula-cell override whose value depends on the
+      // changed cell - keeping such an override would show a value inconsistent
+      // with its own formula. The overridden cell then resumes computing normally.
+      if (!formulas[upper]) {
+        for (const ref of Object.keys(pageVals)) {
+          if (ref === upper) continue;
+          if (formulas[ref] && getTransitiveDependencies(ref, formulas).has(upper)) {
+            delete pageVals[ref];
+          }
+        }
+      }
+
+      const next = { ...prev, [currentPageId]: pageVals };
+      debouncedSave(next);
+      return next;
+    });
+  };
+
+  /** Clear a formula-cell override so it resumes computing from its formula. */
+  const clearOverride = (cellRef: string) => {
+    if (!currentPageId) return;
+    const upper = cellRef.toUpperCase();
+    setInputValuesByPage(prev => {
+      const pageVals = { ...(prev[currentPageId] || {}) };
+      delete pageVals[upper];
+      const next = { ...prev, [currentPageId]: pageVals };
       debouncedSave(next);
       return next;
     });
@@ -540,6 +573,24 @@ export const StudentSimulationView: React.FC = () => {
                          </span> 
                         )
                         }
+                        {(() => {
+                          const ref = elem.props.cellRef?.toUpperCase() || '';
+                          const isFormulaCell = !!formulas[ref];
+                          const isOverridden = isFormulaCell && inputValues[ref] !== undefined && inputValues[ref] !== '';
+                          if (!isOverridden) return null;
+                          return (
+                            <div className={styles.overrideNotice}>
+                              <span className={styles.overrideBadge}>Manual override</span>
+                              <button
+                                type="button"
+                                className={styles.overrideReset}
+                                onClick={() => clearOverride(elem.props.cellRef || '')}
+                              >
+                                Reset to formula
+                              </button>
+                            </div>
+                          );
+                        })()}
                     </div>
                     )}
                   {elem.type === 'output-field' && elem.props.format === 'bar-chart' && (

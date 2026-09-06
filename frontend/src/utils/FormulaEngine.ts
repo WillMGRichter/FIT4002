@@ -426,7 +426,8 @@ export function getCellDependencies(formulas: Record<string, string>): Record<st
 // The cells map starts with input values; each formula is evaluated against the progressively filled map.
 export function recomputeAll(
   cells: CellMap,
-  formulas: Record<string, string>
+  formulas: Record<string, string>,
+  overrides?: Set<string>
 ): CellMap {
   const result: CellMap = { ...cells };
 
@@ -435,12 +436,38 @@ export function recomputeAll(
 
   for (const cell of sorted) {
     const formula = formulas[cell];
-    if (formula) {
+    // Skip a cell whose formula has been manually overridden by the student:
+    // keep the entered value (already present in `result` via the merged cells)
+    // and let its dependents recompute from it. This is the "override" input
+    // semantics for formula cells.
+    if (formula && !(overrides && overrides.has(cell))) {
       result[cell] = evaluateFormula(formula, result);
     }
   }
 
   return result;
+}
+
+/**
+ * Return the transitive set of cell refs that `target` depends on (directly or
+ * indirectly), based on the formula dependency graph. Used to decide when a
+ * formula-cell override should be auto-cleared: if the student changes any cell
+ * in this set, the override no longer reflects a consistent scenario.
+ */
+export function getTransitiveDependencies(
+  target: string,
+  formulas: Record<string, string>
+): Set<string> {
+  const deps = getCellDependencies(formulas);
+  const seen = new Set<string>();
+  const stack = [...(deps[target] || [])];
+  while (stack.length) {
+    const ref = stack.pop()!;
+    if (seen.has(ref)) continue;
+    seen.add(ref);
+    for (const d of (deps[ref] || [])) stack.push(d);
+  }
+  return seen;
 }
 
 // Topological sort so formulas are evaluated after all their dependencies.
