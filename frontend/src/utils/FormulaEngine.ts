@@ -105,7 +105,19 @@ function tokenize(expr: string): string[] {
   let buffer = '';
   for (let i = 0; i < expr.length; i++) {
     const ch = expr[i];
-    if ('+-*/()'.includes(ch)) {
+    // A '+'/'-' that is part of an exponent (e.g. the "+21" in "4.8e+21") must NOT be
+    // treated as an operator. JS stringifies numbers >= 1e21 (and very small ones) in
+    // exponential form, and those values flow back into formulas; splitting on the
+    // exponent sign would turn "4.8e+21" into 4.8 + 21 = 25.8. Detect the pattern
+    // <digit> e/E <this +/-> and keep it in the buffer as part of the number.
+    const prev = buffer.length ? buffer[buffer.length - 1] : '';
+    const isExponentSign =
+      (ch === '+' || ch === '-') &&
+      (prev === 'e' || prev === 'E') &&
+      buffer.length >= 2 &&
+      /\d/.test(buffer[buffer.length - 2]);
+
+    if ('+-*/()'.includes(ch) && !isExponentSign) {
       if (buffer.trim()) tokens.push(buffer.trim());
       tokens.push(ch);
       buffer = '';
