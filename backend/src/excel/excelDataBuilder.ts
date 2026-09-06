@@ -85,20 +85,40 @@ function qualify(sheetName: string, localRef: string, multiSheet: boolean): stri
  * Rewrite a formula's cell references into fully-qualified storage keys.
  *  - Explicit cross-sheet refs (`Sales!B3` or `'My Sheet'!B3`) are qualified using their named sheet.
  *  - Bare refs (`B3`) are qualified using `ownerSheet`.
+ *  - Ranges (`Sales!C4:C9`) qualify the end with the SAME sheet as the start,
+ *    so `Projections!C4:C9` becomes `PROJECTIONS!C4:PROJECTIONS!C9` (not the owner sheet).
  * For single-sheet workbooks, refs are left bare (upper-cased) as before.
  */
 function normaliseFormula(formula: string, ownerSheet: string, multiSheet: boolean): string {
   if (!multiSheet) return formula;
 
-  // Match optional sheet prefix (quoted or bare) followed by a cell ref.
-  const qualifiedRefRegex = new RegExp(
-    "(?:(?:'([^']+)'|([A-Za-z_][A-Za-z0-9_.]*))\\s*!\\s*)?(\\$?[A-Za-z]+\\$?\\d+)",
+  const SHEET_PREFIX = "(?:'[^']+'|[A-Za-z_][A-Za-z0-9_.]*)\\s*!\\s*";
+  const CELL = "\\$?[A-Za-z]+\\$?\\d+";
+
+  const qualifyRef = (raw: string, fallbackSheet: string): string => {
+    const parsed = new RegExp(`^(?:(?:'([^']+)'|([A-Za-z_][A-Za-z0-9_.]*))\\s*!\\s*)?(${CELL})$`).exec(raw.trim());
+    if (!parsed) return raw;
+    const sheet = parsed[1] || parsed[2] || fallbackSheet;
+    return `${sheetKey(sheet)}!${parsed[3].toUpperCase()}`;
+  };
+
+  // Single scan: match either a RANGE (start:end) or a standalone REF, each with
+  // an optional sheet prefix. Ranges are matched first (alternation order) so a
+  // range is never split into two standalone refs.
+  const token = new RegExp(
+    `((?:${SHEET_PREFIX})?${CELL})\\s*:\\s*((?:${SHEET_PREFIX})?${CELL})` + // 1=start 2=end (range)
+      `|((?:${SHEET_PREFIX})?${CELL})`,                                      // 3=standalone ref
     'g'
   );
 
-  return formula.replace(qualifiedRefRegex, (_whole, quotedSheet, bareSheet, cellRef) => {
-    const sheet = quotedSheet || bareSheet || ownerSheet;
-    return `${sheetKey(sheet)}!${cellRef.toUpperCase()}`;
+  return formula.replace(token, (_whole, startTok, endTok, single) => {
+    if (single !== undefined) {
+      return qualifyRef(single, ownerSheet);
+    }
+    const startQualified = qualifyRef(startTok, ownerSheet);
+    const startSheet = startQualified.split('!')[0];
+    const endQualified = qualifyRef(endTok, startSheet);
+    return `${startQualified}:${endQualified}`;
   });
 }
 
