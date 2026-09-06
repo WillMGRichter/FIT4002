@@ -465,20 +465,28 @@ export const StudentSimulationView: React.FC = () => {
                               <option key={opt} value={opt}>{opt}</option>
                             ))}
                           </select>
+                        ) : elem.props.format === 'range' ? (
+                          <input
+                            type="range"
+                            className={styles.fieldInput}
+                            min={elem.props.min ?? 0}
+                            max={elem.props.max ?? 10}
+                            step={elem.props.stepSize ?? 1}
+                            value={inputValues[elem.props.cellRef?.toUpperCase() || ''] ?? (Number(elem.props.min ?? 0) + Number(elem.props.max ?? 10)) / 2}
+                            onChange={e => handleInputChange(elem.props.cellRef || '', e.target.value)}
+                          />
                         ) : (
                           <input
-                            // spread props of input here equivalent to x = elem.props.x, y = elem.props.y.... etc
-                            {...elem.props}
-                            // override elem.props above if necessary
-                            type={elem.props.format}
+                            type={elem.props.format || 'number'}
                             className={styles.fieldInput}
+                            placeholder={elem.props.placeholder}
                             value={inputValues[elem.props.cellRef?.toUpperCase() || ''] ?? ''}
                             onChange={e => handleInputChange(elem.props.cellRef || '', e.target.value)}
                           />
                         )}
                         {elem.props.format === 'range'
                          && (<span className={styles.sliderValue}>
-                          {inputValues[elem.props.cellRef?.toUpperCase() || ''] ?? (elem.props.min + elem.props.max)/2 }
+                          {inputValues[elem.props.cellRef?.toUpperCase() || ''] ?? (Number(elem.props.min ?? 0) + Number(elem.props.max ?? 10)) / 2 }
                          </span> 
                         )
                         }

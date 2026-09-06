@@ -756,7 +756,7 @@ export const ProjectDesigner: React.FC = () => {
                         <input 
                         type="text"
                         placeholder='1'
-                        value={selectedElem.props.stepSize || '1'}
+                        value={selectedElem.props.stepSize ?? ''}
                         onChange={e => updateElementProps(selectedElem.id, { stepSize: e.target.value})}
                         className={styles.propInput}/>
                       </div>
@@ -765,7 +765,7 @@ export const ProjectDesigner: React.FC = () => {
                         <input 
                         type="text"
                         placeholder='0'
-                        value={selectedElem.props.min || '0'}
+                        value={selectedElem.props.min ?? ''}
                         onChange={e => updateElementProps(selectedElem.id, { min: e.target.value})}
                         className={styles.propInput}/>
                       </div>
@@ -774,7 +774,7 @@ export const ProjectDesigner: React.FC = () => {
                         <input 
                         type="text"
                         placeholder='10'
-                        value={selectedElem.props.max || '10'}
+                        value={selectedElem.props.max ?? ''}
                         onChange={e => updateElementProps(selectedElem.id, { max: e.target.value})}
                         className={styles.propInput}/>
                       </div>

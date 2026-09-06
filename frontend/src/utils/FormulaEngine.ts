@@ -181,9 +181,25 @@ export function evaluateFormula(formula: string, cells: CellMap): number | strin
 
   let expr = formula.toString().substring(1);
 
-  // Handle IF(condition, trueVal, falseVal) - supports nested IF
-  const ifResult = tryEvaluateIf(expr, cells);
-  if (ifResult !== null) return ifResult;
+  // Handle a formula that is ENTIRELY a single IF(...) (may return text, e.g. "Profit").
+  // Only take this path when nothing follows the IF's closing paren; otherwise the IF is
+  // just one operand of a larger expression (e.g. "IF(...)+2") and is handled below.
+  if (expr.trim().toUpperCase().startsWith('IF(')) {
+    const inner = extractParenContent(expr.trim(), 2);
+    if (inner !== null) {
+      const openIdx = expr.trim().indexOf('(');
+      const spanLen = openIdx + 1 + inner.length + 1; // through the closing ')'
+      const isWholeExpr = expr.trim().length === spanLen;
+      if (isWholeExpr) {
+        const ifResult = tryEvaluateIf(expr, cells);
+        if (ifResult !== null) return ifResult;
+      }
+    }
+  }
+
+  // Resolve any IF(...) that appears as a SUB-expression (e.g. "B5*IF(B7=1,0.9,1)")
+  // by evaluating each embedded IF to its value before the arithmetic pipeline runs.
+  expr = replaceEmbeddedIfs(expr, cells);
 
   expr = expr.replace(FUNC_REGEX, (_match, name: string, range: string) => {
     return String(evaluateFunction(name, range.trim(), cells));
@@ -196,6 +212,36 @@ export function evaluateFormula(formula: string, cells: CellMap): number | strin
 
   const tokens = tokenize(expr);
   return evaluateExpression(tokens, cells);
+}
+
+// Find each IF(...) sub-expression, evaluate it, and splice its result back into
+// the expression. Handles nested IFs (via tryEvaluateIf's recursion into the chosen
+// branch) and multiple independent IFs in one formula. Numeric results are inserted
+// bare so the arithmetic pipeline can consume them; string results are quoted.
+function replaceEmbeddedIfs(expr: string, cells: CellMap): string {
+  let result = expr;
+  // Guard against pathological input; each pass resolves at least one IF.
+  for (let guard = 0; guard < 100; guard++) {
+    // Match "IF(" only when IF is immediately followed by "(" (excludes IFERROR etc.)
+    const match = /\bIF\s*\(/i.exec(result);
+    if (!match) break;
+
+    const start = match.index;
+    const content = extractParenContent(result, start + 1);
+    if (content === null) break; // unbalanced; leave as-is
+
+    // Reconstruct the full "IF(...)" span to know how much to replace.
+    const openIdx = result.indexOf('(', start);
+    const closeIdx = openIdx + 1 + content.length; // ')' position
+    const ifSpan = result.substring(start, closeIdx + 1);
+
+    const value = tryEvaluateIf(ifSpan, cells);
+    if (value === null) break; // not a valid IF; avoid infinite loop
+
+    const inserted = typeof value === 'number' ? String(value) : `"${value}"`;
+    result = result.substring(0, start) + inserted + result.substring(closeIdx + 1);
+  }
+  return result;
 }
 
 // Parse IF(condition, trueValue, falseValue) with support for nested IFs and string literals
