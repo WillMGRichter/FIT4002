@@ -1,0 +1,7 @@
+# macOS metadata
+.DS_Store
+
+# Excel/Office temporary lock files
+~$*.xlsx
+~$*.xls
+~$*.docx
