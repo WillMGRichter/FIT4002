@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Bell,
@@ -32,6 +32,8 @@ interface AppShellProps {
   compactSidebar?: boolean;
 }
 
+const STORAGE_EVENT = 'projectStorage:changed';
+
 export const AppShell: React.FC<AppShellProps> = ({
   title,
   activeItem = 'home',
@@ -47,8 +49,15 @@ export const AppShell: React.FC<AppShellProps> = ({
   const [showSearch, setShowSearch] = useState(!!searchQuery);
   const [starredOpen, setStarredOpen] = useState(true);
   const [recentOpen, setRecentOpen] = useState(true);
+  const [, setStorageVersion] = useState(0);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+
+  useEffect(() => {
+    const onStorage = () => setStorageVersion(v => v + 1);
+    window.addEventListener(STORAGE_EVENT, onStorage);
+    return () => window.removeEventListener(STORAGE_EVENT, onStorage);
+  }, []);
 
   const handleLogout = () => {
     logout();
