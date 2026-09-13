@@ -605,7 +605,16 @@ export const ProjectDesigner: React.FC = () => {
                   {selectedElem.props.format !== 'bar-chart' && selectedElem.props.format !== 'pie-chart' && selectedElem.props.format !== 'table' && (
                     <div className={styles.propRow}>
                       <label>Cell ref</label>
-                      <select value={selectedElem.props.cellRef || ''} onChange={e => updateElementProps(selectedElem.id, { cellRef: e.target.value })} className={styles.propInput}>
+                      <select value={selectedElem.props.cellRef || ''} onChange={e => {
+                        const ref = e.target.value;
+                        const cell = selectedElem.type === 'input-field'
+                          ? inputCells.find((c: any) => c.ref === ref)
+                          : outputCells.find((c: any) => c.ref === ref);
+                        const updates: Record<string, any> = { cellRef: ref };
+                        const isDefaultLabel = selectedElem.props.label === 'Input' || selectedElem.props.label === 'Output';
+                        if (cell?.title && isDefaultLabel) updates.label = cell.title;
+                        updateElementProps(selectedElem.id, updates);
+                      }} className={styles.propInput}>
                         <option value="">-- Select cell --</option>
                         {selectedElem.type === 'input-field' && inputCells.map((c: any) => (
                           <option key={c.ref} value={c.ref}>{c.ref} | {c.title || c.ref}{c.value !== undefined && c.value !== null ? ` | ${c.value}` : ''}</option>
