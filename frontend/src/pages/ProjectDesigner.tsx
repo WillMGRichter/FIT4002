@@ -31,8 +31,7 @@ interface Page {
   elements: CanvasElement[];
 }
 
-let elemId = 0;
-const newElemId = () => `elem_${++elemId}`;
+const newElemId = () => `elem_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 
 const ELEMENT_PALETTE: { type: ElementType; label: string; icon: React.ReactNode; defaultProps: Record<string, any> }[] = [
   { type: 'text', label: 'Text', icon: <Type size={20} />, defaultProps: { content: 'Text', fontSize: 16, color: '#111827', bold: false } },
