@@ -189,6 +189,9 @@ export const AppShell: React.FC<AppShellProps> = ({
         <header className="app-shell__topbar">
           <div className="app-shell__topbar-title">{title}</div>
           <div className="app-shell__topbar-actions">
+            <button className="app-shell__icon-button" title="Help">
+              <HelpCircle size={25} />
+            </button>
             <button className="app-shell__icon-button" title="Settings">
               <Settings size={25} />
             </button>
@@ -200,10 +203,6 @@ export const AppShell: React.FC<AppShellProps> = ({
         </header>
 
         <main className="app-shell__content">{children}</main>
-
-        <button className="app-shell__help" title="Help">
-          <HelpCircle size={34} />
-        </button>
       </section>
     </div>
   );
