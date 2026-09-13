@@ -20,6 +20,7 @@
   color: #151515;
   cursor: pointer;
   text-align: left;
+  font: inherit;
   transition: border-color 0.16s ease, box-shadow 0.16s ease;
 }
 

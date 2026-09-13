@@ -188,10 +188,18 @@ export const DashboardPage: React.FC = () => {
               {filteredProjects.map((project, index) => {
                 const count = isFallback ? (mockStudentCounts[project.id] ?? 0) : (studentCounts[project.id] ?? 0);
                 return (
-                  <button
+                  <div
                     key={project.id}
                     className="simulation-card"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleProjectClick(project.id, project.name)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleProjectClick(project.id, project.name);
+                      }
+                    }}
                   >
                     <div className="simulation-card__top">
                       <ProjectBadge color={badgeColors[index % badgeColors.length]} />
@@ -229,7 +237,7 @@ export const DashboardPage: React.FC = () => {
                     <div className="simulation-card__members">
                       {count} {count === 1 ? 'student' : 'students'}
                     </div>
-                  </button>
+                  </div>
                 );
               })}
 
