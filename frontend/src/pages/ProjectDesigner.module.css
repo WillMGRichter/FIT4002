@@ -172,8 +172,9 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
   width: calc(100% - 16px);
-  margin: 8px auto 0;
+  margin: 8px 8px 12px;
   padding: 8px;
   border: 1px dashed #d1d5db;
   border-radius: 6px;

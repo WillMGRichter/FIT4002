@@ -429,8 +429,8 @@ export const ProjectDesigner: React.FC = () => {
                     <button className={styles.pageDeleteBtn} onClick={e => { e.stopPropagation(); deletePage(idx); }} title="Delete page"><Trash2 size={13} /></button>
                   </div>
                 ))}
+                <button className={styles.addPageBtn} onClick={addPage}><Plus size={14} /> Add Page</button>
               </div>
-              <button className={styles.addPageBtn} onClick={addPage}><Plus size={14} /> Add Page</button>
             </>
           )}
         </aside>
