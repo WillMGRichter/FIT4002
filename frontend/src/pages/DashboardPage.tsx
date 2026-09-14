@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AppShell, ProjectBadge, StarButton } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
-import { addRecent, getStarredProjects, toggleStar } from '../utils/projectStorage';
+import { addRecent, getStarredProjects, toggleStar, pruneStoredProjects, removeProject } from '../utils/projectStorage';
 import './Dashboard.css';
 
 interface Project {
@@ -16,22 +16,6 @@ interface Project {
 }
 
 const badgeColors = ['#6f98f6', '#ff4d1f', '#ffc400', '#ffc400', '#6f98f6', '#ffc400', '#9b55f4', '#9b55f4'];
-
-// Fallback mock projects shown only on API error (not empty results)
-const mockProjects: Project[] = [
-  { id: '1', name: 'Simulation 1', description: 'This is a test description for Simulation 1', created_at: new Date().toISOString(), visibility: 'Public' },
-  { id: '2', name: 'Simulation 2', description: 'This is a test description for Simulation 2. This will be brief', created_at: new Date().toISOString(), visibility: 'Public' },
-  { id: '3', name: 'Simulation 3', description: 'This is a test description for Simulation 3. This will be a bit longer and this will be cut off around here ...', created_at: new Date().toISOString(), visibility: 'Public' },
-  { id: '4', name: 'Simulation 4', description: 'This is a test description for Simulation 4. This will be a bit longer and this will be cut off around here ...', created_at: new Date().toISOString(), visibility: 'Public' },
-  { id: '5', name: 'Cafe Income Simulation', description: 'This is a test description for Cafe Income Simulation', created_at: new Date().toISOString(), visibility: 'Public' },
-  { id: '6', name: 'Monash Business Simulation', description: 'Sed ut perspiciatis unde omnis iste natus error', created_at: new Date().toISOString(), visibility: 'Public' },
-  { id: '7', name: 'Test Simulation', description: '', created_at: new Date().toISOString(), visibility: 'Public' },
-  { id: '8', name: 'Test2 Simulation', description: '', created_at: new Date().toISOString(), visibility: 'Public' },
-];
-
-const mockStudentCounts: Record<string, number> = {
-  '1': 5, '2': 3, '3': 1, '4': 1, '5': 5, '6': 1, '7': 2, '8': 2,
-};
 
 export const DashboardPage: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -78,6 +62,7 @@ export const DashboardPage: React.FC = () => {
       if (!response.ok) throw new Error('Failed to fetch projects');
       const data = await response.json();
       setProjects(data);
+      pruneStoredProjects(new Set(data.map((p: Project) => p.id)));
 
       const counts: Record<string, number> = {};
       await Promise.all(data.map(async (p: Project) => {
@@ -107,8 +92,7 @@ export const DashboardPage: React.FC = () => {
     fetchProjects();
   }, [token, navigate, fetchProjects]);
 
-  const isFallback = error && projects.length === 0;
-  const visibleProjects = isFallback ? mockProjects : projects;
+  const visibleProjects = projects;
 
   const filteredProjects = useMemo(() => {
     if (!searchQuery) return visibleProjects;
@@ -153,6 +137,7 @@ export const DashboardPage: React.FC = () => {
       });
       if (!res.ok) throw new Error('Failed to delete');
       setDeleteProjectId(null);
+      removeProject(deleteProjectId);
       fetchProjects();
     } catch (err: any) {
       alert(err.message);
@@ -186,12 +171,20 @@ export const DashboardPage: React.FC = () => {
               )}
 
               {filteredProjects.map((project, index) => {
-                const count = isFallback ? (mockStudentCounts[project.id] ?? 0) : (studentCounts[project.id] ?? 0);
+                const count = studentCounts[project.id] ?? 0;
                 return (
-                  <button
+                  <div
                     key={project.id}
                     className="simulation-card"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleProjectClick(project.id, project.name)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleProjectClick(project.id, project.name);
+                      }
+                    }}
                   >
                     <div className="simulation-card__top">
                       <ProjectBadge color={badgeColors[index % badgeColors.length]} />
@@ -229,7 +222,7 @@ export const DashboardPage: React.FC = () => {
                     <div className="simulation-card__members">
                       {count} {count === 1 ? 'student' : 'students'}
                     </div>
-                  </button>
+                  </div>
                 );
               })}
 

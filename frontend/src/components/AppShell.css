@@ -276,21 +276,6 @@
   overflow: auto;
 }
 
-.app-shell__help {
-  position: fixed;
-  right: 36px;
-  bottom: 30px;
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
-  border: 0;
-  background: transparent;
-  color: var(--shell-text);
-  cursor: pointer;
-  padding: 0;
-}
-
 .project-badge {
   width: 40px;
   height: 40px;

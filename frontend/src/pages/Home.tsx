@@ -30,7 +30,7 @@ export const Home: React.FC = () => {
 
         <div className={styles.heroActions}>
           <button onClick={() => navigate('/signup')} className={styles.btnPrimary}>
-            Start Free Trial
+            Get Started Now
           </button>
           <button onClick={() => navigate('/login')} className={styles.btnSecondary}>
             Sign In

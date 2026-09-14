@@ -75,6 +75,7 @@
   justify-content: space-between;
   padding: 14px 16px;
   border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
 }
 
 .pageSidebarHeader h3 {
@@ -171,8 +172,9 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
   width: calc(100% - 16px);
-  margin: 8px auto 0;
+  margin: 8px 8px 12px;
   padding: 8px;
   border: 1px dashed #d1d5db;
   border-radius: 6px;
@@ -533,8 +535,45 @@
   font-size: 13px;
   font-weight: 600;
   color: #111827;
-  border-bottom: 1px solid #e5e7eb;
   letter-spacing: 0.01em;
+  flex-shrink: 0;
+}
+
+.propsTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.panelToggleBtn {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 0;
+}
+
+.panelToggleBtn:hover {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.panelCollapsed {
+  width: 36px;
+  overflow: hidden;
+}
+
+.panelCollapsed .pageSidebarHeader,
+.panelCollapsed .propsTitleRow {
+  justify-content: center;
+  padding: 12px 0;
 }
 
 .propsContent {
