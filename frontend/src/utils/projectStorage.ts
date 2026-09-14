@@ -7,6 +7,10 @@ const STARRED_KEY = 'starredProjects';
 const RECENT_KEY = 'recentProjects';
 const MAX_RECENT = 8;
 
+function notifyChanged(): void {
+  window.dispatchEvent(new CustomEvent('projectStorage:changed'));
+}
+
 export function getStarredProjects(): ProjectBrief[] {
   try {
     const raw = localStorage.getItem(STARRED_KEY);
@@ -18,6 +22,7 @@ export function getStarredProjects(): ProjectBrief[] {
 
 export function setStarredProjects(projects: ProjectBrief[]): void {
   localStorage.setItem(STARRED_KEY, JSON.stringify(projects));
+  notifyChanged();
 }
 
 export function toggleStar(project: ProjectBrief): void {
@@ -40,6 +45,7 @@ export function addRecent(project: ProjectBrief): void {
   const filtered = current.filter(p => p.id !== project.id);
   const updated = [project, ...filtered].slice(0, MAX_RECENT);
   localStorage.setItem(RECENT_KEY, JSON.stringify(updated));
+  notifyChanged();
 }
 
 export function getRecentProjects(): ProjectBrief[] {
@@ -49,4 +55,20 @@ export function getRecentProjects(): ProjectBrief[] {
   } catch {
     return [];
   }
+}
+
+export function removeProject(projectId: string): void {
+  const starred = getStarredProjects().filter(p => p.id !== projectId);
+  setStarredProjects(starred);
+  const recent = getRecentProjects().filter(p => p.id !== projectId);
+  localStorage.setItem(RECENT_KEY, JSON.stringify(recent));
+  notifyChanged();
+}
+
+export function pruneStoredProjects(existingIds: Set<string>): void {
+  const starred = getStarredProjects().filter(p => existingIds.has(p.id));
+  setStarredProjects(starred);
+  const recent = getRecentProjects().filter(p => existingIds.has(p.id));
+  localStorage.setItem(RECENT_KEY, JSON.stringify(recent));
+  notifyChanged();
 }

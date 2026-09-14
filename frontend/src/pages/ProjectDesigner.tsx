@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Trash2, Plus, Eye, Save, GripVertical, Type, Image, RectangleHorizontal, ChartBar, Table, X } from 'lucide-react';
+import { Trash2, Plus, Eye, Save, GripVertical, Type, Image, RectangleHorizontal, ChartBar, Table, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
@@ -31,8 +31,7 @@ interface Page {
   elements: CanvasElement[];
 }
 
-let elemId = 0;
-const newElemId = () => `elem_${++elemId}`;
+const newElemId = () => `elem_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 
 const ELEMENT_PALETTE: { type: ElementType; label: string; icon: React.ReactNode; defaultProps: Record<string, any> }[] = [
   { type: 'text', label: 'Text', icon: <Type size={20} />, defaultProps: { content: 'Text', fontSize: 16, color: '#111827', bold: false } },
@@ -67,6 +66,8 @@ export const ProjectDesigner: React.FC = () => {
   const mousePosRef = useRef({ x: 0, y: 0 });
   const [loading, setLoading] = useState(true);
   const [showExcelPreview, setShowExcelPreview] = useState(false);
+  const [pagesOpen, setPagesOpen] = useState(true);
+  const [propsOpen, setPropsOpen] = useState(true);
 
   useEffect(() => {
     if (!projectId || !token) return;
@@ -394,33 +395,44 @@ export const ProjectDesigner: React.FC = () => {
     <AppShell title={project?.name || 'Designer'} activeItem="create" showBack>
       <div className={styles.designer}>
         {/* ── Left: Page sidebar ── */}
-        <aside className={styles.pageSidebar}>
+        <aside className={`${styles.pageSidebar} ${!pagesOpen ? styles.panelCollapsed : ''}`}>
           <div className={styles.pageSidebarHeader}>
-            <h3>Pages</h3>
+            {pagesOpen && <h3>Pages</h3>}
+            <button
+              className={styles.panelToggleBtn}
+              onClick={() => setPagesOpen(v => !v)}
+              title={pagesOpen ? 'Collapse pages' : 'Expand pages'}
+            >
+              {pagesOpen ? <ChevronLeft size={15} /> : <ChevronRight size={15} />}
+            </button>
           </div>
-          <div className={styles.pageList}>
-            {pages.map((page, idx) => (
-              <div
-                key={page.id}
-                className={`${styles.pageItem} ${idx === activePageIdx ? styles.pageItemActive : ''}`}
-                onClick={() => { setActivePageIdx(idx); setSelectedElemId(null); }}
-              >
-                <GripVertical size={14} className={styles.pageDrag} />
-                <input
-                  className={styles.pageNameInput}
-                  value={page.name}
-                  onChange={e => {
-                    const newPages = [...pages];
-                    newPages[idx] = { ...newPages[idx], name: e.target.value };
-                    setPages(newPages);
-                  }}
-                  onClick={e => e.stopPropagation()}
-                />
-                <button className={styles.pageDeleteBtn} onClick={e => { e.stopPropagation(); deletePage(idx); }} title="Delete page"><Trash2 size={13} /></button>
+          {pagesOpen && (
+            <>
+              <div className={styles.pageList}>
+                {pages.map((page, idx) => (
+                  <div
+                    key={page.id}
+                    className={`${styles.pageItem} ${idx === activePageIdx ? styles.pageItemActive : ''}`}
+                    onClick={() => { setActivePageIdx(idx); setSelectedElemId(null); }}
+                  >
+                    <GripVertical size={14} className={styles.pageDrag} />
+                    <input
+                      className={styles.pageNameInput}
+                      value={page.name}
+                      onChange={e => {
+                        const newPages = [...pages];
+                        newPages[idx] = { ...newPages[idx], name: e.target.value };
+                        setPages(newPages);
+                      }}
+                      onClick={e => e.stopPropagation()}
+                    />
+                    <button className={styles.pageDeleteBtn} onClick={e => { e.stopPropagation(); deletePage(idx); }} title="Delete page"><Trash2 size={13} /></button>
+                  </div>
+                ))}
+                <button className={styles.addPageBtn} onClick={addPage}><Plus size={14} /> Add Page</button>
               </div>
-            ))}
-          </div>
-          <button className={styles.addPageBtn} onClick={addPage}><Plus size={14} /> Add Page</button>
+            </>
+          )}
         </aside>
 
         {/* ── Center: Canvas ── */}
@@ -548,29 +560,39 @@ export const ProjectDesigner: React.FC = () => {
         </div>
 
         {/* ── Right: Properties panel ── */}
-        <aside className={styles.propsPanel}>
-          <h3 className={styles.propsTitle}>Properties</h3>
-          {selectedElem ? (
-            <div className={styles.propsContent}>
-              <div className={styles.propsSection}>
-                <div className={styles.propsSectionTitle}>Position &amp; Size</div>
-                <div className={styles.propRow}>
-                  <label>X</label>
-                  <input type="number" value={selectedElem.x} onChange={e => updateElementPosition(selectedElem.id, parseInt(e.target.value) || 0, selectedElem.y)} className={styles.propInput} />
+        <aside className={`${styles.propsPanel} ${!propsOpen ? styles.panelCollapsed : ''}`}>
+          <div className={styles.propsTitleRow}>
+            {propsOpen && <h3 className={styles.propsTitle}>Properties</h3>}
+            <button
+              className={styles.panelToggleBtn}
+              onClick={() => setPropsOpen(v => !v)}
+              title={propsOpen ? 'Collapse properties' : 'Expand properties'}
+            >
+              {propsOpen ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+            </button>
+          </div>
+          {propsOpen && (
+            selectedElem ? (
+              <div className={styles.propsContent}>
+                <div className={styles.propsSection}>
+                  <div className={styles.propsSectionTitle}>Position &amp; Size</div>
+                  <div className={styles.propRow}>
+                    <label>X</label>
+                    <input type="number" value={selectedElem.x} onChange={e => updateElementPosition(selectedElem.id, parseInt(e.target.value) || 0, selectedElem.y)} className={styles.propInput} />
+                  </div>
+                  <div className={styles.propRow}>
+                    <label>Y</label>
+                    <input type="number" value={selectedElem.y} onChange={e => updateElementPosition(selectedElem.id, selectedElem.x, parseInt(e.target.value) || 0)} className={styles.propInput} />
+                  </div>
+                  <div className={styles.propRow}>
+                    <label>Width</label>
+                    <input type="number" value={selectedElem.w} onChange={e => updateElementSize(selectedElem.id, parseInt(e.target.value) || 40, selectedElem.h)} className={styles.propInput} />
+                  </div>
+                  <div className={styles.propRow}>
+                    <label>Height</label>
+                    <input type="number" value={selectedElem.h} onChange={e => updateElementSize(selectedElem.id, selectedElem.w, parseInt(e.target.value) || 24)} className={styles.propInput} />
+                  </div>
                 </div>
-                <div className={styles.propRow}>
-                  <label>Y</label>
-                  <input type="number" value={selectedElem.y} onChange={e => updateElementPosition(selectedElem.id, selectedElem.x, parseInt(e.target.value) || 0)} className={styles.propInput} />
-                </div>
-                <div className={styles.propRow}>
-                  <label>Width</label>
-                  <input type="number" value={selectedElem.w} onChange={e => updateElementSize(selectedElem.id, parseInt(e.target.value) || 40, selectedElem.h)} className={styles.propInput} />
-                </div>
-                <div className={styles.propRow}>
-                  <label>Height</label>
-                  <input type="number" value={selectedElem.h} onChange={e => updateElementSize(selectedElem.id, selectedElem.w, parseInt(e.target.value) || 24)} className={styles.propInput} />
-                </div>
-              </div>
 
               <div className={styles.divider} />
 
@@ -606,7 +628,16 @@ export const ProjectDesigner: React.FC = () => {
                   {selectedElem.props.format !== 'bar-chart' && selectedElem.props.format !== 'pie-chart' && selectedElem.props.format !== 'table' && (
                     <div className={styles.propRow}>
                       <label>Cell ref</label>
-                      <select value={selectedElem.props.cellRef || ''} onChange={e => updateElementProps(selectedElem.id, { cellRef: e.target.value })} className={styles.propInput}>
+                      <select value={selectedElem.props.cellRef || ''} onChange={e => {
+                        const ref = e.target.value;
+                        const cell = selectedElem.type === 'input-field'
+                          ? inputCells.find((c: any) => c.ref === ref)
+                          : outputCells.find((c: any) => c.ref === ref);
+                        const updates: Record<string, any> = { cellRef: ref };
+                        const isDefaultLabel = selectedElem.props.label === 'Input' || selectedElem.props.label === 'Output';
+                        if (cell?.title && isDefaultLabel) updates.label = cell.title;
+                        updateElementProps(selectedElem.id, updates);
+                      }} className={styles.propInput}>
                         <option value="">-- Select cell --</option>
                         {selectedElem.type === 'input-field' && inputCells.map((c: any) => (
                           <option key={c.ref} value={c.ref}>{c.ref} | {c.title || c.ref}{c.value !== undefined && c.value !== null ? ` | ${c.value}` : ''}</option>
@@ -806,6 +837,7 @@ export const ProjectDesigner: React.FC = () => {
             </div>
           ) : (
             <p className={styles.propsEmpty}>Select an element on the canvas to edit its properties</p>
+          )
           )}
         </aside>
       </div>
