@@ -5,7 +5,7 @@ import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 import { addRecent } from '../utils/projectStorage';
-import { recomputeAll, expandRange, type CellMap } from '../utils/FormulaEngine';
+import { recomputeAll, expandRange, getTransitiveDependencies, type CellMap } from '../utils/FormulaEngine';
 import styles from './StudentSimulationView.module.css';
 
 interface CanvasElement {
@@ -28,6 +28,38 @@ interface Page {
 // Fixed slice colors for pie charts - not user-configurable yet, cycled in order per slice.
 const PIE_COLORS = ['#4ade80', '#60a5fa', '#f59e0b', '#f87171', '#a78bfa', '#22d3ee', '#fb923c', '#34d399'];
 
+type PerPageInputs = Record<string, Record<string, number | string>>;
+
+/**
+ * Normalise a stored `input_values` blob into the per-page shape
+ * `{ [pageId]: { ref: value } }`.
+ *
+ * Backward compatibility: older saved states used a single flat map
+ * `{ ref: value }` shared across all pages. When we detect that shape (top-level
+ * values are primitives rather than objects), we seed the FIRST page with those
+ * values so existing in-progress attempts aren't lost.
+ */
+function migrateInputValues(stored: any, pages: Page[]): PerPageInputs {
+  if (!stored || typeof stored !== 'object') return {};
+
+  const values = Object.values(stored);
+  const looksPerPage =
+    values.length > 0 && values.every(v => v !== null && typeof v === 'object' && !Array.isArray(v));
+
+  if (looksPerPage) {
+    // Already the per-page shape - keep only entries that are objects.
+    const result: PerPageInputs = {};
+    for (const [pageId, refMap] of Object.entries(stored)) {
+      if (refMap && typeof refMap === 'object') result[pageId] = refMap as Record<string, number | string>;
+    }
+    return result;
+  }
+
+  // Legacy flat shape: assign to the first page.
+  const firstPageId = pages[0]?.id;
+  return firstPageId ? { [firstPageId]: stored as Record<string, number | string> } : {};
+}
+
 export const StudentSimulationView: React.FC = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -37,7 +69,9 @@ export const StudentSimulationView: React.FC = () => {
 
   const [pages, setPages] = useState<Page[]>([]);
   const [currentPageIdx, setCurrentPageIdx] = useState(0);
-  const [inputValues, setInputValues] = useState<Record<string, number | string>>({});
+  // Fully-isolated per-page values: each page has its own copy of cell inputs,
+  // keyed by page id. A change on one page never affects another page's cells.
+  const [inputValuesByPage, setInputValuesByPage] = useState<Record<string, Record<string, number | string>>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -47,6 +81,13 @@ export const StudentSimulationView: React.FC = () => {
   const stateIdRef = useRef<string | null>(null);
 
   const autoSaveTimer = useRef<number | null>(null);
+
+  const currentPageId = pages[currentPageIdx]?.id || '';
+  // The current page's own input values (its isolated copy of the shared cells).
+  const inputValues = useMemo(
+    () => inputValuesByPage[currentPageId] || {},
+    [inputValuesByPage, currentPageId]
+  );
 
   // Extract formula strings from the project's excel_data for client-side recomputation
   const formulas = useMemo(() => {
@@ -83,10 +124,19 @@ export const StudentSimulationView: React.FC = () => {
     return titles;
   }, [project]);
 
-  // Merge default cells with student input, then compute all formula outputs via topological sort
+  // Merge default cells with THIS PAGE's inputs, then compute all formula outputs.
+  // Each page recomputes independently from the shared formulas/defaults, so pages
+  // that reference the same cell do not interfere with one another.
   const computedValues = useMemo(() => {
     const allCells: CellMap = { ...defaultCells, ...inputValues };
-    return recomputeAll(allCells, formulas);
+    // An override is any current-page input whose ref also has a formula: the
+    // student is pinning a computed cell to a manual value. recomputeAll keeps
+    // that value instead of evaluating its formula.
+    const overrides = new Set<string>();
+    for (const ref of Object.keys(inputValues)) {
+      if (formulas[ref.toUpperCase()]) overrides.add(ref.toUpperCase());
+    }
+    return recomputeAll(allCells, formulas, overrides);
   }, [inputValues, formulas, defaultCells]);
 
   useEffect(() => {
@@ -123,7 +173,7 @@ export const StudentSimulationView: React.FC = () => {
           stateIdRef.current = state.id;
           setAttemptInfo({ attemptNumber: state.attempt_number, maxAttempts: 0 });
           if (state.input_values && Object.keys(state.input_values).length > 0) {
-            setInputValues(state.input_values);
+            setInputValuesByPage(migrateInputValues(state.input_values, pgs));
           }
           if (state.current_page_id && pgs.length > 0) {
             const idx = pgs.findIndex((p: Page) => p.id === state.current_page_id);
@@ -149,8 +199,8 @@ export const StudentSimulationView: React.FC = () => {
     load();
   }, [projectId, token]);
 
-  // Persist current input values to the server (debounced) for resume across sessions
-  const saveInputValues = useCallback(async (values: Record<string, number | string>) => {
+  // Persist the full per-page input values to the server (debounced) for resume across sessions
+  const saveInputValues = useCallback(async (values: Record<string, Record<string, number | string>>) => {
     if (!stateIdRef.current || !projectId || !token) return;
     try {
       await fetch(`${API_URL}/student-state/${projectId}/state/inputs`, {
@@ -161,7 +211,7 @@ export const StudentSimulationView: React.FC = () => {
     } catch { /* silent */ }
   }, [projectId, token]);
 
-  const debouncedSave = useCallback((values: Record<string, number | string>) => {
+  const debouncedSave = useCallback((values: Record<string, Record<string, number | string>>) => {
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = window.setTimeout(() => saveInputValues(values), 1000);
   }, [saveInputValues]);
@@ -171,9 +221,42 @@ export const StudentSimulationView: React.FC = () => {
     // collapses to 0 mid-keystroke, which snaps the controlled input back and strips the "."
     // before the user can type a fractional digit. Downstream formula evaluation already
     // coerces strings to numbers (see FormulaEngine.getCellValue), so this is safe either way.
-    const newValues = { ...inputValues, [cellRef.toUpperCase()]: value };
-    setInputValues(newValues);
-    debouncedSave(newValues);
+    // Writes only into the CURRENT page's isolated value map.
+    if (!currentPageId) return;
+    const upper = cellRef.toUpperCase();
+    setInputValuesByPage(prev => {
+      const pageVals = { ...(prev[currentPageId] || {}), [upper]: value };
+
+      // Auto-revert overrides (mitigation): if the student changed a NON-formula
+      // input, drop any active formula-cell override whose value depends on the
+      // changed cell - keeping such an override would show a value inconsistent
+      // with its own formula. The overridden cell then resumes computing normally.
+      if (!formulas[upper]) {
+        for (const ref of Object.keys(pageVals)) {
+          if (ref === upper) continue;
+          if (formulas[ref] && getTransitiveDependencies(ref, formulas).has(upper)) {
+            delete pageVals[ref];
+          }
+        }
+      }
+
+      const next = { ...prev, [currentPageId]: pageVals };
+      debouncedSave(next);
+      return next;
+    });
+  };
+
+  /** Clear a formula-cell override so it resumes computing from its formula. */
+  const clearOverride = (cellRef: string) => {
+    if (!currentPageId) return;
+    const upper = cellRef.toUpperCase();
+    setInputValuesByPage(prev => {
+      const pageVals = { ...(prev[currentPageId] || {}) };
+      delete pageVals[upper];
+      const next = { ...prev, [currentPageId]: pageVals };
+      debouncedSave(next);
+      return next;
+    });
   };
 
   const handlePageChange = async (newIdx: number) => {
@@ -193,11 +276,11 @@ export const StudentSimulationView: React.FC = () => {
     if (!stateIdRef.current || !projectId || !token) return;
     setSubmitting(true);
     try {
-      await saveInputValues(inputValues);
+      await saveInputValues(inputValuesByPage);
       const res = await fetch(`${API_URL}/student-state/${projectId}/state/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ stateId: stateIdRef.current, inputValues }),
+        body: JSON.stringify({ stateId: stateIdRef.current, inputValues: inputValuesByPage }),
       });
       if (!res.ok) throw new Error('Failed to submit');
       setSubmitted(true);
@@ -465,23 +548,49 @@ export const StudentSimulationView: React.FC = () => {
                               <option key={opt} value={opt}>{opt}</option>
                             ))}
                           </select>
+                        ) : elem.props.format === 'range' ? (
+                          <input
+                            type="range"
+                            className={styles.fieldInput}
+                            min={elem.props.min ?? 0}
+                            max={elem.props.max ?? 10}
+                            step={elem.props.stepSize ?? 1}
+                            value={inputValues[elem.props.cellRef?.toUpperCase() || ''] ?? (Number(elem.props.min ?? 0) + Number(elem.props.max ?? 10)) / 2}
+                            onChange={e => handleInputChange(elem.props.cellRef || '', e.target.value)}
+                          />
                         ) : (
                           <input
-                            // spread props of input here equivalent to x = elem.props.x, y = elem.props.y.... etc
-                            {...elem.props}
-                            // override elem.props above if necessary
-                            type={elem.props.format}
+                            type={elem.props.format || 'number'}
                             className={styles.fieldInput}
+                            placeholder={elem.props.placeholder}
                             value={inputValues[elem.props.cellRef?.toUpperCase() || ''] ?? ''}
                             onChange={e => handleInputChange(elem.props.cellRef || '', e.target.value)}
                           />
                         )}
                         {elem.props.format === 'range'
                          && (<span className={styles.sliderValue}>
-                          {inputValues[elem.props.cellRef?.toUpperCase() || ''] ?? (elem.props.min + elem.props.max)/2 }
+                          {inputValues[elem.props.cellRef?.toUpperCase() || ''] ?? (Number(elem.props.min ?? 0) + Number(elem.props.max ?? 10)) / 2 }
                          </span> 
                         )
                         }
+                        {(() => {
+                          const ref = elem.props.cellRef?.toUpperCase() || '';
+                          const isFormulaCell = !!formulas[ref];
+                          const isOverridden = isFormulaCell && inputValues[ref] !== undefined && inputValues[ref] !== '';
+                          if (!isOverridden) return null;
+                          return (
+                            <div className={styles.overrideNotice}>
+                              <span className={styles.overrideBadge}>Manual override</span>
+                              <button
+                                type="button"
+                                className={styles.overrideReset}
+                                onClick={() => clearOverride(elem.props.cellRef || '')}
+                              >
+                                Reset to formula
+                              </button>
+                            </div>
+                          );
+                        })()}
                     </div>
                     )}
                   {elem.type === 'output-field' && elem.props.format === 'bar-chart' && (

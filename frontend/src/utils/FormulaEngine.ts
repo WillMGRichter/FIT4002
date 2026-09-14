@@ -18,14 +18,24 @@ function indexToCol(index: number): string {
   return col;
 }
 
+// A cell reference may be sheet-qualified (multi-sheet workbooks), e.g. "SALES!B3".
+// This splits an optional "SHEET!" prefix from the bare "B3" portion.
+function splitSheetRef(ref: string): { sheet: string; cell: string } {
+  const bangIdx = ref.lastIndexOf('!');
+  if (bangIdx === -1) return { sheet: '', cell: ref };
+  return { sheet: ref.slice(0, bangIdx + 1), cell: ref.slice(bangIdx + 1) };
+}
+
 function parseCellRef(ref: string): { col: number; row: number } | null {
-  const match = ref.match(/^(\$?)([A-Z]+)(\$?)(\d+)$/i);
+  const { cell } = splitSheetRef(ref);
+  const match = cell.match(/^(\$?)([A-Z]+)(\$?)(\d+)$/i);
   if (!match) return null;
   return { col: colToIndex(match[2].toUpperCase()), row: parseInt(match[4], 10) };
 }
 
 // Expand a single range like "A1:C3" into individual cell references (A1, A2, A3, B1, ...),
-// or a lone cell ref like "A1" into itself.
+// or a lone cell ref like "A1" into itself. Preserves a sheet prefix on the range,
+// e.g. "SALES!B4:B7" -> ["SALES!B4", "SALES!B5", ...].
 function expandSingleRange(range: string): string[] {
   const parts = range.split(':');
   if (parts.length !== 2) return [range];
@@ -33,10 +43,13 @@ function expandSingleRange(range: string): string[] {
   const end = parseCellRef(parts[1]);
   if (!start || !end) return [range];
 
+  // Carry the sheet prefix from the start of the range onto each expanded cell.
+  const { sheet } = splitSheetRef(parts[0].trim());
+
   const cells: string[] = [];
   for (let r = Math.min(start.row, end.row); r <= Math.max(start.row, end.row); r++) {
     for (let c = Math.min(start.col, end.col); c <= Math.max(start.col, end.col); c++) {
-      cells.push(`${indexToCol(c)}${r}`);
+      cells.push(`${sheet}${indexToCol(c)}${r}`);
     }
   }
   return cells;
@@ -84,14 +97,27 @@ function evaluateFunction(name: string, range: string, cells: CellMap): number {
 }
 
 const FUNC_REGEX = /(SUM|AVERAGE|AVG|MIN|MAX|COUNT|PRODUCT)\(([^)]+)\)/gi;
-const CELL_REGEX = /\$?[A-Z]+\$?\d+/gi;
+// Matches a cell ref with an optional sheet prefix, e.g. "B3" or "SALES!B3".
+const CELL_REGEX = /(?:[A-Za-z0-9_]+!)?\$?[A-Z]+\$?\d+/gi;
 
 function tokenize(expr: string): string[] {
   const tokens: string[] = [];
   let buffer = '';
   for (let i = 0; i < expr.length; i++) {
     const ch = expr[i];
-    if ('+-*/()'.includes(ch)) {
+    // A '+'/'-' that is part of an exponent (e.g. the "+21" in "4.8e+21") must NOT be
+    // treated as an operator. JS stringifies numbers >= 1e21 (and very small ones) in
+    // exponential form, and those values flow back into formulas; splitting on the
+    // exponent sign would turn "4.8e+21" into 4.8 + 21 = 25.8. Detect the pattern
+    // <digit> e/E <this +/-> and keep it in the buffer as part of the number.
+    const prev = buffer.length ? buffer[buffer.length - 1] : '';
+    const isExponentSign =
+      (ch === '+' || ch === '-') &&
+      (prev === 'e' || prev === 'E') &&
+      buffer.length >= 2 &&
+      /\d/.test(buffer[buffer.length - 2]);
+
+    if ('+-*/()'.includes(ch) && !isExponentSign) {
       if (buffer.trim()) tokens.push(buffer.trim());
       tokens.push(ch);
       buffer = '';
@@ -167,9 +193,25 @@ export function evaluateFormula(formula: string, cells: CellMap): number | strin
 
   let expr = formula.toString().substring(1);
 
-  // Handle IF(condition, trueVal, falseVal) - supports nested IF
-  const ifResult = tryEvaluateIf(expr, cells);
-  if (ifResult !== null) return ifResult;
+  // Handle a formula that is ENTIRELY a single IF(...) (may return text, e.g. "Profit").
+  // Only take this path when nothing follows the IF's closing paren; otherwise the IF is
+  // just one operand of a larger expression (e.g. "IF(...)+2") and is handled below.
+  if (expr.trim().toUpperCase().startsWith('IF(')) {
+    const inner = extractParenContent(expr.trim(), 2);
+    if (inner !== null) {
+      const openIdx = expr.trim().indexOf('(');
+      const spanLen = openIdx + 1 + inner.length + 1; // through the closing ')'
+      const isWholeExpr = expr.trim().length === spanLen;
+      if (isWholeExpr) {
+        const ifResult = tryEvaluateIf(expr, cells);
+        if (ifResult !== null) return ifResult;
+      }
+    }
+  }
+
+  // Resolve any IF(...) that appears as a SUB-expression (e.g. "B5*IF(B7=1,0.9,1)")
+  // by evaluating each embedded IF to its value before the arithmetic pipeline runs.
+  expr = replaceEmbeddedIfs(expr, cells);
 
   expr = expr.replace(FUNC_REGEX, (_match, name: string, range: string) => {
     return String(evaluateFunction(name, range.trim(), cells));
@@ -182,6 +224,36 @@ export function evaluateFormula(formula: string, cells: CellMap): number | strin
 
   const tokens = tokenize(expr);
   return evaluateExpression(tokens, cells);
+}
+
+// Find each IF(...) sub-expression, evaluate it, and splice its result back into
+// the expression. Handles nested IFs (via tryEvaluateIf's recursion into the chosen
+// branch) and multiple independent IFs in one formula. Numeric results are inserted
+// bare so the arithmetic pipeline can consume them; string results are quoted.
+function replaceEmbeddedIfs(expr: string, cells: CellMap): string {
+  let result = expr;
+  // Guard against pathological input; each pass resolves at least one IF.
+  for (let guard = 0; guard < 100; guard++) {
+    // Match "IF(" only when IF is immediately followed by "(" (excludes IFERROR etc.)
+    const match = /\bIF\s*\(/i.exec(result);
+    if (!match) break;
+
+    const start = match.index;
+    const content = extractParenContent(result, start + 1);
+    if (content === null) break; // unbalanced; leave as-is
+
+    // Reconstruct the full "IF(...)" span to know how much to replace.
+    const openIdx = result.indexOf('(', start);
+    const closeIdx = openIdx + 1 + content.length; // ')' position
+    const ifSpan = result.substring(start, closeIdx + 1);
+
+    const value = tryEvaluateIf(ifSpan, cells);
+    if (value === null) break; // not a valid IF; avoid infinite loop
+
+    const inserted = typeof value === 'number' ? String(value) : `"${value}"`;
+    result = result.substring(0, start) + inserted + result.substring(closeIdx + 1);
+  }
+  return result;
 }
 
 // Parse IF(condition, trueValue, falseValue) with support for nested IFs and string literals
@@ -291,8 +363,8 @@ function resolveValue(val: string, cells: CellMap): number | string {
   // Number literal
   const num = parseFloat(val);
   if (!isNaN(num) && val.match(/^-?\d*\.?\d+$/)) return num;
-  // Cell reference
-  if (val.match(/^\$?[A-Z]+\$?\d+$/i)) {
+  // Cell reference (optionally sheet-qualified, e.g. SALES!B3)
+  if (val.match(/^(?:[A-Za-z0-9_]+!)?\$?[A-Z]+\$?\d+$/i)) {
     return getCellRawValue(val.replace(/\$/g, ''), cells);
   }
   return val;
@@ -317,8 +389,8 @@ function evaluateIfBranch(branch: string, cells: CellMap): number | string {
   const num = parseFloat(trimmed);
   if (!isNaN(num) && trimmed.match(/^-?\d*\.?\d+$/)) return num;
 
-  // Cell reference
-  if (trimmed.match(/^\$?[A-Z]+\$?\d+$/i)) {
+  // Cell reference (optionally sheet-qualified, e.g. SALES!B3)
+  if (trimmed.match(/^(?:[A-Za-z0-9_]+!)?\$?[A-Z]+\$?\d+$/i)) {
     return getCellRawValue(trimmed.replace(/\$/g, ''), cells);
   }
 
@@ -332,9 +404,11 @@ export function getAllCellRefs(formula: string): string[] {
   const expr = formula.toString().substring(1);
   const refs: string[] = [];
   let match;
-  const cellRegex = /\$?([A-Z]+)\$?(\d+)/gi;
+  // Capture an optional sheet prefix so dependency keys match the qualified
+  // keys used in the formulas map (e.g. "SALES!B3") for multi-sheet workbooks.
+  const cellRegex = /((?:[A-Za-z0-9_]+!)?)\$?([A-Z]+)\$?(\d+)/gi;
   while ((match = cellRegex.exec(expr)) !== null) {
-    const ref = match[1].toUpperCase() + match[2];
+    const ref = (match[1] || '').toUpperCase() + match[2].toUpperCase() + match[3];
     if (!refs.includes(ref)) refs.push(ref);
   }
   return refs;
@@ -352,7 +426,8 @@ export function getCellDependencies(formulas: Record<string, string>): Record<st
 // The cells map starts with input values; each formula is evaluated against the progressively filled map.
 export function recomputeAll(
   cells: CellMap,
-  formulas: Record<string, string>
+  formulas: Record<string, string>,
+  overrides?: Set<string>
 ): CellMap {
   const result: CellMap = { ...cells };
 
@@ -361,12 +436,38 @@ export function recomputeAll(
 
   for (const cell of sorted) {
     const formula = formulas[cell];
-    if (formula) {
+    // Skip a cell whose formula has been manually overridden by the student:
+    // keep the entered value (already present in `result` via the merged cells)
+    // and let its dependents recompute from it. This is the "override" input
+    // semantics for formula cells.
+    if (formula && !(overrides && overrides.has(cell))) {
       result[cell] = evaluateFormula(formula, result);
     }
   }
 
   return result;
+}
+
+/**
+ * Return the transitive set of cell refs that `target` depends on (directly or
+ * indirectly), based on the formula dependency graph. Used to decide when a
+ * formula-cell override should be auto-cleared: if the student changes any cell
+ * in this set, the override no longer reflects a consistent scenario.
+ */
+export function getTransitiveDependencies(
+  target: string,
+  formulas: Record<string, string>
+): Set<string> {
+  const deps = getCellDependencies(formulas);
+  const seen = new Set<string>();
+  const stack = [...(deps[target] || [])];
+  while (stack.length) {
+    const ref = stack.pop()!;
+    if (seen.has(ref)) continue;
+    seen.add(ref);
+    for (const d of (deps[ref] || [])) stack.push(d);
+  }
+  return seen;
 }
 
 // Topological sort so formulas are evaluated after all their dependencies.
