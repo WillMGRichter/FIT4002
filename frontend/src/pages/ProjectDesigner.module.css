@@ -536,6 +536,59 @@
   border-radius: 3px;
 }
 
+.uploadBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px dashed #d1d5db;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #4b5563;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.12s;
+}
+
+.uploadBtn:hover {
+  border-color: #16a34a;
+  color: #16a34a;
+  background: #f0fdf4;
+}
+
+.uploadPreview {
+  margin-top: 4px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  overflow: hidden;
+  max-height: 160px;
+}
+
+.uploadPreview img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.removeImgBtn {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  background: transparent;
+  color: #dc2626;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 0;
+}
+
+.removeImgBtn:hover {
+  color: #b91c1c;
+}
+
 /* ── Properties panel ── */
 .propsPanel {
   width: 260px;

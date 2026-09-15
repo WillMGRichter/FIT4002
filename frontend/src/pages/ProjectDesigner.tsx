@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Trash2, Plus, Eye, Save, GripVertical, Type, Image, RectangleHorizontal, ChartBar, Table, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Trash2, Plus, Eye, Save, GripVertical, Type, Image, RectangleHorizontal, ChartBar, Table, X, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
@@ -248,6 +248,35 @@ export const ProjectDesigner: React.FC = () => {
     const newElements = activeElements.filter(e => e.id !== elemId);
     updateActivePageElements(newElements);
     setSelectedElemId(null);
+  };
+
+  // Reads a picked image file, downscales it on a canvas (max 1280px) and stores the result
+  // as a compressed data URL in the element's src so it persists with the page's JSONB.
+  const handleImageUpload = (file: File) => {
+    if (!selectedElem || selectedElem.type !== 'image') return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = document.createElement('img');
+      img.onload = () => {
+        const MAX = 1280;
+        let width = img.width;
+        let height = img.height;
+        if (width > MAX || height > MAX) {
+          const scale = Math.min(MAX / width, MAX / height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0, width, height);
+        updateElementProps(selectedElem.id, { src: canvas.toDataURL('image/jpeg', 0.85) });
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
@@ -827,6 +856,27 @@ export const ProjectDesigner: React.FC = () => {
                     <label>Image URL</label>
                     <input type="text" value={selectedElem.props.src || ''} onChange={e => updateElementProps(selectedElem.id, { src: e.target.value })} className={styles.propInput} />
                   </div>
+                  <div className={styles.propRow}>
+                    <label>Upload from device</label>
+                    <label className={styles.uploadBtn}>
+                      <Upload size={14} /> Choose Image
+                      <input type="file" accept="image/*" hidden onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) handleImageUpload(file);
+                        e.target.value = '';
+                      }} />
+                    </label>
+                  </div>
+                  {selectedElem.props.src && String(selectedElem.props.src).startsWith('data:') && (
+                    <div>
+                      <div className={styles.uploadPreview}>
+                        <img src={selectedElem.props.src} alt="" />
+                      </div>
+                      <button className={styles.removeImgBtn} onClick={() => updateElementProps(selectedElem.id, { src: '' })}>
+                        <X size={12} /> Remove image
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
