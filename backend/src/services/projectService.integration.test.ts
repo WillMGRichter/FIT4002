@@ -32,6 +32,7 @@ describeIt('service integration (real DB)', () => {
   const projectService = require('../services/projectService');
   const pageService = require('../services/pageService');
   const authService = require('../services/authService');
+  const simulationService = require('../services/simulationService');
   const { supabase } = require('../config/supabase');
   /* eslint-enable @typescript-eslint/no-var-requires */
 
@@ -161,6 +162,55 @@ describeIt('service integration (real DB)', () => {
       await pageService.deletePage(page.id);
       const pages = await pageService.getPagesByProject(projectId);
       expect(pages.some((p: any) => p.id === page.id)).toBe(false);
+    });
+  });
+
+  // ── Simulation progress & results ──────────────────────────────────────────
+  // user_id is a role-agnostic FK to users(id); we seed a teacher-role user as the
+  // simulation runner. Rows attach to a project in projectIds and cascade-delete with it.
+  describe('simulation service', () => {
+    let projectId: string;
+
+    beforeAll(async () => {
+      const created = await projectService.createProject('Sim Host', userId, orgId);
+      projectId = created.id;
+      projectIds.push(created.id);
+    });
+
+    it('getSimulationProgress returns null when nothing is saved (PGRST116 path)', async () => {
+      const progress = await simulationService.getSimulationProgress(projectId, userId);
+      expect(progress).toBeNull();
+    });
+
+    it('saveSimulationProgress upserts on (project_id, user_id) — second save updates the same row', async () => {
+      const first = await simulationService.saveSimulationProgress(projectId, userId, { step: 1 });
+      expect(first.state).toMatchObject({ step: 1 });
+
+      const second = await simulationService.saveSimulationProgress(projectId, userId, { step: 2 });
+      // Same row (UNIQUE constraint honoured by upsert), updated state.
+      expect(second.id).toBe(first.id);
+      expect(second.state).toMatchObject({ step: 2 });
+
+      const fetched = await simulationService.getSimulationProgress(projectId, userId);
+      expect(fetched.id).toBe(first.id);
+      expect(fetched.state).toMatchObject({ step: 2 });
+    });
+
+    it('completeSimulation inserts a result; getProjectResults returns it newest-first', async () => {
+      await simulationService.completeSimulation(projectId, userId, { score: 10 });
+      await simulationService.completeSimulation(projectId, userId, { score: 20 });
+
+      const results = await simulationService.getProjectResults(projectId);
+      expect(results.length).toBeGreaterThanOrEqual(2);
+      // ordered by completed_at descending
+      const times = results.map((r: any) => new Date(r.completed_at).getTime());
+      expect(times).toEqual([...times].sort((a, b) => b - a));
+    });
+
+    it('getUserProjectResults returns only the given user\u2019s results', async () => {
+      const results = await simulationService.getUserProjectResults(projectId, userId);
+      expect(results.length).toBeGreaterThanOrEqual(2);
+      expect(results.every((r: any) => r.user_id === userId)).toBe(true);
     });
   });
 });
