@@ -117,7 +117,7 @@ function tokenize(expr: string): string[] {
       buffer.length >= 2 &&
       /\d/.test(buffer[buffer.length - 2]);
 
-    if ('+-*/()'.includes(ch) && !isExponentSign) {
+    if ('+-*/^()'.includes(ch) && !isExponentSign) {
       if (buffer.trim()) tokens.push(buffer.trim());
       tokens.push(ch);
       buffer = '';
@@ -129,12 +129,36 @@ function tokenize(expr: string): string[] {
   return tokens;
 }
 
+// Convert unary +/- into distinct tokens so the evaluator can treat them differently from the
+// binary operators. A +/- is unary when it appears at the start of the expression or right
+// after another operator or an opening paren (e.g. "-5", "3*-2", "(-2)"). Unary '+' is a no-op
+// and is dropped; unary '-' becomes 'u-'.
+function markUnary(tokens: string[]): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    if (t === '+' || t === '-') {
+      const prev = out.length ? out[out.length - 1] : undefined;
+      const prevIsOperator = prev !== undefined && (prev === 'u-' || '+-*/^'.includes(prev));
+      const isUnary = prev === undefined || prev === '(' || prevIsOperator;
+      if (isUnary) {
+        if (t === '-') out.push('u-');
+        // unary '+' is a no-op: drop it
+        continue;
+      }
+    }
+    out.push(t);
+  }
+  return out;
+}
+
 function applyOp(a: number, op: string, b: number): number {
   switch (op) {
     case '+': return a + b;
     case '-': return a - b;
     case '*': return a * b;
     case '/': return b === 0 ? 0 : a / b;
+    case '^': return Math.pow(a, b);
     default: return b;
   }
 }
@@ -142,30 +166,55 @@ function applyOp(a: number, op: string, b: number): number {
 function precedence(op: string): number {
   if (op === '+' || op === '-') return 1;
   if (op === '*' || op === '/') return 2;
+  if (op === '^') return 3;
+  if (op === 'u-') return 4; // unary minus binds tighter than ^ (Excel: -2^2 = 4)
   return 0;
 }
 
+// '^' is right-associative (2^3^2 = 2^(3^2) = 512); unary minus is also right-associative.
+function isRightAssociative(op: string): boolean {
+  return op === '^' || op === 'u-';
+}
+
 // Evaluate a tokenized infix expression using the shunting-yard algorithm.
-// Supports +, -, *, / with standard operator precedence and parentheses.
+// Supports unary '-', + - * / ^ with standard precedence, right-associativity for ^,
+// and parentheses.
 function evaluateExpression(tokens: string[], cells: CellMap): number {
   const values: number[] = [];
   const ops: string[] = [];
 
-  for (const token of tokens) {
+  // Pop one operator and apply it to the value stack. Unary 'u-' consumes a single operand.
+  const popApply = () => {
+    const op = ops.pop()!;
+    if (op === 'u-') {
+      const a = values.pop()!;
+      values.push(-a);
+    } else {
+      const b = values.pop()!;
+      const a = values.pop()!;
+      values.push(applyOp(a, op, b));
+    }
+  };
+
+  const marked = markUnary(tokens);
+  for (const token of marked) {
     if (token === '(') {
       ops.push(token);
     } else if (token === ')') {
-      while (ops.length && ops[ops.length - 1] !== '(') {
-        const b = values.pop()!;
-        const a = values.pop()!;
-        values.push(applyOp(a, ops.pop()!, b));
-      }
+      while (ops.length && ops[ops.length - 1] !== '(') popApply();
       ops.pop();
-    } else if ('+-*/'.includes(token)) {
-      while (ops.length && precedence(ops[ops.length - 1]) >= precedence(token)) {
-        const b = values.pop()!;
-        const a = values.pop()!;
-        values.push(applyOp(a, ops.pop()!, b));
+    } else if (token === 'u-' || '+-*/^'.includes(token)) {
+      // For left-associative ops, pop while the stack top has >= precedence.
+      // For right-associative ops (^, u-), only pop while strictly greater, so equal-precedence
+      // operators stack up and evaluate right-to-left.
+      while (
+        ops.length &&
+        ops[ops.length - 1] !== '(' &&
+        (isRightAssociative(token)
+          ? precedence(ops[ops.length - 1]) > precedence(token)
+          : precedence(ops[ops.length - 1]) >= precedence(token))
+      ) {
+        popApply();
       }
       ops.push(token);
     } else {
@@ -174,11 +223,7 @@ function evaluateExpression(tokens: string[], cells: CellMap): number {
     }
   }
 
-  while (ops.length) {
-    const b = values.pop()!;
-    const a = values.pop()!;
-    values.push(applyOp(a, ops.pop()!, b));
-  }
+  while (ops.length) popApply();
 
   return values[0] || 0;
 }
