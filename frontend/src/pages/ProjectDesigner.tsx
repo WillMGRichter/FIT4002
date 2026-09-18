@@ -40,6 +40,118 @@ const ELEMENT_PALETTE: { type: ElementType; label: string; icon: React.ReactNode
   { type: 'image', label: 'Image', icon: <Image size={20} />, defaultProps: { src: 'https://placehold.co/400x200?text=Image', alt: '' } },
 ];
 
+// Renders a single canvas element. Memoized so that dragging/resizing ONE element
+// (which updates only that element's x/y/w/h in state) does not re-render every other
+// element. This matters most for image elements, whose src is a large base64 data URL:
+// re-rendering all of them on every mousemove made dragging very laggy.
+interface CanvasElementViewProps {
+  elem: CanvasElement;
+  selected: boolean;
+  onElemMouseDown: (e: React.MouseEvent, elem: CanvasElement) => void;
+  onResizeMouseDown: (e: React.MouseEvent, elem: CanvasElement) => void;
+}
+
+const CanvasElementView = React.memo<CanvasElementViewProps>(({ elem, selected, onElemMouseDown, onResizeMouseDown }) => {
+  return (
+    <div
+      className={`${styles.canvasElem} ${selected ? styles.canvasElemSelected : ''}`}
+      data-elem-id={elem.id}
+      style={{ left: elem.x, top: elem.y, width: elem.w, height: elem.h }}
+      onMouseDown={e => onElemMouseDown(e, elem)}
+    >
+      {elem.type === 'text' && (
+        <div className={styles.elemText} style={{ fontSize: elem.props.fontSize, color: elem.props.color, fontWeight: elem.props.bold ? 700 : 400 }}>
+          {elem.props.content}
+        </div>
+      )}
+      {elem.type === 'input-field' && (
+        <div className={styles.elemField}>
+          <label>{elem.props.label}</label>
+          {elem.props.format === 'range' && (
+            <div>
+            <input className={styles.fieldBox} type='range' readOnly disabled></input>
+            <span className={styles.sliderValue}>{elem.props.min ?? 0} - {elem.props.max ?? 10}</span>
+            </div>
+          )}
+          {elem.props.format === 'dropdown' && (
+            <div className={styles.fieldBox}>
+              <span className={styles.fieldPlaceholder}>{elem.props.placeholder || 'Choose...'} ({elem.props.cellRef || 'no cell'})</span>
+            </div>
+          )}
+          {elem.props.format !== 'range' && elem.props.format !== 'dropdown' && (
+            <div className={styles.fieldBox}>
+            <span className={styles.fieldPlaceholder}>{elem.props.placeholder} ({elem.props.cellRef || 'no cell'})</span>
+          </div>
+          )}
+        </div>
+      )}
+      {elem.type === 'output-field' && elem.props.format === 'bar-chart' && (
+        <div className={styles.elemField}>
+          <label>{elem.props.label}</label>
+          <div className={styles.barChartPreview}>
+            <div className={styles.barChartPreviewBar} style={{ height: '40%' }} />
+            <div className={styles.barChartPreviewBar} style={{ height: '65%' }} />
+            <div className={styles.barChartPreviewBar} style={{ height: '50%' }} />
+            <div className={styles.barChartPreviewBar} style={{ height: '85%' }} />
+            <span className={styles.barChartPreviewLabel}>{elem.props.cellRange || 'no range'}</span>
+          </div>
+        </div>
+      )}
+      {elem.type === 'output-field' && elem.props.format === 'pie-chart' && (
+        <div className={styles.elemField}>
+          <label>{elem.props.label}</label>
+          <div className={styles.pieChartPreview}>
+            <div className={styles.pieChartPreviewCircle} />
+            <div className={styles.pieChartPreviewLegend}>
+              {elem.props.cellRange
+                ? expandRange(elem.props.cellRange).map((ref, i) => (
+                    <div key={ref} className={styles.pieChartPreviewLegendRow}>
+                      <span className={styles.pieChartPreviewSwatch} style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                      <span className={styles.pieChartPreviewLegendLabel}>Legend {i + 1}</span>
+                    </div>
+                  ))
+                : <span className={styles.barChartPreviewLabel}>no range</span>}
+            </div>
+          </div>
+        </div>
+      )}
+      {elem.type === 'output-field' && elem.props.format === 'table' && (
+        <div className={styles.elemField}>
+          <label>{elem.props.label}</label>
+          <div className={styles.tablePreview}>
+            <div className={styles.tablePreviewHeader}>
+              {elem.props.showCellRef !== false && <span>Cell</span>}
+              <span>Value</span>
+            </div>
+            {(elem.props.cellRange ? expandRange(elem.props.cellRange).slice(0, 3) : []).map(ref => (
+              <div key={ref} className={styles.tablePreviewRow}>
+                {elem.props.showCellRef !== false && <span>{ref}</span>}
+                <span>0</span>
+              </div>
+            ))}
+            {!elem.props.cellRange && <span className={styles.barChartPreviewLabel}>no range</span>}
+          </div>
+        </div>
+      )}
+      {elem.type === 'output-field' && elem.props.format !== 'bar-chart' && elem.props.format !== 'pie-chart' && elem.props.format !== 'table' && (
+        <div className={styles.elemField}>
+          <label>{elem.props.label}</label>
+          <div className={`${styles.fieldBox} ${styles.fieldOutput}`}>
+            <span>{elem.props.cellRef || 'no cell'}</span>
+          </div>
+        </div>
+      )}
+      {elem.type === 'image' && (
+        <div className={styles.elemImage}>
+          <img src={elem.props.src} alt={elem.props.alt} draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </div>
+      )}
+      <div className={styles.resizeHandle} onMouseDown={e => onResizeMouseDown(e, elem)} />
+    </div>
+  );
+});
+CanvasElementView.displayName = 'CanvasElementView';
+
 export const ProjectDesigner: React.FC = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -55,14 +167,18 @@ export const ProjectDesigner: React.FC = () => {
   // pixels - that makes position purely a function of (current scroll, current pointer), so
   // programmatic auto-scroll during a drag (see the edge-pan effect below) moves the element
   // along with the pan for free, with no separate delta bookkeeping needed.
-  const [dragging, setDragging] = useState<{ elemId: string; offsetX: number; offsetY: number } | null>(null);
-  // Same idea for resizing: offsetW/H let width/height be derived as (pointer content pos - anchor)
-  // so an edge-pan while resizing grows the box instead of leaving it stuck under the pointer.
-  const [resizing, setResizing] = useState<{ elemId: string; elemX: number; elemY: number; offsetW: number; offsetH: number } | null>(null);
-  // Mirrors of the two states above, read inside the rAF pan loop so it isn't recreated on every
-  // drag/resize position update - only when a drag/resize actually starts or ends.
-  const draggingRef = useRef(dragging);
-  const resizingRef = useRef(resizing);
+  //
+  // NOTE: drag/resize gesture info lives in REFS, not React state. The gesture is started from
+  // the mousedown handler which attaches the window mousemove/mouseup listeners synchronously.
+  // Driving this through useState instead caused a bug where the first movements were dropped:
+  // the listener was only attached by a useEffect that ran *after* a re-render, so the element
+  // "didn't move at first, then jumped" once the render finally committed. Using refs means the
+  // drag is live on the very next mousemove with no render in between.
+  const draggingRef = useRef<{ elemId: string; offsetX: number; offsetY: number; baseX: number; baseY: number } | null>(null);
+  const resizingRef = useRef<{ elemId: string; elemX: number; elemY: number; offsetW: number; offsetH: number } | null>(null);
+  // Bumped on gesture start/end only, to drive the edge-pan rAF effect (which does need to
+  // start/stop with the gesture). Not used for per-frame updates.
+  const [gestureActive, setGestureActive] = useState(false);
   const mousePosRef = useRef({ x: 0, y: 0 });
   const [loading, setLoading] = useState(true);
   const [showExcelPreview, setShowExcelPreview] = useState(false);
@@ -244,11 +360,15 @@ export const ProjectDesigner: React.FC = () => {
     });
   }, [activePageIdx]);
 
-  const deleteElement = (elemId: string) => {
-    const newElements = activeElements.filter(e => e.id !== elemId);
-    updateActivePageElements(newElements);
+  const deleteElement = useCallback((elemId: string) => {
+    setPages(prev => {
+      const page = prev[activePageIdx];
+      if (!page) return prev;
+      const newElements = page.elements.filter(e => e.id !== elemId);
+      return prev.map((p, i) => i === activePageIdx ? { ...p, elements: newElements } : p);
+    });
     setSelectedElemId(null);
-  };
+  }, [activePageIdx]);
 
   // Reads a picked image file, downscales it on a canvas (max 1280px) and stores the result
   // as a compressed data URL in the element's src so it persists with the page's JSONB.
@@ -293,73 +413,126 @@ export const ProjectDesigner: React.FC = () => {
     return { x: canvas.scrollLeft + (clientX - rect.left), y: canvas.scrollTop + (clientY - rect.top) };
   };
 
-  const handleElemMouseDown = (e: React.MouseEvent, elem: CanvasElement) => {
-    if ((e.target as HTMLElement).closest(`.${styles.resizeHandle}`)) return;
-    e.stopPropagation();
-    setSelectedElemId(elem.id);
-    mousePosRef.current = { x: e.clientX, y: e.clientY };
-    const point = contentPointFromClient(e.clientX, e.clientY);
-    setDragging({ elemId: elem.id, offsetX: point.x - elem.x, offsetY: point.y - elem.y });
-  };
+  // During a drag/resize we mutate the element's DOM style directly instead of calling
+  // setState on every mousemove. That avoids re-rendering React 60x/sec (which was slow for
+  // image elements with large base64 srcs). The latest geometry is stashed here and committed
+  // to React state once, on mouseup.
+  const pendingGeomRef = useRef<{ elemId: string; x: number; y: number; w: number; h: number } | null>(null);
 
-  const handleResizeMouseDown = (e: React.MouseEvent, elem: CanvasElement) => {
-    e.stopPropagation();
-    mousePosRef.current = { x: e.clientX, y: e.clientY };
-    const point = contentPointFromClient(e.clientX, e.clientY);
-    setResizing({ elemId: elem.id, elemX: elem.x, elemY: elem.y, offsetW: elem.w - (point.x - elem.x), offsetH: elem.h - (point.y - elem.y) });
-  };
+  const findElemNode = useCallback((elemId: string): HTMLElement | null => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    return canvas.querySelector(`[data-elem-id="${elemId}"]`) as HTMLElement | null;
+  }, []);
 
   const updateDragFromClient = useCallback((clientX: number, clientY: number) => {
     const current = draggingRef.current;
     if (!current) return;
     const point = contentPointFromClient(clientX, clientY);
-    updateElementPosition(current.elemId, Math.max(0, point.x - current.offsetX), Math.max(0, point.y - current.offsetY));
-  }, [updateElementPosition]);
+    const x = Math.max(0, point.x - current.offsetX);
+    const y = Math.max(0, point.y - current.offsetY);
+    const node = findElemNode(current.elemId);
+    if (node) {
+      // Move via GPU-composited transform rather than left/top so the browser skips layout on
+      // every frame - this is what removes the stutter. The real left/top is committed on drop.
+      node.style.transform = `translate(${x - current.baseX}px, ${y - current.baseY}px)`;
+      node.style.willChange = 'transform';
+      pendingGeomRef.current = { elemId: current.elemId, x, y, w: node.offsetWidth, h: node.offsetHeight };
+    }
+  }, [findElemNode]);
 
   const updateResizeFromClient = useCallback((clientX: number, clientY: number) => {
     const current = resizingRef.current;
     if (!current) return;
     const point = contentPointFromClient(clientX, clientY);
-    updateElementSize(current.elemId, point.x - current.elemX + current.offsetW, point.y - current.elemY + current.offsetH);
-  }, [updateElementSize]);
+    const w = Math.max(40, point.x - current.elemX + current.offsetW);
+    const h = Math.max(24, point.y - current.elemY + current.offsetH);
+    const node = findElemNode(current.elemId);
+    if (node) {
+      node.style.width = `${w}px`;
+      node.style.height = `${h}px`;
+      pendingGeomRef.current = { elemId: current.elemId, x: current.elemX, y: current.elemY, w, h };
+    }
+  }, [findElemNode]);
 
-  useEffect(() => {
-    draggingRef.current = dragging;
-  }, [dragging]);
+  // Commit the DOM-only drag/resize geometry back into React state. Called once on mouseup.
+  const commitPendingGeom = useCallback(() => {
+    const geom = pendingGeomRef.current;
+    pendingGeomRef.current = null;
+    if (!geom) return;
+    // Clear the temporary drag transform so the committed left/top (applied on the next render)
+    // isn't stacked on top of a leftover translate. React will set left/top to geom.x/geom.y.
+    const node = findElemNode(geom.elemId);
+    if (node) {
+      node.style.transform = '';
+      node.style.willChange = '';
+      node.style.left = `${geom.x}px`;
+      node.style.top = `${geom.y}px`;
+    }
+    setPages(prev => {
+      const page = prev[activePageIdx];
+      if (!page) return prev;
+      const newElements = page.elements.map(e =>
+        e.id === geom.elemId ? { ...e, x: geom.x, y: geom.y, w: geom.w, h: geom.h } : e
+      );
+      return prev.map((p, i) => i === activePageIdx ? { ...p, elements: newElements } : p);
+    });
+  }, [activePageIdx, findElemNode]);
 
-  useEffect(() => {
-    resizingRef.current = resizing;
-  }, [resizing]);
+  // Ends whichever gesture is active: commits geometry, clears the gesture refs, removes the
+  // window listeners and stops the edge-pan loop. Stored in a ref so the listeners (attached
+  // synchronously on mousedown) can always reference the current teardown.
+  const endGestureRef = useRef<() => void>(() => {});
 
-  useEffect(() => {
-    if (!dragging) return;
+  // Starts a drag or resize. Listeners are attached HERE, synchronously, so the very next
+  // mousemove drives the element - no waiting for a React re-render/effect (that delay was the
+  // "doesn't move at first, then jumps" bug). No React state changes per frame; only DOM writes.
+  const beginGesture = useCallback(() => {
     const handleMouseMove = (e: MouseEvent) => {
       mousePosRef.current = { x: e.clientX, y: e.clientY };
-      updateDragFromClient(e.clientX, e.clientY);
+      if (draggingRef.current) updateDragFromClient(e.clientX, e.clientY);
+      else if (resizingRef.current) updateResizeFromClient(e.clientX, e.clientY);
     };
-    const handleMouseUp = () => setDragging(null);
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [dragging, updateDragFromClient]);
+    const handleMouseUp = () => endGestureRef.current();
 
-  useEffect(() => {
-    if (!resizing) return;
-    const handleMouseMove = (e: MouseEvent) => {
-      mousePosRef.current = { x: e.clientX, y: e.clientY };
-      updateResizeFromClient(e.clientX, e.clientY);
-    };
-    const handleMouseUp = () => setResizing(null);
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
+    endGestureRef.current = () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+      commitPendingGeom();
+      draggingRef.current = null;
+      resizingRef.current = null;
+      setGestureActive(false);
     };
-  }, [resizing, updateResizeFromClient]);
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    setGestureActive(true); // only to (re)start the edge-pan rAF effect
+  }, [updateDragFromClient, updateResizeFromClient, commitPendingGeom]);
+
+  const handleElemMouseDown = useCallback((e: React.MouseEvent, elem: CanvasElement) => {
+    if ((e.target as HTMLElement).closest(`.${styles.resizeHandle}`)) return;
+    e.stopPropagation();
+    e.preventDefault(); // avoid native image drag-ghost / text selection stealing the gesture
+    setSelectedElemId(elem.id);
+    mousePosRef.current = { x: e.clientX, y: e.clientY };
+    const point = contentPointFromClient(e.clientX, e.clientY);
+    resizingRef.current = null;
+    draggingRef.current = { elemId: elem.id, offsetX: point.x - elem.x, offsetY: point.y - elem.y, baseX: elem.x, baseY: elem.y };
+    beginGesture();
+  }, [beginGesture]);
+
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent, elem: CanvasElement) => {
+    e.stopPropagation();
+    e.preventDefault();
+    mousePosRef.current = { x: e.clientX, y: e.clientY };
+    const point = contentPointFromClient(e.clientX, e.clientY);
+    draggingRef.current = null;
+    resizingRef.current = { elemId: elem.id, elemX: elem.x, elemY: elem.y, offsetW: elem.w - (point.x - elem.x), offsetH: elem.h - (point.y - elem.y) };
+    beginGesture();
+  }, [beginGesture]);
+
+  // Clean up listeners if the component unmounts mid-gesture.
+  useEffect(() => () => endGestureRef.current(), []);
 
   // Delete/Backspace deletes the selected canvas element - skipped while focus is in a text
   // field (Label, Cell range, etc. in the properties panel), so editing text can still use
@@ -383,7 +556,7 @@ export const ProjectDesigner: React.FC = () => {
   // movement. Position/size are re-derived from (scroll, last known pointer) each tick, so the
   // element keeps growing outward with the pan instead of getting left behind.
   useEffect(() => {
-    if (!dragging && !resizing) return;
+    if (!gestureActive) return;
     const EDGE = 60; // px from viewport edge where panning starts
     const MAX_SPEED = 11; // px scrolled per frame at/past the edge
 
@@ -404,15 +577,15 @@ export const ProjectDesigner: React.FC = () => {
         if (dx !== 0 || dy !== 0) {
           canvas.scrollLeft += dx;
           canvas.scrollTop += dy;
-          if (dragging) updateDragFromClient(mx, my);
-          if (resizing) updateResizeFromClient(mx, my);
+          if (draggingRef.current) updateDragFromClient(mx, my);
+          if (resizingRef.current) updateResizeFromClient(mx, my);
         }
       }
       rafId = requestAnimationFrame(tick);
     };
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, [dragging, resizing, updateDragFromClient, updateResizeFromClient]);
+  }, [gestureActive, updateDragFromClient, updateResizeFromClient]);
 
   const selectedElem = activeElements.find(e => e.id === selectedElemId);
 
@@ -489,101 +662,13 @@ export const ProjectDesigner: React.FC = () => {
             onMouseDown={handleCanvasMouseDown}
           >
             {activeElements.map(elem => (
-              <div
+              <CanvasElementView
                 key={elem.id}
-                className={`${styles.canvasElem} ${selectedElemId === elem.id ? styles.canvasElemSelected : ''}`}
-                style={{ left: elem.x, top: elem.y, width: elem.w, height: elem.h }}
-                onMouseDown={e => handleElemMouseDown(e, elem)}
-              >
-                {elem.type === 'text' && (
-                  <div className={styles.elemText} style={{ fontSize: elem.props.fontSize, color: elem.props.color, fontWeight: elem.props.bold ? 700 : 400 }}>
-                    {elem.props.content}
-                  </div>
-                )}
-                {elem.type === 'input-field' && (
-                  <div className={styles.elemField}>
-                    <label>{elem.props.label}</label>
-                    {elem.props.format === 'range' && (
-                      <div>
-                      <input className={styles.fieldBox} type='range' readOnly disabled></input>
-                      <span className={styles.sliderValue}>{elem.props.min ?? 0} - {elem.props.max ?? 10}</span>
-                      </div>
-                    )}
-                    {elem.props.format === 'dropdown' && (
-                      <div className={styles.fieldBox}>
-                        <span className={styles.fieldPlaceholder}>{elem.props.placeholder || 'Choose...'} ({elem.props.cellRef || 'no cell'})</span>
-                      </div>
-                    )}
-                    {elem.props.format !== 'range' && elem.props.format !== 'dropdown' && (
-                      <div className={styles.fieldBox}>
-                      <span className={styles.fieldPlaceholder}>{elem.props.placeholder} ({elem.props.cellRef || 'no cell'})</span>
-                    </div>
-                    )}
-                  </div>
-                )}
-                {elem.type === 'output-field' && elem.props.format === 'bar-chart' && (
-                  <div className={styles.elemField}>
-                    <label>{elem.props.label}</label>
-                    <div className={styles.barChartPreview}>
-                      <div className={styles.barChartPreviewBar} style={{ height: '40%' }} />
-                      <div className={styles.barChartPreviewBar} style={{ height: '65%' }} />
-                      <div className={styles.barChartPreviewBar} style={{ height: '50%' }} />
-                      <div className={styles.barChartPreviewBar} style={{ height: '85%' }} />
-                      <span className={styles.barChartPreviewLabel}>{elem.props.cellRange || 'no range'}</span>
-                    </div>
-                  </div>
-                )}
-                {elem.type === 'output-field' && elem.props.format === 'pie-chart' && (
-                  <div className={styles.elemField}>
-                    <label>{elem.props.label}</label>
-                    <div className={styles.pieChartPreview}>
-                      <div className={styles.pieChartPreviewCircle} />
-                      <div className={styles.pieChartPreviewLegend}>
-                        {elem.props.cellRange
-                          ? expandRange(elem.props.cellRange).map((ref, i) => (
-                              <div key={ref} className={styles.pieChartPreviewLegendRow}>
-                                <span className={styles.pieChartPreviewSwatch} style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
-                                <span className={styles.pieChartPreviewLegendLabel}>Legend {i + 1}</span>
-                              </div>
-                            ))
-                          : <span className={styles.barChartPreviewLabel}>no range</span>}
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {elem.type === 'output-field' && elem.props.format === 'table' && (
-                  <div className={styles.elemField}>
-                    <label>{elem.props.label}</label>
-                    <div className={styles.tablePreview}>
-                      <div className={styles.tablePreviewHeader}>
-                        {elem.props.showCellRef !== false && <span>Cell</span>}
-                        <span>Value</span>
-                      </div>
-                      {(elem.props.cellRange ? expandRange(elem.props.cellRange).slice(0, 3) : []).map(ref => (
-                        <div key={ref} className={styles.tablePreviewRow}>
-                          {elem.props.showCellRef !== false && <span>{ref}</span>}
-                          <span>0</span>
-                        </div>
-                      ))}
-                      {!elem.props.cellRange && <span className={styles.barChartPreviewLabel}>no range</span>}
-                    </div>
-                  </div>
-                )}
-                {elem.type === 'output-field' && elem.props.format !== 'bar-chart' && elem.props.format !== 'pie-chart' && elem.props.format !== 'table' && (
-                  <div className={styles.elemField}>
-                    <label>{elem.props.label}</label>
-                    <div className={`${styles.fieldBox} ${styles.fieldOutput}`}>
-                      <span>{elem.props.cellRef || 'no cell'}</span>
-                    </div>
-                  </div>
-                )}
-                {elem.type === 'image' && (
-                  <div className={styles.elemImage}>
-                    <img src={elem.props.src} alt={elem.props.alt} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </div>
-                )}
-                <div className={styles.resizeHandle} onMouseDown={e => handleResizeMouseDown(e, elem)} />
-              </div>
+                elem={elem}
+                selected={selectedElemId === elem.id}
+                onElemMouseDown={handleElemMouseDown}
+                onResizeMouseDown={handleResizeMouseDown}
+              />
             ))}
           </div>
         </div>
