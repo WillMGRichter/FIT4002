@@ -1,37 +1,35 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { buildExcelData } from './excelDataBuilder';
+import { computeOracle } from './formulaOracle';
 import { recomputeAll, type CellMap } from '../../../frontend/src/utils/FormulaEngine';
 
 /**
- * Cached-vs-recomputed cross-check.
+ * Cross-check: our frontend FormulaEngine vs an INDEPENDENT oracle (fast-formula-parser, MIT).
  *
  * For each sample workbook we:
- *   1. parse it with the BACKEND buildExcelData (which carries Excel's cached values), then
- *   2. rebuild the exact {formulas, defaultCells} inputs the FRONTEND feeds to recomputeAll
- *      (see StudentSimulationView), and
- *   3. run the FRONTEND FormulaEngine over them.
+ *   1. parse it with buildExcelData (formulas + literal input values),
+ *   2. compute expected values with fast-formula-parser (a separate formula engine), and
+ *   3. compute the same cells with our FormulaEngine.recomputeAll, then assert they agree.
  *
- * Every numeric output cell's recomputed value must match Excel's cached value. This is the
- * core correctness contract: our client-side engine must reproduce what Excel computed, across
- * real workbooks, not just hand-written cases.
+ * Unlike the previous approach, this does NOT rely on the .xlsx file's cached values, so it needs
+ * no spreadsheet app and no fixture regeneration — the oracle is computed in-process, works in CI,
+ * and covers every workbook (including those saved without cached values). We only compare cells
+ * where BOTH engines produce a finite number; text results (e.g. IF returning a label) and any
+ * cells the parsers disagree on structurally are out of scope for a numeric equality check.
  */
 
 const SAMPLE_DIR = path.resolve(__dirname, '../../../sample-excel-sheets');
 
-// Replicate StudentSimulationView's formulas map: ref(upper) -> formula (leading '=').
 function buildFormulas(cells: Record<string, any>): Record<string, string> {
   const f: Record<string, string> = {};
   for (const [ref, cell] of Object.entries<any>(cells)) {
     const raw = cell.formula || (typeof cell.value === 'string' ? cell.value : null);
-    if (raw) {
-      f[ref.toUpperCase()] = raw.startsWith('=') ? raw : '=' + raw;
-    }
+    if (raw) f[ref.toUpperCase()] = raw.startsWith('=') ? raw : '=' + raw;
   }
   return f;
 }
 
-// Replicate StudentSimulationView's defaultCells: non-formula numeric seeds.
 function buildDefaults(cells: Record<string, any>): CellMap {
   const d: CellMap = {};
   for (const [ref, cell] of Object.entries<any>(cells)) {
@@ -52,60 +50,49 @@ function listSampleWorkbooks(): string[] {
 
 const workbooks = listSampleWorkbooks();
 
-describe('cached-vs-recomputed cross-check', () => {
+describe('cross-check: FormulaEngine vs independent oracle', () => {
   it('finds sample workbooks to test', () => {
     expect(workbooks.length).toBeGreaterThan(0);
   });
 
   describe.each(workbooks)('%s', (file) => {
     const data = buildExcelData(fs.readFileSync(path.join(SAMPLE_DIR, file)));
-    const formulas = buildFormulas(data.cells);
-    const defaults = buildDefaults(data.cells);
-    const recomputed = recomputeAll(defaults, formulas);
+    const oracle = computeOracle(data);
+    const recomputed = recomputeAll(buildDefaults(data.cells), buildFormulas(data.cells));
 
-    // Collect the numeric cached outputs that can serve as an oracle.
-    const numericOutputs = data.outputCells.filter(
-      o => typeof o.value === 'number' && isFinite(o.value)
-    );
-    // A workbook is only a valid oracle if Excel actually saved computed values. Some sample
-    // files were generated without a calc-on-save pass, so their formula cells are cached as 0
-    // (or dropped entirely). Comparing against those would test the fixture, not the engine.
-    const zeroCached = numericOutputs.filter(o => o.value === 0).length;
-    const usable =
-      numericOutputs.length > 0 && zeroCached / numericOutputs.length <= 0.5;
-
-    const maybe = usable ? it : it.skip;
-
-    maybe('recomputes numeric outputs to match Excel cached values', () => {
+    it('agrees with the independent oracle on all numeric formula cells', () => {
       const mismatches: string[] = [];
       let checked = 0;
 
-      for (const out of numericOutputs) {
+      for (const out of data.outputCells) {
         const ref = out.ref.toUpperCase();
-        const cached = out.value as number;
-
+        const expected = oracle[ref];
         const got = recomputed[ref];
+
+        // Only assert where BOTH engines produced a finite number. If the oracle couldn't
+        // evaluate it (unsupported function, text result), it isn't a fair numeric comparison.
+        if (typeof expected !== 'number' || !isFinite(expected)) continue;
         if (typeof got !== 'number' || !isFinite(got)) {
-          mismatches.push(`${ref}: expected ${cached}, engine produced ${JSON.stringify(got)}`);
+          mismatches.push(`${ref}: oracle=${expected}, engine produced ${JSON.stringify(got)} (${out.formula})`);
           continue;
         }
 
         checked++;
-        // Relative tolerance for float rounding; absolute floor for values near zero.
-        const tol = Math.max(1e-6, Math.abs(cached) * 1e-6);
-        if (Math.abs(got - cached) > tol) {
-          mismatches.push(`${ref}: expected ${cached}, got ${got}`);
+        const tol = Math.max(1e-6, Math.abs(expected) * 1e-6);
+        if (Math.abs(got - expected) > tol) {
+          mismatches.push(`${ref}: oracle=${expected}, engine=${got} (${out.formula})`);
         }
       }
 
       if (mismatches.length > 0) {
         throw new Error(
-          `${file}: ${mismatches.length} mismatch(es) out of ${checked + mismatches.length} numeric outputs:\n` +
+          `${file}: ${mismatches.length} mismatch(es) of ${checked + mismatches.length} numeric cells:\n` +
             mismatches.slice(0, 20).join('\n')
         );
       }
 
-      // Guard against a vacuous pass.
+      // Each workbook should have at least one numerically-verifiable formula cell; if not, the
+      // oracle failed to evaluate anything and the comparison would be vacuous.
       expect(checked).toBeGreaterThan(0);
     });
   });

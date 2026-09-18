@@ -73,10 +73,34 @@ function getCellRawValue(cellRef: string, cells: CellMap): number | string {
   return val;
 }
 
-function evaluateFunction(name: string, range: string, cells: CellMap): number {
-  const refs = expandRange(range);
-  const values = refs.map(r => getCellValue(r, cells));
+// True when an argument is purely a cell reference or a range/comma-list of them
+// (e.g. "A1", "A1:B3", "SALES!B4:B7"), as opposed to a literal or an expression.
+function isPureRefOrRange(arg: string): boolean {
+  const trimmed = arg.trim();
+  if (!trimmed) return false;
+  const refOrRange = /^(?:[A-Za-z0-9_]+!)?\$?[A-Z]+\$?\d+(?::(?:[A-Za-z0-9_]+!)?\$?[A-Z]+\$?\d+)?$/i;
+  return trimmed.split(',').every(part => refOrRange.test(part.trim()));
+}
 
+// Collect the numeric values an aggregate-function argument contributes:
+//  - a pure ref/range expands to each cell's value;
+//  - anything else (a literal like "0", or an expression like "B8*B7", or a nested
+//    function/IF) is evaluated as a sub-expression to a single number.
+// This is what lets SUM/MIN/MAX/etc. accept literals and expressions as arguments,
+// e.g. MAX(0, B8*B7) — not just cell refs/ranges.
+function valuesForAggregateArg(arg: string, cells: CellMap): number[] {
+  const trimmed = arg.trim();
+  if (!trimmed) return [];
+  if (isPureRefOrRange(trimmed)) {
+    return expandRange(trimmed).map(r => getCellValue(r, cells));
+  }
+  const result = evaluateFormula('=' + trimmed, cells);
+  const num = typeof result === 'number' ? result : parseFloat(String(result));
+  return [isNaN(num) ? 0 : num];
+}
+
+// Apply an aggregate function over a flat list of numeric values.
+function applyAggregate(name: string, values: number[]): number {
   switch (name.toUpperCase()) {
     case 'SUM':
       return values.reduce((a, b) => a + b, 0);
@@ -96,8 +120,36 @@ function evaluateFunction(name: string, range: string, cells: CellMap): number {
   }
 }
 
-const FUNC_REGEX = /(SUM|AVERAGE|AVG|MIN|MAX|COUNT|PRODUCT)\(([^)]+)\)/gi;
-// Matches a cell ref with an optional sheet prefix, e.g. "B3" or "SALES!B3".
+const AGG_FUNC_NAME = /\b(SUM|AVERAGE|AVG|MIN|MAX|COUNT|PRODUCT)\s*\(/i;
+
+// Replace each aggregate function call with its computed value, using balanced-paren
+// extraction so arguments may themselves be expressions or nested function/IF calls
+// (which the old first-')' regex could not handle). Innermost calls resolve first via
+// the recursion in valuesForAggregateArg -> evaluateFormula.
+function replaceAggregateFunctions(expr: string, cells: CellMap): string {
+  let result = expr;
+  for (let guard = 0; guard < 200; guard++) {
+    const match = AGG_FUNC_NAME.exec(result);
+    if (!match) break;
+
+    const name = match[1];
+    const start = match.index;
+    const content = extractParenContent(result, start + name.length);
+    if (content === null) break; // unbalanced; leave as-is
+
+    const openIdx = result.indexOf('(', start);
+    const closeIdx = openIdx + 1 + content.length; // position of matching ')'
+
+    // Split top-level args (reusing splitIfArgs' nesting/quote handling) and collect values.
+    const args = splitIfArgs(content);
+    const values = args.flatMap(a => valuesForAggregateArg(a, cells));
+    const value = applyAggregate(name, values);
+
+    result = result.substring(0, start) + String(value) + result.substring(closeIdx + 1);
+  }
+  return result;
+}
+
 const CELL_REGEX = /(?:[A-Za-z0-9_]+!)?\$?[A-Z]+\$?\d+/gi;
 
 function tokenize(expr: string): string[] {
@@ -258,9 +310,7 @@ export function evaluateFormula(formula: string, cells: CellMap): number | strin
   // by evaluating each embedded IF to its value before the arithmetic pipeline runs.
   expr = replaceEmbeddedIfs(expr, cells);
 
-  expr = expr.replace(FUNC_REGEX, (_match, name: string, range: string) => {
-    return String(evaluateFunction(name, range.trim(), cells));
-  });
+  expr = replaceAggregateFunctions(expr, cells);
 
   expr = expr.replace(CELL_REGEX, (ref: string) => {
     const cleaned = ref.replace(/\$/g, '');

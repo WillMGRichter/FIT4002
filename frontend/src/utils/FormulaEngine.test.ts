@@ -117,6 +117,28 @@ describe('evaluateFormula - functions', () => {
   it('function embedded in arithmetic', () => {
     expect(evaluateFormula('=SUM(A1:A4)*2', cells)).toBe(20);
   });
+
+  it('accepts a literal argument alongside a cell/expression (MAX floor-at-zero)', () => {
+    // Excel pattern: clamp a computed value to >= 0.
+    expect(evaluateFormula('=MAX(0,A1-A4)', { A1: 2, A4: 5 })).toBe(0); // 2-5=-3 -> 0
+    expect(evaluateFormula('=MAX(0,A4-A1)', { A1: 2, A4: 5 })).toBe(3); // 5-2=3
+  });
+
+  it('accepts an expression argument (product) inside MAX/MIN', () => {
+    expect(evaluateFormula('=MAX(0,A1*A2)', { A1: 4, A2: 3 })).toBe(12);
+    expect(evaluateFormula('=MIN(100,A1*A2)', { A1: 4, A2: 3 })).toBe(12);
+    expect(evaluateFormula('=MIN(5,A1*A2)', { A1: 4, A2: 3 })).toBe(5);
+  });
+
+  it('SUM/PRODUCT accept mixed literal, ref, and expression args', () => {
+    expect(evaluateFormula('=SUM(1,A1,A2*2)', { A1: 10, A2: 5 })).toBe(21); // 1 + 10 + 10
+    expect(evaluateFormula('=PRODUCT(2,A1)', { A1: 6 })).toBe(12);
+  });
+
+  it('still supports plain range aggregation', () => {
+    expect(evaluateFormula('=SUM(A1:A4)', cells)).toBe(10);
+    expect(evaluateFormula('=MAX(A1:A4)', cells)).toBe(4);
+  });
 });
 
 describe('evaluateFormula - IF', () => {
