@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { StudentSimulationView } from './StudentSimulationView';
+import { StudentSimulationView } from '../StudentSimulationView';
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
 // Router: this page reads useParams (projectId), useNavigate, useLocation. The stub in
@@ -14,17 +14,17 @@ jest.mock('react-router-dom', () => ({
 }));
 
 // Auth: supply a token so the load effect runs its fetches.
-jest.mock('../contexts/AuthContext', () => ({
+jest.mock('../../contexts/AuthContext', () => ({
   useAuth: () => ({ token: 'test-token' }),
 }));
 
 // AppShell wraps the page in nav chrome we don't care about here; render children only.
-jest.mock('../components/AppShell', () => ({
+jest.mock('../../components/AppShell', () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
 // projectStorage.addRecent touches localStorage; stub it out.
-jest.mock('../utils/projectStorage', () => ({
+jest.mock('../../utils/projectStorage', () => ({
   addRecent: jest.fn(),
 }));
 

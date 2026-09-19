@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import * as XLSX from 'xlsx';
-import { buildExcelData } from './excelDataBuilder';
+import { buildExcelData } from '../excelDataBuilder';
 
 /**
  * Build an in-memory .xlsx buffer from a plain description so tests are deterministic and don't
@@ -132,7 +132,7 @@ describe('buildExcelData - overridable formula inputs', () => {
 });
 
 describe('buildExcelData - sample workbook invariants', () => {
-  const samplePath = path.resolve(__dirname, '../../../sample-excel-sheets/06_payroll_if_formulas.xlsx');
+  const samplePath = path.resolve(__dirname, '../../../../sample-excel-sheets/06_payroll_if_formulas.xlsx');
 
   // Guard: only run if the sample file is present (it is checked into the repo).
   const exists = fs.existsSync(samplePath);

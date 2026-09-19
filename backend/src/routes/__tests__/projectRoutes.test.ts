@@ -13,8 +13,8 @@ import request from 'supertest';
  */
 
 // ── Service mocks ──────────────────────────────────────────────────────────────
-jest.mock('../services/authService', () => {
-  const actual = jest.requireActual('../services/authService');
+jest.mock('../../services/authService', () => {
+  const actual = jest.requireActual('../../services/authService');
   return {
     ...actual, // keep real generateToken / verifyToken / hashPassword
     getUserById: jest.fn(),
@@ -22,7 +22,7 @@ jest.mock('../services/authService', () => {
   };
 });
 
-jest.mock('../services/projectService', () => ({
+jest.mock('../../services/projectService', () => ({
   createProject: jest.fn(),
   getProjectById: jest.fn(),
   getProjectsByTeacher: jest.fn(),
@@ -35,7 +35,7 @@ jest.mock('../services/projectService', () => ({
   removeProjectParticipant: jest.fn(),
 }));
 
-jest.mock('../services/pageService', () => ({
+jest.mock('../../services/pageService', () => ({
   getPagesByProject: jest.fn(),
   getPageById: jest.fn(),
   createPage: jest.fn(),
@@ -44,7 +44,7 @@ jest.mock('../services/pageService', () => ({
   reorderPages: jest.fn(),
 }));
 
-jest.mock('../services/studentStateService', () => ({
+jest.mock('../../services/studentStateService', () => ({
   getOrCreateState: jest.fn(),
   updateInputValues: jest.fn(),
   updateCurrentPage: jest.fn(),
@@ -54,17 +54,17 @@ jest.mock('../services/studentStateService', () => ({
 
 // buildExcelData is unit-tested elsewhere; mock it so the upload test can assert the route
 // forwards the parsed result without depending on a real .xlsx fixture.
-jest.mock('../excel/excelDataBuilder', () => ({
+jest.mock('../../excel/excelDataBuilder', () => ({
   buildExcelData: jest.fn(() => ({ cells: {}, sheets: ['Sheet1'], multiSheet: false, inputCells: [], outputCells: [] })),
 }));
 
-import { app } from '../app';
-import { generateToken } from '../services/authService';
-import * as projectService from '../services/projectService';
-import * as pageService from '../services/pageService';
-import * as studentStateService from '../services/studentStateService';
-import * as authService from '../services/authService';
-import { buildExcelData } from '../excel/excelDataBuilder';
+import { app } from '../../app';
+import { generateToken } from '../../services/authService';
+import * as projectService from '../../services/projectService';
+import * as pageService from '../../services/pageService';
+import * as studentStateService from '../../services/studentStateService';
+import * as authService from '../../services/authService';
+import { buildExcelData } from '../../excel/excelDataBuilder';
 
 const OWNER = 'owner-1';
 const OTHER = 'other-2';

@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { LoginPage } from './LoginPage';
+import { LoginPage } from '../LoginPage';
 
 // react-router-dom v7 ships ESM that CRA's Jest resolver can't follow, so we mock the two hooks
 // this page uses. This also lets us assert navigation without a real router.
@@ -13,7 +13,7 @@ jest.mock('react-router-dom', () => ({
 
 // Control the auth layer so no real network call happens.
 const mockLogin = jest.fn();
-jest.mock('../contexts/AuthContext', () => ({
+jest.mock('../../contexts/AuthContext', () => ({
   useAuth: () => ({ login: mockLogin }),
 }));
 

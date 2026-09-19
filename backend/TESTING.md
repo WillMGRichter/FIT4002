@@ -13,7 +13,7 @@ oracle), and the auth/project/page/student-state routes (with Supabase mocked).
 
 ## Database integration tests (opt-in)
 
-`src/services/*.integration.test.ts` exercise the real service functions against a
+`src/services/__tests__/*.integration.test.ts` exercise the real service functions against a
 **local Supabase/Postgres**, verifying the service SQL matches the committed schema
 (`migrations/001-003`): FKs, defaults, CHECK/UNIQUE constraints, JSONB round-trips,
 and ordering. They validate SQL/schema correctness — not RLS, which the service-role

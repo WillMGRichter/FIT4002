@@ -1,8 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { buildExcelData } from './excelDataBuilder';
-import { computeOracle } from './formulaOracle';
-import { recomputeAll, type CellMap } from '../../../frontend/src/utils/FormulaEngine';
+import { buildExcelData } from '../excelDataBuilder';
+import { computeOracle } from '../formulaOracle';
+import { recomputeAll, type CellMap } from '../../../../frontend/src/utils/FormulaEngine';
 
 /**
  * Cross-check: our frontend FormulaEngine vs an INDEPENDENT oracle (fast-formula-parser, MIT).
@@ -19,7 +19,7 @@ import { recomputeAll, type CellMap } from '../../../frontend/src/utils/FormulaE
  * cells the parsers disagree on structurally are out of scope for a numeric equality check.
  */
 
-const SAMPLE_DIR = path.resolve(__dirname, '../../../sample-excel-sheets');
+const SAMPLE_DIR = path.resolve(__dirname, '../../../../sample-excel-sheets');
 
 function buildFormulas(cells: Record<string, any>): Record<string, string> {
   const f: Record<string, string> = {};

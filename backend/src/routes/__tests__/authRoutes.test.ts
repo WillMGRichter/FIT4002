@@ -28,13 +28,13 @@ function nextResult() {
 
 const mockFrom = jest.fn((_table: string) => makeBuilder());
 
-jest.mock('../config/supabase', () => ({
+jest.mock('../../config/supabase', () => ({
   supabase: { from: (table: string) => mockFrom(table) },
 }));
 
 // Import AFTER the mock is registered.
-import { app } from '../app';
-import { hashPassword, generateToken } from '../services/authService';
+import { app } from '../../app';
+import { hashPassword, generateToken } from '../../services/authService';
 
 function queue(...results: any[]) {
   resultQueue.push(...results);

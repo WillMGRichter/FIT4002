@@ -6,7 +6,7 @@ import {
   recomputeAll,
   getTransitiveDependencies,
   type CellMap,
-} from './FormulaEngine';
+} from '../FormulaEngine';
 
 describe('evaluateFormula - literals and non-formula input', () => {
   it('returns a number for a numeric non-formula string', () => {

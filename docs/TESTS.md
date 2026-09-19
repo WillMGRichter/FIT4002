@@ -8,15 +8,15 @@ dynamically, so the executed count can exceed the number of literal `it(...)` ca
 
 | Area | File | Tests | Type | DB |
 |------|------|------:|------|:--:|
-| Formula engine | `frontend/src/utils/FormulaEngine.test.ts` | 48 | unit | — |
-| Login screen | `frontend/src/pages/LoginPage.test.tsx` | 3 | component | — |
-| Student simulation screen | `frontend/src/pages/StudentSimulationView.test.tsx` | 5 | component | — |
-| Excel data builder | `backend/src/excel/excelDataBuilder.test.ts` | 12 | unit | — |
-| Formula cross-check | `backend/src/excel/crossCheck.test.ts` | 21 | unit (oracle) | — |
-| Auth routes | `backend/src/routes/authRoutes.test.ts` | 12 | route (mocked) | — |
-| Project/page/student-state routes | `backend/src/routes/projectRoutes.test.ts` | 23 | route (mocked) | — |
-| Simulation routes | `backend/src/routes/simulationRoutes.test.ts` | 9 | route (mocked) | — |
-| Service integration | `backend/src/services/projectService.integration.test.ts` | 15 | integration | ✔ |
+| Formula engine | `frontend/src/utils/__tests__/FormulaEngine.test.ts` | 48 | unit | — |
+| Login screen | `frontend/src/pages/__tests__/LoginPage.test.tsx` | 3 | component | — |
+| Student simulation screen | `frontend/src/pages/__tests__/StudentSimulationView.test.tsx` | 5 | component | — |
+| Excel data builder | `backend/src/excel/__tests__/excelDataBuilder.test.ts` | 12 | unit | — |
+| Formula cross-check | `backend/src/excel/__tests__/crossCheck.test.ts` | 21 | unit (oracle) | — |
+| Auth routes | `backend/src/routes/__tests__/authRoutes.test.ts` | 12 | route (mocked) | — |
+| Project/page/student-state routes | `backend/src/routes/__tests__/projectRoutes.test.ts` | 23 | route (mocked) | — |
+| Simulation routes | `backend/src/routes/__tests__/simulationRoutes.test.ts` | 9 | route (mocked) | — |
+| Service integration | `backend/src/services/__tests__/projectService.integration.test.ts` | 15 | integration | ✔ |
 
 Totals: **frontend 56**, **backend 77 mocked + 15 integration**.
 

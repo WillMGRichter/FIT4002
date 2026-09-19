@@ -12,12 +12,12 @@ import request from 'supertest';
  * functions (requireActual) while its DB-touching functions are mocked.
  */
 
-jest.mock('../services/authService', () => {
-  const actual = jest.requireActual('../services/authService');
+jest.mock('../../services/authService', () => {
+  const actual = jest.requireActual('../../services/authService');
   return { ...actual, getUserById: jest.fn() };
 });
 
-jest.mock('../services/simulationService', () => ({
+jest.mock('../../services/simulationService', () => ({
   saveSimulationProgress: jest.fn(),
   getSimulationProgress: jest.fn(),
   completeSimulation: jest.fn(),
@@ -25,14 +25,14 @@ jest.mock('../services/simulationService', () => ({
   getUserProjectResults: jest.fn(),
 }));
 
-jest.mock('../services/projectService', () => ({
+jest.mock('../../services/projectService', () => ({
   getProjectById: jest.fn(),
 }));
 
-import { app } from '../app';
-import { generateToken } from '../services/authService';
-import * as simulationService from '../services/simulationService';
-import * as projectService from '../services/projectService';
+import { app } from '../../app';
+import { generateToken } from '../../services/authService';
+import * as simulationService from '../../services/simulationService';
+import * as projectService from '../../services/projectService';
 
 const OWNER = 'owner-1';
 const OTHER = 'other-2';

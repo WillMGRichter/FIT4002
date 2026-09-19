@@ -9,9 +9,13 @@ Reference docs for the SmartSim test suite and CI.
 
 | Suite | Location | Count | DB needed? |
 |-------|----------|-------|------------|
-| Frontend unit/component | `frontend/src/**/*.test.{ts,tsx}` | 56 | No |
-| Backend unit/route (mocked) | `backend/src/**/*.test.ts` (excl. integration) | 77 | No |
-| Backend DB integration (opt-in) | `backend/src/services/*.integration.test.ts` | 15 | Yes (local Supabase) |
+| Frontend unit/component | `frontend/src/**/__tests__/*.test.{ts,tsx}` | 56 | No |
+| Backend unit/route (mocked) | `backend/src/**/__tests__/*.test.ts` (excl. integration) | 77 | No |
+| Backend DB integration (opt-in) | `backend/src/services/__tests__/*.integration.test.ts` | 15 | Yes (local Supabase) |
+
+Test files live in `__tests__/` folders next to the code they cover (e.g.
+`src/utils/__tests__/FormulaEngine.test.ts`), the standard layout for both the CRA/Jest
+frontend and the ts-jest backend.
 
 Default local commands:
 

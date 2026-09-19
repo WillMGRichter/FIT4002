@@ -29,11 +29,11 @@ const describeIt = shouldRun ? describe : describe.skip;
 
 describeIt('service integration (real DB)', () => {
   /* eslint-disable @typescript-eslint/no-var-requires */
-  const projectService = require('../services/projectService');
-  const pageService = require('../services/pageService');
-  const authService = require('../services/authService');
-  const simulationService = require('../services/simulationService');
-  const { supabase } = require('../config/supabase');
+  const projectService = require('../../services/projectService');
+  const pageService = require('../../services/pageService');
+  const authService = require('../../services/authService');
+  const simulationService = require('../../services/simulationService');
+  const { supabase } = require('../../config/supabase');
   /* eslint-enable @typescript-eslint/no-var-requires */
 
   // Unique suffix so repeated runs don't collide on UNIQUE(name/username) constraints.
