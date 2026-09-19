@@ -491,12 +491,10 @@ export const StudentSimulationView: React.FC = () => {
 
             <div className={styles.canvas} style={{ minHeight: Math.max(400, pageBounds.height) }}>
               {currentPage?.elements.map(elem => {
-                // const { w: effectiveW, h: effectiveH } = getEffectiveSize(elem);
                 return (
                 <div
                   key={elem.id}
                   className={styles.canvasElem}
-                  // style={{ left: elem.x, top: elem.y, width: effectiveW, height: effectiveH }}
                   style={{ left: elem.x, top: elem.y, width: elem.w, height: elem.h }}
                 >
                   {elem.type === 'text' && (
