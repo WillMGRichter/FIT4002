@@ -32,6 +32,12 @@ jobs:
         run: npx tsc --noEmit
       - name: Test (mocked)
         run: npm test
+        env:
+          # The Supabase client module validates these at import time. The mocked suite
+          # never makes real calls (services are mocked per-test), so dummy values are
+          # enough to let the module load — matching local runs where a .env is present.
+          SUPABASE_URL: http://localhost:54321
+          SUPABASE_SERVICE_ROLE_KEY: dummy-key-for-mocked-tests
 
   # ── Frontend tests + type-check ─────────────────────────────────────────────
   frontend:
