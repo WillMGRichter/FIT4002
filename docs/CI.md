@@ -10,16 +10,20 @@ on:
   pull_request:
     branches: [dev]
   push:
-    branches: [dev, test/test-suite]
+    branches: [dev]
 ```
 
-- **Pull requests targeting `dev`** — runs for a PR from *any* collaborator (the trigger is
-  author-agnostic). This repo is private and contributors are direct collaborators, so PRs
-  come from in-repo branches (not forks); no fork-approval gate applies.
-- **Pushes to `dev` or `test/test-suite`** — runs on direct pushes to those branches.
+- **Pull requests targeting `dev`** — runs when a PR into `dev` is opened and on every push
+  to that PR's branch (the `synchronize` event). This is how feature branches get CI. The
+  trigger is author-agnostic: it runs for a PR from *any* collaborator. This repo is private
+  and contributors are direct collaborators, so PRs come from in-repo branches (not forks);
+  no fork-approval gate applies.
+- **Pushes to `dev`** — runs on direct pushes to `dev` (e.g. after a merge).
 
-> A push to `test/test-suite` that also has an open PR into `dev` triggers both a `push`
-> run and a `pull_request` run.
+> Feature branches (e.g. `test/test-suite`) are intentionally **not** listed under `push`.
+> They already get CI via their PR into `dev`, so listing them under `push` too would run
+> every job twice (one `push` run + one `pull_request` run). The tradeoff: a branch with no
+> open PR gets no CI until the PR is opened.
 
 A `concurrency` group (`ci-<ref>`, `cancel-in-progress: true`) cancels superseded runs on
 the same ref to save minutes.
