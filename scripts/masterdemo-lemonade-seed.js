@@ -1,6 +1,17 @@
 /**
  * Creates (or refreshes) the "masterdemo-lemonade" project in the database, with every page and
- * canvas node already placed. It demonstrates each feature of the simulation canvas:
+ * canvas node already placed. It demonstrates each feature of the simulation canvas.
+ *
+ * THE SCENARIO
+ *   You run a lemonade stand for one day, and the question is: can you make a profit?
+ *   You choose the price per cup, the number of cups to make, and the ingredient costs; the
+ *   weather (sunny, cloudy or rainy) is a condition that changes how many customers show up.
+ *   Roughly: sunny 100 customers, cloudy 70, rainy 40, minus 10 for every $1 on the price.
+ *   Cups you make but don't sell are wasted money. Try a rainy day at a high price and you lose
+ *   money; make fewer cups and you recover. It is deliberately simple so anyone can follow it
+ *   without finance knowledge. The model itself lives in masterdemo-lemonade-build.js.
+ *
+ * FEATURES COVERED
  *
  *   text        headings / body / hint text in different sizes, colours and weights   (all pages)
  *   inputs      number, slider, dropdown                                             (pages 1-2)
