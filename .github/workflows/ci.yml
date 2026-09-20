@@ -1,0 +1,106 @@
+name: CI
+
+# Runs the test suites on pull requests into dev and on pushes to dev.
+# Feature branches get CI via their PR into dev (open + each push to the PR), so we don't
+# also list them under `push` — that would double every run.
+on:
+  pull_request:
+    branches: [dev]
+  push:
+    branches: [dev]
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Backend unit/route tests (mocked Supabase — no DB needed) ───────────────
+  backend:
+    name: Backend (unit + routes)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - name: Type-check
+        run: npx tsc --noEmit
+      - name: Test (mocked)
+        run: npm test
+        env:
+          # The Supabase client module validates these at import time. The mocked suite
+          # never makes real calls (services are mocked per-test), so dummy values are
+          # enough to let the module load — matching local runs where a .env is present.
+          SUPABASE_URL: http://localhost:54321
+          SUPABASE_SERVICE_ROLE_KEY: dummy-key-for-mocked-tests
+
+  # ── Frontend tests + type-check ─────────────────────────────────────────────
+  frontend:
+    name: Frontend (unit + type-check)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Type-check
+        run: npx tsc --noEmit
+      - name: Test
+        run: npm test -- --watchAll=false
+        env:
+          CI: true
+
+  # ── Backend integration tests (real Supabase/Postgres via the Supabase CLI) ──
+  backend-integration:
+    name: Backend (DB integration)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+
+      - name: Start Supabase stack
+        working-directory: .
+        run: npx --yes supabase start
+
+      - name: Apply migrations
+        run: npm run db:migrate:local
+
+      - name: Run integration tests
+        working-directory: .
+        run: |
+          # Read the generated URL/key from the running stack so we never hardcode a
+          # machine-specific value. SERVICE_ROLE_KEY is the fixed local dev default JWT
+          # (service-role, bypasses RLS) that @supabase/supabase-js expects.
+          eval "$(npx --yes supabase status -o env | grep -E '^(API_URL|SERVICE_ROLE_KEY)=')"
+          echo "Using API_URL=$API_URL"
+          cd backend
+          RUN_DB_IT=1 \
+          SUPABASE_URL="$API_URL" \
+          SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
+          npx jest integration
+
+      - name: Stop Supabase stack
+        if: always()
+        working-directory: .
+        run: npx --yes supabase stop || true
