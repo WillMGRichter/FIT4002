@@ -388,27 +388,36 @@ export const StudentSimulationView: React.FC = () => {
   };
 
   const renderTable = (props: Record<string, any>) => {
-    const refs = expandRange(props.cellRange || '');
+    const legacyRowRefs = expandRange(props.tableRowRange || props.cellRange || '');
+    const rowLabels = Array.isArray(props.tableRows) && props.tableRows.length
+      ? props.tableRows
+      : legacyRowRefs.map(ref => String(computedValues[ref.toUpperCase()] ?? cellTitles[ref.toUpperCase()] ?? ref));
+    const columns = Array.isArray(props.tableColumns) && props.tableColumns.length
+      ? props.tableColumns
+      : [{ header: 'Column 1', range: props.cellRange || '' }];
+    const columnRefs = columns.map((column: { range?: string }) => expandRange(column.range || ''));
 
     return (
       <div className={styles.tableWrap}>
-        {props.chartTitle && <div className={styles.barChartTitle}>{props.chartTitle}</div>}
         <table className={styles.outputTable}>
           <thead>
             <tr>
-              {props.showCellRef !== false && <th>Cell</th>}
-              <th>Label</th>
-              <th>Value</th>
+              <th>Row</th>
+              {columns.map((column: { header?: string }, index: number) => (
+                <th key={index}>{column.header || `Column ${index + 1}`}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {refs.map(ref => {
-              const upperRef = ref.toUpperCase();
+            {rowLabels.map((rowLabel: string, rowIndex: number) => {
               return (
-                <tr key={upperRef}>
-                  {props.showCellRef !== false && <td>{upperRef}</td>}
-                  <td>{cellTitles[upperRef] || upperRef}</td>
-                  <td>{formatValue(computedValues[upperRef] ?? 0)}</td>
+                <tr key={`${rowLabel}-${rowIndex}`}>
+                  <td>{rowLabel}</td>
+                  {columnRefs.map((refs: string[], columnIndex: number) => {
+                    const ref = refs[rowIndex];
+                    const upperRef = ref?.toUpperCase();
+                    return <td key={columnIndex}>{upperRef ? formatValue(computedValues[upperRef] ?? 0) : ''}</td>;
+                  })}
                 </tr>
               );
             })}
