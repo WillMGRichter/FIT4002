@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 import { addRecent } from '../utils/projectStorage';
 import { recomputeAll, expandRange, getTransitiveDependencies, type CellMap } from '../utils/FormulaEngine';
+import { getColumns, getRows } from '../utils/tableUtils';
 import styles from './StudentSimulationView.module.css';
 
 interface CanvasElement {
@@ -388,13 +389,11 @@ export const StudentSimulationView: React.FC = () => {
   };
 
   const renderTable = (props: Record<string, any>) => {
-    const legacyRowRefs = expandRange(props.tableRowRange || props.cellRange || '');
+    const configuredRows = getRows(props);
     const rowLabels = Array.isArray(props.tableRows) && props.tableRows.length
-      ? props.tableRows
-      : legacyRowRefs.map(ref => String(computedValues[ref.toUpperCase()] ?? cellTitles[ref.toUpperCase()] ?? ref));
-    const columns = Array.isArray(props.tableColumns) && props.tableColumns.length
-      ? props.tableColumns
-      : [{ header: 'Column 1', range: props.cellRange || '' }];
+      ? configuredRows
+      : configuredRows.map(ref => String(computedValues[ref.toUpperCase()] ?? cellTitles[ref.toUpperCase()] ?? ref));
+    const columns = getColumns(props);
     const columnRefs = columns.map((column: { range?: string }) => expandRange(column.range || ''));
 
     return (

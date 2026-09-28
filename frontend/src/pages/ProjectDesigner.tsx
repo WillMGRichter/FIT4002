@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 import { addRecent } from '../utils/projectStorage';
 import { expandRange } from '../utils/FormulaEngine';
+import { getColumns, getRows } from '../utils/tableUtils';
 import styles from './ProjectDesigner.module.css';
 
 type ElementType = 'text' | 'input-field' | 'output-field' | 'image';
@@ -121,24 +122,15 @@ const CanvasElementView = React.memo<CanvasElementViewProps>(({ elem, selected, 
           <div className={styles.tablePreview}>
             <div className={styles.tablePreviewHeader}>
               <span>{elem.props.tableRowHeader || ''}</span>
-              {(Array.isArray(elem.props.tableColumns) && elem.props.tableColumns.length
-                ? elem.props.tableColumns
-                : [{ header: 'Column 1', range: elem.props.cellRange || '' }]
-              ).map((column: { header?: string }, i: number) => <span key={i}>{column.header || `Column ${i + 1}`}</span>)}
+              {getColumns(elem.props).map((column, i) => <span key={i}>{column.header || `Column ${i + 1}`}</span>)}
             </div>
-            {(Array.isArray(elem.props.tableRows) && elem.props.tableRows.length
-              ? elem.props.tableRows
-              : (elem.props.tableRowRange || elem.props.cellRange ? expandRange(elem.props.tableRowRange || elem.props.cellRange) : [])
-            ).slice(0, 3).map((row: string, i: number) => (
+            {getRows(elem.props).slice(0, 3).map((row: string, i: number) => (
               <div key={`${row}-${i}`} className={styles.tablePreviewRow}>
                 <span>{row}</span>
-                {(Array.isArray(elem.props.tableColumns) && elem.props.tableColumns.length
-                  ? elem.props.tableColumns
-                  : [{ header: 'Column 1', range: elem.props.cellRange || '' }]
-                ).map((_: unknown, columnIndex: number) => <span key={columnIndex}>0</span>)}
+                {getColumns(elem.props).map((_, columnIndex) => <span key={columnIndex}>0</span>)}
               </div>
             ))}
-            {(!Array.isArray(elem.props.tableRows) || !elem.props.tableRows.length) && !elem.props.tableRowRange && !elem.props.cellRange && <span className={styles.barChartPreviewLabel}>no rows</span>}
+            {!getRows(elem.props).length && <span className={styles.barChartPreviewLabel}>no rows</span>}
           </div>
         </div>
       )}
@@ -884,11 +876,8 @@ export const ProjectDesigner: React.FC = () => {
                             className={styles.propInput}
                           />
                         </div>
-                        {(Array.isArray(selectedElem.props.tableRows) && selectedElem.props.tableRows.length
-                          ? selectedElem.props.tableRows
-                          : ['Row 1']
-                        ).map((row: string, index: number) => {
-                          const rows = Array.isArray(selectedElem.props.tableRows) ? selectedElem.props.tableRows : ['Row 1'];
+                        {getRows(selectedElem.props).map((row: string, index: number) => {
+                          const rows = getRows(selectedElem.props);
                           return (
                             <div key={index} className={styles.tableRowConfig}>
                               <input
@@ -910,17 +899,14 @@ export const ProjectDesigner: React.FC = () => {
                           );
                         })}
                         <button type="button" className={styles.addColumnBtn} onClick={() => {
-                          const rows = Array.isArray(selectedElem.props.tableRows) ? selectedElem.props.tableRows : ['Row 1'];
+                          const rows = getRows(selectedElem.props);
                           updateElementProps(selectedElem.id, { tableRows: [...rows, `Row ${rows.length + 1}`] });
                         }}>+</button>
                       </div>
                       <div className={styles.tableColumnsSection}>
                         <div className={styles.propsSectionTitle}>Columns</div>
-                        {(Array.isArray(selectedElem.props.tableColumns) && selectedElem.props.tableColumns.length
-                          ? selectedElem.props.tableColumns
-                          : [{ header: 'Column 1', range: selectedElem.props.cellRange || '' }]
-                        ).map((column: { header?: string; range?: string }, index: number) => {
-                          const columns = Array.isArray(selectedElem.props.tableColumns) ? selectedElem.props.tableColumns : [];
+                        {getColumns(selectedElem.props).map((column, index: number) => {
+                          const columns = getColumns(selectedElem.props);
                           return (
                             <div key={index} className={styles.tableColumnConfig}>
                               <input
@@ -929,7 +915,6 @@ export const ProjectDesigner: React.FC = () => {
                                 value={column.header || ''}
                                 onChange={e => {
                                   const next = [...columns];
-                                  if (!next.length) next.push({ header: column.header || 'Column 1', range: column.range || '' });
                                   next[index] = { ...next[index], header: e.target.value };
                                   updateElementProps(selectedElem.id, { tableColumns: next });
                                 }}
@@ -941,7 +926,6 @@ export const ProjectDesigner: React.FC = () => {
                                 value={column.range || ''}
                                 onChange={e => {
                                   const next = [...columns];
-                                  if (!next.length) next.push({ header: column.header || 'Column 1', range: column.range || '' });
                                   next[index] = { ...next[index], range: e.target.value };
                                   updateElementProps(selectedElem.id, { tableColumns: next });
                                 }}
@@ -955,9 +939,7 @@ export const ProjectDesigner: React.FC = () => {
                           );
                         })}
                         <button type="button" className={styles.addColumnBtn} onClick={() => {
-                          const columns = Array.isArray(selectedElem.props.tableColumns)
-                            ? selectedElem.props.tableColumns
-                            : [{ header: 'Column 1', range: selectedElem.props.cellRange || '' }];
+                          const columns = getColumns(selectedElem.props);
                           updateElementProps(selectedElem.id, { tableColumns: [...columns, { header: `Column ${columns.length + 1}`, range: '' }] });
                         }}>+</button>
                       </div>
