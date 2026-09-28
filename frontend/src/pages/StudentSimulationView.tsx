@@ -399,6 +399,7 @@ export const StudentSimulationView: React.FC = () => {
 
     return (
       <div className={styles.tableWrap}>
+        {props.chartTitle && <div className={styles.barChartTitle}>{props.chartTitle}</div>}
         <table className={styles.outputTable}>
           <thead>
             <tr>
