@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 import { addRecent } from '../utils/projectStorage';
 import { expandRange } from '../utils/FormulaEngine';
+import { getColumns, getRows } from '../utils/tableUtils';
 import styles from './ProjectDesigner.module.css';
 
 type ElementType = 'text' | 'input-field' | 'output-field' | 'image';
@@ -36,7 +37,7 @@ const newElemId = () => `elem_${Date.now().toString(36)}_${Math.random().toStrin
 const ELEMENT_PALETTE: { type: ElementType; label: string; icon: React.ReactNode; defaultProps: Record<string, any> }[] = [
   { type: 'text', label: 'Text', icon: <Type size={20} />, defaultProps: { content: 'Text', fontSize: 16, color: '#111827', bold: false } },
   { type: 'input-field', label: 'Input', icon: <RectangleHorizontal size={20} />, defaultProps: { cellRef: '', label: 'Input', placeholder: 'Enter value...' } },
-  { type: 'output-field', label: 'Output', icon: <ChartBar size={20} />, defaultProps: { cellRef: '', cellRange: '', label: 'Output', format: 'number', chartTitle: '', xAxisTitle: '', yAxisTitle: '' } },
+  { type: 'output-field', label: 'Output', icon: <ChartBar size={20} />, defaultProps: { cellRef: '', cellRange: '', tableRowHeader: '', tableRows: ['Row 1'], tableColumns: [{ header: 'Column 1', range: '' }], label: 'Output', format: 'number', chartTitle: '', xAxisTitle: '', yAxisTitle: '' } },
   { type: 'image', label: 'Image', icon: <Image size={20} />, defaultProps: { src: 'https://placehold.co/400x200?text=Image', alt: '' } },
 ];
 
@@ -120,16 +121,16 @@ const CanvasElementView = React.memo<CanvasElementViewProps>(({ elem, selected, 
           <label>{elem.props.label}</label>
           <div className={styles.tablePreview}>
             <div className={styles.tablePreviewHeader}>
-              {elem.props.showCellRef !== false && <span>Cell</span>}
-              <span>Value</span>
+              <span>{elem.props.tableRowHeader || ''}</span>
+              {getColumns(elem.props).map((column, i) => <span key={i}>{column.header || `Column ${i + 1}`}</span>)}
             </div>
-            {(elem.props.cellRange ? expandRange(elem.props.cellRange).slice(0, 3) : []).map(ref => (
-              <div key={ref} className={styles.tablePreviewRow}>
-                {elem.props.showCellRef !== false && <span>{ref}</span>}
-                <span>0</span>
+            {getRows(elem.props).slice(0, 3).map((row: string, i: number) => (
+              <div key={`${row}-${i}`} className={styles.tablePreviewRow}>
+                <span>{row}</span>
+                {getColumns(elem.props).map((_, columnIndex) => <span key={columnIndex}>0</span>)}
               </div>
             ))}
-            {!elem.props.cellRange && <span className={styles.barChartPreviewLabel}>no range</span>}
+            {!getRows(elem.props).length && <span className={styles.barChartPreviewLabel}>no rows</span>}
           </div>
         </div>
       )}
@@ -863,34 +864,84 @@ export const ProjectDesigner: React.FC = () => {
                   )}
                   {selectedElem.type === 'output-field' && selectedElem.props.format === 'table' && (
                     <>
-                      <div className={styles.propRow}>
-                        <label>Cell range</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. B4:B8 or B1:B3,B5:B7"
-                          value={selectedElem.props.cellRange || ''}
-                          onChange={e => updateElementProps(selectedElem.id, { cellRange: e.target.value })}
-                          className={styles.propInput}
-                        />
+                      <div className={styles.tableColumnsSection}>
+                        <div className={styles.propsSectionTitle}>Rows</div>
+                        <div className={styles.propRow}>
+                          <label>Heading</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Month"
+                            value={selectedElem.props.tableRowHeader || ''}
+                            onChange={e => updateElementProps(selectedElem.id, { tableRowHeader: e.target.value })}
+                            className={styles.propInput}
+                          />
+                        </div>
+                        {getRows(selectedElem.props).map((row: string, index: number) => {
+                          const rows = getRows(selectedElem.props);
+                          return (
+                            <div key={index} className={styles.tableRowConfig}>
+                              <input
+                                type="text"
+                                placeholder="Row Label"
+                                value={row}
+                                onChange={e => {
+                                  const next = [...rows];
+                                  next[index] = e.target.value;
+                                  updateElementProps(selectedElem.id, { tableRows: next });
+                                }}
+                                className={styles.propInput}
+                              />
+                              <button type="button" className={styles.removeColumnBtn} onClick={() => {
+                                const next = rows.filter((_: string, i: number) => i !== index);
+                                updateElementProps(selectedElem.id, { tableRows: next });
+                              }} title="Remove row">x</button>
+                            </div>
+                          );
+                        })}
+                        <button type="button" className={styles.addColumnBtn} onClick={() => {
+                          const rows = getRows(selectedElem.props);
+                          updateElementProps(selectedElem.id, { tableRows: [...rows, `Row ${rows.length + 1}`] });
+                        }}>+</button>
                       </div>
-                      <div className={styles.propRow}>
-                        <label>Table title</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Revenue by Year"
-                          value={selectedElem.props.chartTitle || ''}
-                          onChange={e => updateElementProps(selectedElem.id, { chartTitle: e.target.value })}
-                          className={styles.propInput}
-                        />
-                      </div>
-                      <div className={styles.propRow}>
-                        <label>Show cell reference</label>
-                        <input
-                          type="checkbox"
-                          checked={selectedElem.props.showCellRef !== false}
-                          onChange={e => updateElementProps(selectedElem.id, { showCellRef: e.target.checked })}
-                          className={styles.propInput}
-                        />
+                      <div className={styles.tableColumnsSection}>
+                        <div className={styles.propsSectionTitle}>Columns</div>
+                        {getColumns(selectedElem.props).map((column, index: number) => {
+                          const columns = getColumns(selectedElem.props);
+                          return (
+                            <div key={index} className={styles.tableColumnConfig}>
+                              <input
+                                type="text"
+                                placeholder="Column Heading"
+                                value={column.header || ''}
+                                onChange={e => {
+                                  const next = [...columns];
+                                  next[index] = { ...next[index], header: e.target.value };
+                                  updateElementProps(selectedElem.id, { tableColumns: next });
+                                }}
+                                className={styles.propInput}
+                              />
+                              <input
+                                type="text"
+                                placeholder="e.g. B2:B13"
+                                value={column.range || ''}
+                                onChange={e => {
+                                  const next = [...columns];
+                                  next[index] = { ...next[index], range: e.target.value };
+                                  updateElementProps(selectedElem.id, { tableColumns: next });
+                                }}
+                                className={styles.propInput}
+                              />
+                              <button type="button" className={styles.removeColumnBtn} onClick={() => {
+                                const next = columns.filter((_: unknown, i: number) => i !== index);
+                                updateElementProps(selectedElem.id, { tableColumns: next.length ? next : [{ header: 'Column 1', range: '' }] });
+                              }} title="Remove column">x</button>
+                            </div>
+                          );
+                        })}
+                        <button type="button" className={styles.addColumnBtn} onClick={() => {
+                          const columns = getColumns(selectedElem.props);
+                          updateElementProps(selectedElem.id, { tableColumns: [...columns, { header: `Column ${columns.length + 1}`, range: '' }] });
+                        }}>+</button>
                       </div>
                     </>
                   )}

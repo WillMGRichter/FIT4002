@@ -514,7 +514,7 @@
 .tablePreviewHeader,
 .tablePreviewRow {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(45px, 1fr));
   gap: 6px;
   padding: 3px 6px;
   border-bottom: 1px solid #bbf7d0;
@@ -527,6 +527,53 @@
 
 .tablePreviewRow:last-child {
   border-bottom: 0;
+}
+
+.tableColumnsSection {
+  margin: 12px 0;
+}
+
+.addColumnBtn {
+  display: block;
+  width: 24px;
+  height: 24px;
+  margin: 8px auto 0;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: white;
+  color: #15803d;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.addColumnBtn:hover {
+  border-color: #16a34a;
+  background: #f0fdf4;
+}
+
+.tableColumnConfig {
+  display: grid;
+  grid-template-columns: 1fr 1fr 24px;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.tableRowConfig {
+  display: grid;
+  grid-template-columns: 1fr 24px;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.removeColumnBtn {
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: white;
+  color: #dc2626;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
 }
 
 .elemImage {

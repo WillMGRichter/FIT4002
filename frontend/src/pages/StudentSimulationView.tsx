@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 import { addRecent } from '../utils/projectStorage';
 import { recomputeAll, expandRange, getTransitiveDependencies, type CellMap } from '../utils/FormulaEngine';
+import { getColumns, getRows } from '../utils/tableUtils';
 import styles from './StudentSimulationView.module.css';
 
 interface CanvasElement {
@@ -388,7 +389,12 @@ export const StudentSimulationView: React.FC = () => {
   };
 
   const renderTable = (props: Record<string, any>) => {
-    const refs = expandRange(props.cellRange || '');
+    const configuredRows = getRows(props);
+    const rowLabels = Array.isArray(props.tableRows) && props.tableRows.length
+      ? configuredRows
+      : configuredRows.map(ref => String(computedValues[ref.toUpperCase()] ?? cellTitles[ref.toUpperCase()] ?? ref));
+    const columns = getColumns(props);
+    const columnRefs = columns.map((column: { range?: string }) => expandRange(column.range || ''));
 
     return (
       <div className={styles.tableWrap}>
@@ -396,19 +402,22 @@ export const StudentSimulationView: React.FC = () => {
         <table className={styles.outputTable}>
           <thead>
             <tr>
-              {props.showCellRef !== false && <th>Cell</th>}
-              <th>Label</th>
-              <th>Value</th>
+              <th>Row</th>
+              {columns.map((column: { header?: string }, index: number) => (
+                <th key={index}>{column.header || `Column ${index + 1}`}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {refs.map(ref => {
-              const upperRef = ref.toUpperCase();
+            {rowLabels.map((rowLabel: string, rowIndex: number) => {
               return (
-                <tr key={upperRef}>
-                  {props.showCellRef !== false && <td>{upperRef}</td>}
-                  <td>{cellTitles[upperRef] || upperRef}</td>
-                  <td>{formatValue(computedValues[upperRef] ?? 0)}</td>
+                <tr key={`${rowLabel}-${rowIndex}`}>
+                  <td>{rowLabel}</td>
+                  {columnRefs.map((refs: string[], columnIndex: number) => {
+                    const ref = refs[rowIndex];
+                    const upperRef = ref?.toUpperCase();
+                    return <td key={columnIndex}>{upperRef ? formatValue(computedValues[upperRef] ?? 0) : ''}</td>;
+                  })}
                 </tr>
               );
             })}
