@@ -4,6 +4,7 @@ Reference docs for the SmartSim test suite and CI.
 
 - [TESTS.md](./TESTS.md) — every test file, what it covers, and how to run each suite.
 - [CI.md](./CI.md) — GitHub Actions setup, with a focus on how the database integration job is wired.
+- [STUDENT_JOIN.md](./STUDENT_JOIN.md) — anonymous student join links and LAN access setup/troubleshooting.
 
 ## Quick reference
 

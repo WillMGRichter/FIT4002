@@ -31,6 +31,7 @@ export const DashboardPage: React.FC = () => {
   // Menu state
   const [menuProjectId, setMenuProjectId] = useState<string | null>(null);
   const [copiedProjectId, setCopiedProjectId] = useState<string | null>(null);
+  const [shareLink, setShareLink] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Delete state
@@ -134,14 +135,14 @@ export const DashboardPage: React.FC = () => {
   const copyJoinLink = async (projectId: string) => {
     setMenuProjectId(null);
     const link = `${window.location.origin}/join/${projectId}`;
+    setShareLink(link);
     try {
       await navigator.clipboard.writeText(link);
       setCopiedProjectId(projectId);
       window.setTimeout(() => setCopiedProjectId(null), 2000);
     } catch {
-      // Clipboard API unavailable (e.g. non-secure context) - show the link so the
-      // teacher can copy it manually.
-      window.prompt('Copy this student join link:', link);
+      // Clipboard API unavailable (e.g. non-secure context on a plain-HTTP LAN
+      // address) - the share dialog still shows the link to copy manually.
     }
   };
 
@@ -267,6 +268,46 @@ export const DashboardPage: React.FC = () => {
               <div className="modal__footer">
                 <button className="modal__btn modal__btn--cancel" onClick={() => setDeleteProjectId(null)}>Cancel</button>
                 <button className="modal__btn modal__btn--danger" onClick={handleDelete}>Delete</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Share join link */}
+        {shareLink && (
+          <div className="modal-overlay" onClick={() => setShareLink(null)}>
+            <div className="modal modal--small" onClick={e => e.stopPropagation()}>
+              <div className="modal__header">
+                <h3>Student join link</h3>
+                <button className="modal__close" onClick={() => setShareLink(null)}><X size={18} /></button>
+              </div>
+              <div className="modal__body">
+                <p>Share this link with students. They enter a name and email, then start — no account needed.</p>
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <input
+                    readOnly
+                    value={shareLink}
+                    onFocus={e => e.currentTarget.select()}
+                    style={{ flex: 1, padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }}
+                  />
+                  <button
+                    className="modal__btn modal__btn--cancel"
+                    onClick={() => { navigator.clipboard?.writeText(shareLink).catch(() => {}); }}
+                  >
+                    Copy
+                  </button>
+                </div>
+                {/^https?:\/\/(localhost|127\.0\.0\.1)/.test(shareLink) && (
+                  <p style={{ marginTop: 12, fontSize: 13, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '8px 10px' }}>
+                    This link uses <strong>localhost</strong>, so it only works on this computer. To let students
+                    join from another device on the same Wi‑Fi, open this app using your computer&apos;s network
+                    address (e.g. <code>http://192.168.x.x:3000</code>) and copy the link again. See
+                    <code> docs/STUDENT_JOIN.md</code> for setup and firewall tips.
+                  </p>
+                )}
+              </div>
+              <div className="modal__footer">
+                <button className="modal__btn modal__btn--cancel" onClick={() => setShareLink(null)}>Close</button>
               </div>
             </div>
           </div>
