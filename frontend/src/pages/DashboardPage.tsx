@@ -301,8 +301,9 @@ export const DashboardPage: React.FC = () => {
                   <p style={{ marginTop: 12, fontSize: 13, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '8px 10px' }}>
                     This link uses <strong>localhost</strong>, so it only works on this computer. To let students
                     join from another device on the same Wi‑Fi, open this app using your computer&apos;s network
-                    address (e.g. <code>http://192.168.x.x:3000</code>) and copy the link again. See
-                    <code> docs/STUDENT_JOIN.md</code> for setup and firewall tips.
+                    address (e.g. <code>http://192.168.x.x:3000</code>) and copy the link again. Both devices must be
+                    on the same network, and if your computer&apos;s firewall is on you may need to allow incoming
+                    connections.
                   </p>
                 )}
               </div>
