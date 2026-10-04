@@ -58,6 +58,7 @@ export const ProjectCreatePage: React.FC = () => {
           const project = await projRes.json();
           setSimulationTitle(project.name || '');
           setSimulationId(project.id || '');
+          if (project.default_max_attempts) setDefaultMaxAttempts(project.default_max_attempts);
         }
         if (partRes.ok) {
           const participants = await partRes.json();
@@ -142,7 +143,7 @@ export const ProjectCreatePage: React.FC = () => {
         const res = await fetch(`${API_URL}/projects/${editProjectId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ name: simulationTitle }),
+          body: JSON.stringify({ name: simulationTitle, default_max_attempts: defaultMaxAttempts }),
         });
         if (!res.ok) throw new Error('Failed to update simulation');
       } else {
@@ -151,6 +152,7 @@ export const ProjectCreatePage: React.FC = () => {
         formData.append('title', simulationTitle);
         formData.append('id', simulationId || simulationTitle);
         formData.append('students', JSON.stringify(students.filter(student => student.username).map(s => ({ ...s, maxAttempts: defaultMaxAttempts }))));
+        formData.append('defaultMaxAttempts', String(defaultMaxAttempts));
 
         const response = await fetch(`${API_URL}/projects`, {
           method: 'POST',

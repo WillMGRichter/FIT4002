@@ -41,7 +41,7 @@ router.post('/', authMiddleware, upload.single('file'), async (req: AuthRequest,
       excelData = buildExcelData(req.file.buffer);
     }
 
-    const project = await createProject(name, userId, user.organisation_id, description, excelData);
+    const project = await createProject(name, userId, user.organisation_id, description, excelData, parseInt(req.body.defaultMaxAttempts, 10) || 1);
 
     // Create student accounts and add as participants
     let students: any[] = [];

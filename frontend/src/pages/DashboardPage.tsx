@@ -30,6 +30,7 @@ export const DashboardPage: React.FC = () => {
 
   // Menu state
   const [menuProjectId, setMenuProjectId] = useState<string | null>(null);
+  const [copiedProjectId, setCopiedProjectId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Delete state
@@ -128,6 +129,22 @@ export const DashboardPage: React.FC = () => {
     navigate(`/projects/create?edit=${project.id}`);
   };
 
+  // Build the shareable student join link from the CURRENT origin, so on a LAN it
+  // is already the host/IP students need (e.g. http://192.168.1.42:3000/join/<id>).
+  const copyJoinLink = async (projectId: string) => {
+    setMenuProjectId(null);
+    const link = `${window.location.origin}/join/${projectId}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopiedProjectId(projectId);
+      window.setTimeout(() => setCopiedProjectId(null), 2000);
+    } catch {
+      // Clipboard API unavailable (e.g. non-secure context) - show the link so the
+      // teacher can copy it manually.
+      window.prompt('Copy this student join link:', link);
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteProjectId || !token) return;
     try {
@@ -202,6 +219,9 @@ export const DashboardPage: React.FC = () => {
                               <div className="simulation-card__menu" ref={menuRef}>
                                 <button className="simulation-card__menu-item" onClick={e => { e.stopPropagation(); openEdit(project); }}>
                                   Edit
+                                </button>
+                                <button className="simulation-card__menu-item" onClick={e => { e.stopPropagation(); copyJoinLink(project.id); }}>
+                                  {copiedProjectId === project.id ? 'Link copied!' : 'Copy join link'}
                                 </button>
                                 <button
                                   className="simulation-card__menu-item simulation-card__menu-item--danger"

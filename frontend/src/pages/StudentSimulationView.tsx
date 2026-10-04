@@ -5,6 +5,7 @@ import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 import { addRecent } from '../utils/projectStorage';
+import { getGuestSession } from '../utils/guestSession';
 import { recomputeAll, expandRange, getTransitiveDependencies, type CellMap } from '../utils/FormulaEngine';
 import { getColumns, getRows } from '../utils/tableUtils';
 import styles from './StudentSimulationView.module.css';
@@ -66,7 +67,14 @@ export const StudentSimulationView: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isPreview = Boolean((location.state as { preview?: boolean } | null)?.preview);
-  const { token } = useAuth();
+  const { token: authToken } = useAuth();
+  // Effective token: an authenticated teacher/student uses their session token;
+  // an anonymous student who joined via the share link uses their stored guest
+  // token for this project. Both are normal JWTs, so the rest of the component
+  // (which just sends `token`) works identically for either.
+  const guestSession = useMemo(() => (projectId ? getGuestSession(projectId) : null), [projectId]);
+  const token = authToken || guestSession?.token || null;
+  const isGuest = !authToken && Boolean(guestSession);
 
   const [pages, setPages] = useState<Page[]>([]);
   const [currentPageIdx, setCurrentPageIdx] = useState(0);
@@ -442,7 +450,9 @@ export const StudentSimulationView: React.FC = () => {
           <div className={styles.completedIcon}>✓</div>
           <h1>Simulation Complete</h1>
           <p>Your answers have been submitted successfully.</p>
-          <button className={styles.backBtn} onClick={() => navigate('/dashboard')}>Back to Dashboard</button>
+          {isGuest
+            ? <p className={styles.completedNote}>You can now close this tab.</p>
+            : <button className={styles.backBtn} onClick={() => navigate('/dashboard')}>Back to Dashboard</button>}
         </div>
       </AppShell>
     );

@@ -13,6 +13,7 @@ import { CreateSimulation } from './pages/CreateSimulation';
 import { OrgManagement } from './pages/OrgManagement';
 import { ProjectDesigner } from './pages/ProjectDesigner';
 import { StudentSimulationView } from './pages/StudentSimulationView';
+import { JoinSimulation } from './pages/JoinSimulation';
 import './App.css';
 import './pages/common.css';
 
@@ -26,6 +27,8 @@ function AppContent() {
 
   return (
     <Routes>
+      {/* Public anonymous student join link - available regardless of auth state. */}
+      <Route path="/join/:projectId" element={<JoinSimulation />} />
       {user ? (
         <>
           <Route path="/" element={<DashboardPage />} />

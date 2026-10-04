@@ -533,6 +533,11 @@ select.fieldInput {
   font-size: 14px;
 }
 
+.completedNote {
+  color: #9ca3af;
+  font-size: 13px;
+}
+
 .backBtn {
   margin-top: 16px;
   height: 40px;
