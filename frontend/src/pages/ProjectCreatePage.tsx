@@ -43,6 +43,9 @@ export const ProjectCreatePage: React.FC = () => {
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [defaultMaxAttempts, setDefaultMaxAttempts] = useState(1);
+  // Cap on how many students can be added to this simulation. "Add Student" is
+  // bound to this value: once the row count reaches it, no more can be added.
+  const [maxStudents, setMaxStudents] = useState(30);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [joinLinkCopied, setJoinLinkCopied] = useState(false);
@@ -91,6 +94,11 @@ export const ProjectCreatePage: React.FC = () => {
             maxAttempts: p.max_attempts || 1,
             existing: true,
           })));
+          // Make sure the cap never starts below the number already enrolled,
+          // otherwise the form would immediately flag existing students as over-limit.
+          if (studentParticipants.length > 0) {
+            setMaxStudents(prev => Math.max(prev, studentParticipants.length));
+          }
         }
       } catch { /* ignore */ }
     })();
@@ -118,7 +126,15 @@ export const ProjectCreatePage: React.FC = () => {
   };
 
   const handleAddStudent = () => {
-    setStudents(current => [...current, createBlankStudent()]);
+    setStudents(current => {
+      // Enforce the max-students cap: never add beyond it.
+      if (current.length >= maxStudents) {
+        setError(`You can add at most ${maxStudents} student${maxStudents === 1 ? '' : 's'}. Increase the maximum to add more.`);
+        return current;
+      }
+      setError('');
+      return [...current, createBlankStudent()];
+    });
   };
 
   const handleRemoveStudent = async (id: string) => {
@@ -157,6 +173,12 @@ export const ProjectCreatePage: React.FC = () => {
   // Validate the student rows that will be created (new rows with a username).
   // Returns an error string to show the teacher, or null if everything is fine.
   const validateStudents = (): string | null => {
+    // Total students (existing + new rows with a username) must not exceed the cap.
+    const totalStudents = students.filter(s => s.existing || s.username.trim()).length;
+    if (totalStudents > maxStudents) {
+      return `This simulation allows at most ${maxStudents} student${maxStudents === 1 ? '' : 's'}, but ${totalStudents} are listed. Remove some or increase the maximum.`;
+    }
+
     const newRows = students.filter(s => !s.existing && s.username.trim());
     const seen = new Set<string>();
     for (const row of newRows) {
@@ -353,7 +375,7 @@ export const ProjectCreatePage: React.FC = () => {
                 </div>
 
                 {isLocalhostOrigin() && (
-                  <div className="join-url-warning" role="note">
+                  <div className="join-url-warning join-url-warning--tuck" role="note">
                     <strong>Heads up:</strong> you&apos;re viewing this on <code>localhost</code>, so a join link built
                     from this address only works on this computer. To let students join from another device on the same
                     Wi‑Fi, open the app using your computer&apos;s network address (e.g. <code>http://192.168.x.x:3000</code>)
@@ -446,6 +468,16 @@ export const ProjectCreatePage: React.FC = () => {
               />
             </div>
 
+            <div className="universal-attempts">
+              <label>Maximum number of students:</label>
+              <input
+                type="number"
+                min={1}
+                value={maxStudents}
+                onChange={e => setMaxStudents(Math.max(1, parseInt(e.target.value) || 1))}
+              />
+            </div>
+
             {isEdit && students.length > 0 && (
               <p className="edit-existing-count">{students.length} existing student{students.length !== 1 ? 's' : ''} (you can add more below)</p>
             )}
@@ -499,10 +531,20 @@ export const ProjectCreatePage: React.FC = () => {
               </div>
             )}
 
-            <button className="primary-action primary-action--inline" type="button" onClick={handleAddStudent}>
+            <button
+              className="primary-action primary-action--inline"
+              type="button"
+              onClick={handleAddStudent}
+              disabled={students.length >= maxStudents}
+              title={students.length >= maxStudents ? `Maximum of ${maxStudents} students reached` : undefined}
+            >
               <Plus size={17} />
               Add Student
             </button>
+            <p className="students-count-hint" style={{ fontSize: 13, color: '#64748b', margin: '6px 0 0' }}>
+              {students.length} of {maxStudents} student{maxStudents === 1 ? '' : 's'} added
+              {students.length >= maxStudents && ' — maximum reached'}
+            </p>
 
             <div className="create-divider create-divider--students" />
 

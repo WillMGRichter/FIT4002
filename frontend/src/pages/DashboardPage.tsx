@@ -297,7 +297,7 @@ export const DashboardPage: React.FC = () => {
                 <button className="modal__close" onClick={() => setShareProjectId(null)}><X size={18} /></button>
               </div>
               <div className="modal__body">
-                <p>Share this link with students. They enter a name and email, then start — no account needed.</p>
+                <p>Share this link with students. They sign in with the username and password you assigned them, then start.</p>
 
                 <label style={{ display: 'block', marginTop: 10, fontSize: 12, fontWeight: 600, color: '#475569' }}>
                   Address students will use

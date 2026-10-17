@@ -1,93 +1,96 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { API_URL } from '../config';
-import { getGuestSession, saveGuestSession } from '../utils/guestSession';
 import { StudentSimulationView } from './StudentSimulationView';
 import styles from './JoinSimulation.module.css';
 
 /**
- * Public entry point for the shareable student link (/join/:projectId).
+ * Entry point for the shareable student link (/join/:projectId).
  *
- * Flow:
- *  - If a guest session already exists for this project (returning student),
- *    skip straight to the simulation so they resume their saved state.
- *  - Otherwise prompt for a display name, POST it to /public/.../join to mint a
- *    student identity + token, store it, then render the simulation.
- *
- * No account or login is required - the link itself is the gate.
+ * Credential-only join: students sign in with the username and password their
+ * teacher/admin assigned them. The page deliberately does NOT read or reuse any
+ * app-wide auth session (AuthContext) - it logs in directly against the API and
+ * keeps the resulting token in local state, then hands it to the simulation view
+ * as an explicit prop. This guarantees the join flow always uses the exact
+ * student that just signed in, never a stale/other session (e.g. a teacher who
+ * happened to be logged in on the same browser), which previously caused a
+ * misleading "Not a participant of this project" error.
  */
 export const JoinSimulation: React.FC = () => {
   const { projectId } = useParams();
-  const [joined, setJoined] = useState(false);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  // The fresh student token from the login response. While null we show the
+  // sign-in form; once set we render the simulation using exactly this token.
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
 
-  // Returning student with a saved session -> go straight in.
-  useEffect(() => {
-    if (projectId && getGuestSession(projectId)) setJoined(true);
-  }, [projectId]);
-
-  const handleJoin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!projectId) return;
-    const displayName = name.trim();
-    const studentEmail = email.trim();
-    if (!displayName) { setError('Please enter your name.'); return; }
-    if (!studentEmail) { setError('Please enter your email.'); return; }
+
+    const uname = username.trim();
+    if (!uname) { setError('Please enter your username.'); return; }
+    if (!password) { setError('Please enter your password.'); return; }
 
     setSubmitting(true);
     setError('');
     try {
-      const res = await fetch(`${API_URL}/public/projects/${projectId}/join`, {
+      const res = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName, email: studentEmail }),
+        body: JSON.stringify({ username: uname, password }),
       });
       if (!res.ok) {
+        // 401 = bad credentials; anything else is an unexpected server/network issue.
+        if (res.status === 401) {
+          throw new Error('Incorrect username or password. Please check the details your teacher gave you.');
+        }
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || 'Could not join this simulation.');
+        throw new Error(body.error || 'Could not sign in. Please try again.');
       }
-      const session = await res.json();
-      saveGuestSession(projectId, session);
-      setJoined(true);
+      const data = await res.json();
+      if (!data?.token) throw new Error('Could not sign in. Please try again.');
+      setSessionToken(data.token);
     } catch (err: any) {
-      setError(err.message || 'Could not join this simulation.');
+      setError(err.message || 'Could not sign in. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (joined) {
-    return <StudentSimulationView />;
+  if (sessionToken) {
+    return <StudentSimulationView overrideToken={sessionToken} />;
   }
 
   return (
     <div className={styles.wrap}>
-      <form className={styles.card} onSubmit={handleJoin}>
+      <form className={styles.card} onSubmit={handleLogin}>
         <h1 className={styles.title}>Join Simulation</h1>
-        <p className={styles.subtitle}>Enter your details to begin.</p>
+        <p className={styles.subtitle}>Sign in with the username and password your teacher gave you.</p>
         <input
           className={styles.input}
           type="text"
-          placeholder="Your name"
-          value={name}
-          onChange={e => setName(e.target.value)}
+          placeholder="Username"
+          value={username}
+          onChange={e => setUsername(e.target.value)}
           autoFocus
+          autoComplete="username"
           maxLength={60}
         />
         <input
           className={styles.input}
-          type="email"
-          placeholder="Your email"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          autoComplete="current-password"
           maxLength={120}
         />
         {error && <div className={styles.error}>{error}</div>}
         <button className={styles.button} type="submit" disabled={submitting}>
-          {submitting ? 'Joining...' : 'Start'}
+          {submitting ? 'Signing in...' : 'Start'}
         </button>
       </form>
     </div>
