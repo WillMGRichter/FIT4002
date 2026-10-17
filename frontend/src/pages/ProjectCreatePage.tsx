@@ -13,6 +13,9 @@ interface StudentRow {
   username: string;
   password: string;
   maxAttempts: number;
+  // True for rows loaded from the backend (existing participants). Such rows must
+  // be removed server-side, not just dropped from local form state.
+  existing?: boolean;
 }
 
 const createBlankStudent = (): StudentRow => ({
@@ -23,6 +26,11 @@ const createBlankStudent = (): StudentRow => ({
   password: '',
   maxAttempts: 1,
 });
+
+// The browser is on localhost/127.0.0.1 — a join link built from this host only
+// works on the teacher's own machine, so students on other devices can't reach it.
+const isLocalhostOrigin = (): boolean =>
+  typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1|\[?::1\]?)$/.test(window.location.hostname);
 
 export const ProjectCreatePage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -37,9 +45,20 @@ export const ProjectCreatePage: React.FC = () => {
   const [defaultMaxAttempts, setDefaultMaxAttempts] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [joinLinkCopied, setJoinLinkCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { user, token } = useAuth();
+
+  // Shareable student join link for the project being edited.
+  const joinLink = editProjectId ? `${window.location.origin}/join/${editProjectId}` : '';
+
+  const handleCopyJoinLink = () => {
+    if (!joinLink) return;
+    navigator.clipboard?.writeText(joinLink).catch(() => {});
+    setJoinLinkCopied(true);
+    window.setTimeout(() => setJoinLinkCopied(false), 2000);
+  };
 
   // Fetch existing project data when in edit mode
   useEffect(() => {
@@ -70,6 +89,7 @@ export const ProjectCreatePage: React.FC = () => {
             username: p.username || '',
             password: '',
             maxAttempts: p.max_attempts || 1,
+            existing: true,
           })));
         }
       } catch { /* ignore */ }
@@ -101,12 +121,62 @@ export const ProjectCreatePage: React.FC = () => {
     setStudents(current => [...current, createBlankStudent()]);
   };
 
-  const handleRemoveStudent = (id: string) => {
-    setStudents(current => current.length === 1 ? current : current.filter(student => student.id !== id));
+  const handleRemoveStudent = async (id: string) => {
+    const row = students.find(s => s.id === id);
+
+    // Existing participant: remove it on the backend too, otherwise it stays
+    // enrolled and reappears next time the project is edited.
+    if (row?.existing && editProjectId && token) {
+      try {
+        const res = await fetch(`${API_URL}/projects/${editProjectId}/participants/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || 'Failed to remove student');
+        }
+      } catch (err: any) {
+        setError(err.message || 'Failed to remove student');
+        return; // keep the row so the teacher knows it wasn't removed
+      }
+    }
+
+    // Drop from the form. Keep at least one blank row in the create flow so the
+    // form isn't empty; in edit mode it's fine to remove the last one.
+    setStudents(current => {
+      const next = current.filter(student => student.id !== id);
+      return next.length === 0 && !isEdit ? [createBlankStudent()] : next;
+    });
   };
 
   const handleStudentChange = (id: string, field: keyof Omit<StudentRow, 'id'>, value: string) => {
     setStudents(current => current.map(student => student.id === id ? { ...student, [field]: value } : student));
+  };
+
+  // Validate the student rows that will be created (new rows with a username).
+  // Returns an error string to show the teacher, or null if everything is fine.
+  const validateStudents = (): string | null => {
+    const newRows = students.filter(s => !s.existing && s.username.trim());
+    const seen = new Set<string>();
+    for (const row of newRows) {
+      const uname = row.username.trim();
+      // Usernames should not contain spaces (the login form sends them verbatim).
+      if (/\s/.test(uname)) {
+        return `Username "${uname}" cannot contain spaces.`;
+      }
+      const key = uname.toLowerCase();
+      if (seen.has(key)) {
+        return `Duplicate username "${uname}". Each student needs a unique username.`;
+      }
+      seen.add(key);
+    }
+    // A row with a password but no username is almost certainly a mistake.
+    const orphanPassword = students.find(s => !s.existing && !s.username.trim() && s.password.trim());
+    if (orphanPassword) {
+      return 'A student row has a password but no username. Add a username or clear the row.';
+    }
+    return null;
   };
 
   const handleNext = () => {
@@ -138,6 +208,14 @@ export const ProjectCreatePage: React.FC = () => {
     setLoading(true);
     setError('');
 
+    // Validate student credentials before hitting the backend.
+    const studentError = validateStudents();
+    if (studentError) {
+      setError(studentError);
+      setLoading(false);
+      return;
+    }
+
     try {
       if (isEdit) {
         const res = await fetch(`${API_URL}/projects/${editProjectId}`, {
@@ -160,34 +238,64 @@ export const ProjectCreatePage: React.FC = () => {
           body: formData,
         });
 
-        if (!response.ok) throw new Error('Failed to create simulation');
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          throw new Error(body.error || 'Failed to create simulation');
+        }
         const project = await response.json();
+
+        // Report any students that could not be created (e.g. duplicate
+        // username) so the teacher can fix them, but don't block the project
+        // itself, which was created successfully.
+        const failed = (project.studentResults || []).filter((r: any) => !r.ok);
+        if (failed.length > 0) {
+          const detail = failed.map((f: any) => `${f.username} (${f.error})`).join(', ');
+          alert(`Simulation created, but some students could not be added: ${detail}`);
+        }
+
         navigate(`/projects/${project.id}/design`);
         return;
       }
 
-      // Add new students if any (edit mode)
-      const newStudents = students.filter(s => s.username);
+      // Add new students if any (edit mode). Skip rows already enrolled - those
+      // are managed in place / removed via handleRemoveStudent, not re-created.
+      const newStudents = students.filter(s => s.username.trim() && !s.existing);
+      const failedStudents: string[] = [];
       for (const student of newStudents) {
+        const username = student.username.trim();
         try {
           const signupRes = await fetch(`${API_URL}/auth/signup`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({
-              username: student.username,
+              username,
               password: student.password || 'password123',
               role: 'student',
               organisationId: user?.organisation_id,
             }),
           });
-          if (!signupRes.ok) continue;
+          if (!signupRes.ok) {
+            const body = await signupRes.json().catch(() => ({}));
+            failedStudents.push(`${username} (${body.error || 'could not create'})`);
+            continue;
+          }
           const { user: newUser } = await signupRes.json();
-          await fetch(`${API_URL}/projects/${editProjectId}/participants`, {
+          const partRes = await fetch(`${API_URL}/projects/${editProjectId}/participants`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({ userId: newUser.id, role: 'student', maxAttempts: defaultMaxAttempts }),
           });
-        } catch { /* skip individual failures */ }
+          if (!partRes.ok) {
+            const body = await partRes.json().catch(() => ({}));
+            failedStudents.push(`${username} (${body.error || 'could not enrol'})`);
+          }
+        } catch (err: any) {
+          failedStudents.push(`${username} (${err.message || 'network error'})`);
+        }
+      }
+
+      if (failedStudents.length > 0) {
+        alert(`Changes saved, but some students could not be added: ${failedStudents.join(', ')}`);
       }
 
       navigate(`/projects/${editProjectId}/design`);
@@ -235,8 +343,23 @@ export const ProjectCreatePage: React.FC = () => {
                 </label>
                 <div className="simulation-url">
                   <Link2 size={18} />
-                  <span>Simulation URL: <em>{window.location.origin}/projects/</em></span>
+                  <span>
+                    Student join link: <em>{window.location.origin}/join/&lt;id&gt;</em>
+                    <small style={{ display: 'block', fontStyle: 'normal', color: '#64748b', marginTop: 2 }}>
+                      The full link is generated once the simulation is created. You can copy it any time from the
+                      simulation&apos;s menu on the dashboard.
+                    </small>
+                  </span>
                 </div>
+
+                {isLocalhostOrigin() && (
+                  <div className="join-url-warning" role="note">
+                    <strong>Heads up:</strong> you&apos;re viewing this on <code>localhost</code>, so a join link built
+                    from this address only works on this computer. To let students join from another device on the same
+                    Wi‑Fi, open the app using your computer&apos;s network address (e.g. <code>http://192.168.x.x:3000</code>)
+                    — or edit the address when you copy the join link from the dashboard.
+                  </div>
+                )}
 
                 <div className="create-field">
                   <span>
@@ -265,10 +388,36 @@ export const ProjectCreatePage: React.FC = () => {
             )}
 
             {isEdit && (
-              <div className="create-field">
-                <span>Simulation ID</span>
-                <div className="edit-readonly-field">{simulationId}</div>
-              </div>
+              <>
+                <div className="create-field">
+                  <span>Simulation ID</span>
+                  <div className="edit-readonly-field">{simulationId}</div>
+                </div>
+
+                <div className="create-field">
+                  <span>Student join link</span>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      readOnly
+                      className="edit-readonly-field"
+                      style={{ flex: 1 }}
+                      value={joinLink}
+                      onFocus={e => e.currentTarget.select()}
+                    />
+                    <button type="button" className="secondary-action" onClick={handleCopyJoinLink}>
+                      {joinLinkCopied ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
+                  {isLocalhostOrigin() && (
+                    <div className="join-url-warning" role="note">
+                      <strong>Heads up:</strong> this link uses <code>localhost</code>, so it only works on this
+                      computer. To let students join from another device on the same Wi‑Fi, replace the host with your
+                      computer&apos;s network address (e.g. <code>http://192.168.x.x:3000</code>). Both devices must be
+                      on the same network.
+                    </div>
+                  )}
+                </div>
+              </>
             )}
 
             <div className="create-divider" />
@@ -280,6 +429,12 @@ export const ProjectCreatePage: React.FC = () => {
         ) : (
           <section className="students-step" aria-label="Student accounts">
             <h2>Students</h2>
+
+            <p className="students-help" style={{ fontSize: 13, color: '#64748b', marginTop: -4 }}>
+              Students can access this simulation in two ways: open the <strong>join link</strong> (no account needed),
+              or log in on the <strong>login page</strong> using the username and password you set below. Leave the
+              password blank to use a default of <code>password123</code>.
+            </p>
 
             <div className="universal-attempts">
               <label>Max attempts per student:</label>
