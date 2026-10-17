@@ -1,0 +1,45 @@
+.student-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f1f5f9;
+}
+
+.student-shell__topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 56px;
+  padding: 0 20px;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.student-shell__brand {
+  font-weight: 700;
+  font-size: 15px;
+  color: #4f46e5;
+  letter-spacing: 0.2px;
+}
+
+.student-shell__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Pushes nothing on the right for now, but keeps the title visually centred-left
+   and leaves room for a future action (e.g. help) without shifting layout. */
+.student-shell__spacer {
+  margin-left: auto;
+}
+
+.student-shell__content {
+  flex: 1;
+  overflow: auto;
+  padding: 24px;
+}
