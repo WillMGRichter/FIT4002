@@ -22,9 +22,9 @@ export const JoinSimulation: React.FC = () => {
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  // The fresh student token from the login response. While null we show the
-  // sign-in form; once set we render the simulation using exactly this token.
-  const [sessionToken, setSessionToken] = useState<string | null>(null);
+  // The fresh student session from the login response. While null we show the
+  // sign-in form; once set we render the simulation using exactly this session.
+  const [session, setSession] = useState<{ token: string; userId: string | null } | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,10 +37,10 @@ export const JoinSimulation: React.FC = () => {
     setSubmitting(true);
     setError('');
     try {
-      const res = await fetch(`${API_URL}/auth/login`, {
+      const res = await fetch(`${API_URL}/auth/login/student`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: uname, password }),
+        body: JSON.stringify({ projectId, username: uname, password }),
       });
       if (!res.ok) {
         // 401 = bad credentials; anything else is an unexpected server/network issue.
@@ -52,7 +52,7 @@ export const JoinSimulation: React.FC = () => {
       }
       const data = await res.json();
       if (!data?.token) throw new Error('Could not sign in. Please try again.');
-      setSessionToken(data.token);
+      setSession({ token: data.token, userId: data.user?.id ?? null });
     } catch (err: any) {
       setError(err.message || 'Could not sign in. Please try again.');
     } finally {
@@ -60,8 +60,8 @@ export const JoinSimulation: React.FC = () => {
     }
   };
 
-  if (sessionToken) {
-    return <StudentSimulationView overrideToken={sessionToken} />;
+  if (session) {
+    return <StudentSimulationView overrideToken={session.token} overrideUserId={session.userId ?? undefined} />;
   }
 
   return (

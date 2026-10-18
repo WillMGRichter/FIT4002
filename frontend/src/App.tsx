@@ -14,6 +14,7 @@ import { OrgManagement } from './pages/OrgManagement';
 import { ProjectDesigner } from './pages/ProjectDesigner';
 import { StudentSimulationView } from './pages/StudentSimulationView';
 import { JoinSimulation } from './pages/JoinSimulation';
+import { StudentDone } from './pages/StudentDone';
 import './App.css';
 import './pages/common.css';
 
@@ -29,6 +30,8 @@ function AppContent() {
     <Routes>
       {/* Public anonymous student join link - available regardless of auth state. */}
       <Route path="/join/:projectId" element={<JoinSimulation />} />
+      {/* Public end-of-simulation placeholder for students (no app session). */}
+      <Route path="/done" element={<StudentDone />} />
       {user ? (
         <>
           <Route path="/" element={<DashboardPage />} />

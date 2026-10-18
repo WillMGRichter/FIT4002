@@ -62,7 +62,7 @@ function migrateInputValues(stored: any, pages: Page[]): PerPageInputs {
   return firstPageId ? { [firstPageId]: stored as Record<string, number | string> } : {};
 }
 
-export const StudentSimulationView: React.FC<{ overrideToken?: string }> = ({ overrideToken }) => {
+export const StudentSimulationView: React.FC<{ overrideToken?: string; overrideUserId?: string }> = ({ overrideToken, overrideUserId }) => {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -74,7 +74,6 @@ export const StudentSimulationView: React.FC<{ overrideToken?: string }> = ({ ov
   //     on whatever stale/other session happens to be in AuthContext.
   //  2. the authenticated session token (normal teacher/student navigation).
   const token = overrideToken || authToken || null;
-  const isGuest = !authToken && Boolean(overrideToken);
 
   const [pages, setPages] = useState<Page[]>([]);
   const [currentPageIdx, setCurrentPageIdx] = useState(0);
@@ -85,9 +84,17 @@ export const StudentSimulationView: React.FC<{ overrideToken?: string }> = ({ ov
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  // Set when the student finished an attempt and tried to start another but has
+  // none left (the backend returns "No attempts remaining").
+  const [noMoreAttempts, setNoMoreAttempts] = useState(false);
+  const [startingAttempt, setStartingAttempt] = useState(false);
   const [attemptInfo, setAttemptInfo] = useState<{ attemptNumber: number; maxAttempts: number } | null>(null);
   const [project, setProject] = useState<any>(null);
   const stateIdRef = useRef<string | null>(null);
+  // The signed-in student's own user id (from the join login response), used to
+  // find their participant row for attempt limits. Falls back to null for the
+  // teacher-preview / normal-session case where it isn't needed.
+  const userIdRef = useRef<string | null>(overrideUserId ?? null);
 
   const autoSaveTimer = useRef<number | null>(null);
 
@@ -199,12 +206,18 @@ export const StudentSimulationView: React.FC<{ overrideToken?: string }> = ({ ov
           throw new Error(body.error || 'Unable to start this simulation.');
         }
 
-        // Get attempt info from participant
+        // Fetch this student's participant row to learn how many attempts they
+        // get, so the post-attempt screen can offer "another attempt" only when
+        // attempts actually remain.
         const partRes = await fetch(`${API_URL}/projects/${projectId}/participants`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (partRes.ok) {
-          await partRes.json();
+          const parts = await partRes.json();
+          const mine = Array.isArray(parts) ? parts.find((p: any) => p.user_id === userIdRef.current) : null;
+          if (mine) {
+            setAttemptInfo(prev => prev ? { ...prev, maxAttempts: mine.max_attempts ?? 0 } : prev);
+          }
         }
 
         setLoading(false);
@@ -306,6 +319,41 @@ export const StudentSimulationView: React.FC<{ overrideToken?: string }> = ({ ov
       setError(err.message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Start a fresh attempt after completing one. Re-requests state from the
+  // backend, which creates the next attempt (or refuses with "No attempts
+  // remaining", which we surface instead of silently failing). Resets the local
+  // simulation state so the new attempt starts clean.
+  const handleAnotherAttempt = async () => {
+    if (!projectId || !token) return;
+    setStartingAttempt(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_URL}/student-state/${projectId}/state`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        if (res.status === 400 && /no attempts remaining/i.test(body.error || '')) {
+          setNoMoreAttempts(true);
+          return;
+        }
+        throw new Error(body.error || 'Could not start another attempt.');
+      }
+      const state = await res.json();
+      stateIdRef.current = state.id;
+      setInputValuesByPage(state.input_values && Object.keys(state.input_values).length > 0
+        ? migrateInputValues(state.input_values, pages)
+        : {});
+      setCurrentPageIdx(0);
+      setAttemptInfo(prev => prev ? { ...prev, attemptNumber: state.attempt_number } : { attemptNumber: state.attempt_number, maxAttempts: 0 });
+      setSubmitted(false);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setStartingAttempt(false);
     }
   };
 
@@ -466,14 +514,48 @@ export const StudentSimulationView: React.FC<{ overrideToken?: string }> = ({ ov
   }
 
   if (submitted) {
+    // Can the student do another attempt? Only when their current attempt number
+    // is below their allotted maximum (and we actually know the maximum).
+    const attemptsRemain =
+      !noMoreAttempts &&
+      attemptInfo != null &&
+      attemptInfo.maxAttempts > 0 &&
+      attemptInfo.attemptNumber < attemptInfo.maxAttempts;
+
     return renderShell('Simulation Complete', (
       <div className={styles.completed}>
         <div className={styles.completedIcon}>✓</div>
         <h1>Simulation Complete</h1>
         <p>Your answers have been submitted successfully.</p>
-        {isGuest
-          ? <p className={styles.completedNote}>You can now close this tab.</p>
-          : <button className={styles.backBtn} onClick={() => navigate('/dashboard')}>Back to Dashboard</button>}
+        {isPreview ? (
+          // Teacher preview: just offer the normal way back to editing.
+          <button className={styles.backBtn} onClick={() => navigate(`/projects/${projectId}/design`)}>
+            Back to Editing
+          </button>
+        ) : (
+          <>
+            {noMoreAttempts && (
+              <p className={styles.completedNote}>You&apos;ve used all your attempts for this simulation.</p>
+            )}
+            {attemptsRemain && (
+              <p className={styles.completedNote}>
+                Would you like to do another attempt?
+                {attemptInfo && ` (attempt ${attemptInfo.attemptNumber} of ${attemptInfo.maxAttempts} used)`}
+              </p>
+            )}
+            {error && <p className={`${styles.completedNote} ${styles.stateError}`}>{error}</p>}
+            <div className={styles.completedActions}>
+              {attemptsRemain && (
+                <button className={styles.backBtn} onClick={handleAnotherAttempt} disabled={startingAttempt}>
+                  {startingAttempt ? 'Starting...' : 'Do another attempt'}
+                </button>
+              )}
+              <button className={styles.secondaryBtn} onClick={() => navigate('/done')}>
+                I&apos;m finished
+              </button>
+            </div>
+          </>
+        )}
       </div>
     ));
   }

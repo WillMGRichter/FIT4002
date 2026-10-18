@@ -51,7 +51,7 @@ export const ProjectCreatePage: React.FC = () => {
   const [joinLinkCopied, setJoinLinkCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-  const { user, token } = useAuth();
+  const { token } = useAuth();
 
   // Shareable student join link for the project being edited.
   const joinLink = editProjectId ? `${window.location.origin}/join/${editProjectId}` : '';
@@ -279,37 +279,27 @@ export const ProjectCreatePage: React.FC = () => {
         return;
       }
 
-      // Add new students if any (edit mode). Skip rows already enrolled - those
-      // are managed in place / removed via handleRemoveStudent, not re-created.
+      // Add new students if any (edit mode). Existing participants are read-only
+      // and cannot be modified here, so we only create brand-new rows. Each new
+      // student is created project-scoped (and enrolled) in a single call so the
+      // project-scoped student login can resolve them.
       const newStudents = students.filter(s => s.username.trim() && !s.existing);
       const failedStudents: string[] = [];
       for (const student of newStudents) {
         const username = student.username.trim();
         try {
-          const signupRes = await fetch(`${API_URL}/auth/signup`, {
+          const res = await fetch(`${API_URL}/projects/${editProjectId}/students`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({
               username,
               password: student.password || 'password123',
-              role: 'student',
-              organisationId: user?.organisation_id,
+              maxAttempts: defaultMaxAttempts,
             }),
           });
-          if (!signupRes.ok) {
-            const body = await signupRes.json().catch(() => ({}));
-            failedStudents.push(`${username} (${body.error || 'could not create'})`);
-            continue;
-          }
-          const { user: newUser } = await signupRes.json();
-          const partRes = await fetch(`${API_URL}/projects/${editProjectId}/participants`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ userId: newUser.id, role: 'student', maxAttempts: defaultMaxAttempts }),
-          });
-          if (!partRes.ok) {
-            const body = await partRes.json().catch(() => ({}));
-            failedStudents.push(`${username} (${body.error || 'could not enrol'})`);
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            failedStudents.push(`${username} (${body.error || 'could not add'})`);
           }
         } catch (err: any) {
           failedStudents.push(`${username} (${err.message || 'network error'})`);
@@ -479,7 +469,10 @@ export const ProjectCreatePage: React.FC = () => {
             </div>
 
             {isEdit && students.length > 0 && (
-              <p className="edit-existing-count">{students.length} existing student{students.length !== 1 ? 's' : ''} (you can add more below)</p>
+              <p className="edit-existing-count">
+                {students.length} existing student{students.length !== 1 ? 's' : ''}. Existing students can&apos;t be
+                edited after creation — you can add new ones below or remove existing ones.
+              </p>
             )}
 
             {students.length > 0 && (
@@ -502,26 +495,32 @@ export const ProjectCreatePage: React.FC = () => {
                       value={student.firstName}
                       onChange={(event) => handleStudentChange(student.id, 'firstName', event.target.value)}
                       aria-label="First name"
+                      disabled={student.existing}
                     />
                     <input
                       value={student.lastName}
                       onChange={(event) => handleStudentChange(student.id, 'lastName', event.target.value)}
                       aria-label="Last name"
+                      disabled={student.existing}
                     />
                     <input
                       value={student.username}
                       onChange={(event) => handleStudentChange(student.id, 'username', event.target.value)}
                       aria-label="Username"
+                      disabled={student.existing}
                     />
                     <input
                       value={student.password}
                       onChange={(event) => handleStudentChange(student.id, 'password', event.target.value)}
                       aria-label="Password"
+                      type={student.existing ? 'text' : 'password'}
+                      placeholder={student.existing ? '••••••' : ''}
+                      disabled={student.existing}
                     />
                     <button
                       className="row-icon-button"
                       type="button"
-                      title="Remove student"
+                      title={student.existing ? 'Remove student' : 'Remove row'}
                       onClick={() => handleRemoveStudent(student.id)}
                     >
                       <Trash2 size={16} />
