@@ -5,6 +5,7 @@ import projectRoutes from "./routes/projectRoutes";
 import simulationRoutes from "./routes/simulationRoutes";
 import pageRoutes from "./routes/pageRoutes";
 import studentStateRoutes from "./routes/studentStateRoutes";
+import publicRoutes from "./routes/publicRoutes";
 import excelParser from "./excel/excelParser";
 
 /**
@@ -29,6 +30,7 @@ export function createApp() {
   app.use("/simulations", simulationRoutes);
   app.use("/projects", pageRoutes);
   app.use("/student-state", studentStateRoutes);
+  app.use("/public", publicRoutes);
   app.use("/excel", excelParser);
 
   /** Global error handler - catches unhandled errors from all routes */

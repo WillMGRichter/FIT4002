@@ -15,7 +15,8 @@ export async function createProject(
   createdBy: string,
   organisationId: string,
   description?: string,
-  excelData?: any
+  excelData?: any,
+  defaultMaxAttempts?: number
 ): Promise<Project> {
   const { data, error } = await supabase
     .from('projects')
@@ -27,6 +28,7 @@ export async function createProject(
         organisation_id: organisationId,
         excel_data: excelData,
         visibility: 'private',
+        default_max_attempts: defaultMaxAttempts && defaultMaxAttempts > 0 ? defaultMaxAttempts : 1,
       },
     ])
     .select()

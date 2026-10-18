@@ -41,19 +41,35 @@ router.post('/', authMiddleware, upload.single('file'), async (req: AuthRequest,
       excelData = buildExcelData(req.file.buffer);
     }
 
-    const project = await createProject(name, userId, user.organisation_id, description, excelData);
+    const project = await createProject(name, userId, user.organisation_id, description, excelData, parseInt(req.body.defaultMaxAttempts, 10) || 1);
 
-    // Create student accounts and add as participants
+    // Create student accounts and add as participants. Collect per-student
+    // outcomes so the client can tell the teacher which rows failed (e.g. a
+    // duplicate username) instead of failing silently.
     let students: any[] = [];
     try {
       students = JSON.parse(req.body.students || '[]');
     } catch { /* ignore parse errors */ }
 
+    const studentResults: { username: string; ok: boolean; error?: string }[] = [];
+    const seenUsernames = new Set<string>();
+
     for (const student of students) {
-      if (!student.username) continue;
+      const username = (student.username || '').trim();
+      if (!username) continue;
+
+      // Reject duplicate usernames within the same submission up front, so the
+      // teacher gets a clear message rather than a confusing DB error.
+      const key = username.toLowerCase();
+      if (seenUsernames.has(key)) {
+        studentResults.push({ username, ok: false, error: 'Duplicate username in this list' });
+        continue;
+      }
+      seenUsernames.add(key);
+
       try {
         const { user: newUser } = await registerUser(
-          student.username,
+          username,
           student.password || 'password123',
           'student',
           user.organisation_id
@@ -64,12 +80,14 @@ router.post('/', authMiddleware, upload.single('file'), async (req: AuthRequest,
           'student',
           student.maxAttempts || 1
         );
+        studentResults.push({ username, ok: true });
       } catch (err: any) {
-        console.error(`Failed to create student ${student.username}:`, err.message);
+        console.error(`Failed to create student ${username}:`, err.message);
+        studentResults.push({ username, ok: false, error: err.message || 'Could not create student' });
       }
     }
 
-    res.status(201).json(project);
+    res.status(201).json({ ...project, studentResults });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }

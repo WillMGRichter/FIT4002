@@ -41,6 +41,7 @@ export interface Project {
   organisation_id: string;
   visibility: ProjectVisibility;
   excel_data?: any;
+  default_max_attempts?: number;
   created_at: string;
   updated_at: string;
 }

@@ -30,6 +30,12 @@ export const DashboardPage: React.FC = () => {
 
   // Menu state
   const [menuProjectId, setMenuProjectId] = useState<string | null>(null);
+  const [copiedProjectId, setCopiedProjectId] = useState<string | null>(null);
+  // Project whose join link is being shared (null = dialog closed), and the
+  // editable base URL for the link. The base URL defaults to the current origin
+  // but the teacher can change it (e.g. to their LAN IP) and we remember it.
+  const [shareProjectId, setShareProjectId] = useState<string | null>(null);
+  const [shareBaseUrl, setShareBaseUrl] = useState<string>('');
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Delete state
@@ -128,6 +134,33 @@ export const DashboardPage: React.FC = () => {
     navigate(`/projects/create?edit=${project.id}`);
   };
 
+  // Open the share dialog for a project. The join link's base URL defaults to the
+  // current origin, but we reuse a teacher-saved override (e.g. their LAN IP) if set,
+  // so the copied link works for students on other devices.
+  const JOIN_BASE_URL_KEY = 'smartsim_join_base_url';
+  const copyJoinLink = (projectId: string) => {
+    setMenuProjectId(null);
+    const saved = (() => { try { return localStorage.getItem(JOIN_BASE_URL_KEY) || ''; } catch { return ''; } })();
+    setShareBaseUrl(saved || window.location.origin);
+    setShareProjectId(projectId);
+  };
+
+  // Normalise the editable base URL (trim, strip trailing slashes) and build the
+  // full join link for the project currently being shared.
+  const normalisedBaseUrl = shareBaseUrl.trim().replace(/\/+$/, '');
+  const shareLink = shareProjectId ? `${normalisedBaseUrl}/join/${shareProjectId}` : '';
+
+  const persistAndCopyLink = () => {
+    try { localStorage.setItem(JOIN_BASE_URL_KEY, normalisedBaseUrl); } catch { /* ignore */ }
+    if (shareLink) {
+      navigator.clipboard?.writeText(shareLink).catch(() => {});
+      if (shareProjectId) {
+        setCopiedProjectId(shareProjectId);
+        window.setTimeout(() => setCopiedProjectId(null), 2000);
+      }
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteProjectId || !token) return;
     try {
@@ -203,6 +236,9 @@ export const DashboardPage: React.FC = () => {
                                 <button className="simulation-card__menu-item" onClick={e => { e.stopPropagation(); openEdit(project); }}>
                                   Edit
                                 </button>
+                                <button className="simulation-card__menu-item" onClick={e => { e.stopPropagation(); copyJoinLink(project.id); }}>
+                                  {copiedProjectId === project.id ? 'Link copied!' : 'Copy join link'}
+                                </button>
                                 <button
                                   className="simulation-card__menu-item simulation-card__menu-item--danger"
                                   onClick={e => { e.stopPropagation(); setMenuProjectId(null); setDeleteProjectId(project.id); }}
@@ -247,6 +283,72 @@ export const DashboardPage: React.FC = () => {
               <div className="modal__footer">
                 <button className="modal__btn modal__btn--cancel" onClick={() => setDeleteProjectId(null)}>Cancel</button>
                 <button className="modal__btn modal__btn--danger" onClick={handleDelete}>Delete</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Share join link */}
+        {shareProjectId && (
+          <div className="modal-overlay" onClick={() => setShareProjectId(null)}>
+            <div className="modal modal--small" onClick={e => e.stopPropagation()}>
+              <div className="modal__header">
+                <h3>Student join link</h3>
+                <button className="modal__close" onClick={() => setShareProjectId(null)}><X size={18} /></button>
+              </div>
+              <div className="modal__body">
+                <p>Share this link with students. They sign in with the username and password you assigned them, then start.</p>
+
+                <label style={{ display: 'block', marginTop: 10, fontSize: 12, fontWeight: 600, color: '#475569' }}>
+                  Address students will use
+                </label>
+                <input
+                  value={shareBaseUrl}
+                  onChange={e => setShareBaseUrl(e.target.value)}
+                  placeholder="http://192.168.x.x:3000"
+                  style={{ width: '100%', marginTop: 4, padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }}
+                />
+                <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748b' }}>
+                  Change this to your computer&apos;s network address so students on other devices can connect.
+                </p>
+
+                <label style={{ display: 'block', marginTop: 12, fontSize: 12, fontWeight: 600, color: '#475569' }}>
+                  Join link
+                </label>
+                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                  <input
+                    readOnly
+                    value={shareLink}
+                    onFocus={e => e.currentTarget.select()}
+                    style={{ flex: 1, padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 13 }}
+                  />
+                  <button className="modal__btn modal__btn--cancel" onClick={persistAndCopyLink}>
+                    {copiedProjectId === shareProjectId ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+
+                {/^https?:\/\/(localhost|127\.0\.0\.1)/.test(normalisedBaseUrl) && (
+                  <div style={{ marginTop: 12, fontSize: 13, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, padding: '8px 10px' }}>
+                    <p style={{ margin: 0 }}>
+                      This address uses <strong>localhost</strong>, so it only works on this computer. To let students
+                      join from another device on the same Wi‑Fi, change the address above to your computer&apos;s
+                      network address (e.g. <code>http://192.168.x.x:3000</code>). Both devices must be on the same
+                      network, and if your computer&apos;s firewall is on you may need to allow incoming connections.
+                    </p>
+                    <details style={{ marginTop: 8 }}>
+                      <summary style={{ cursor: 'pointer', fontWeight: 600 }}>How do I find my network address?</summary>
+                      <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+                        <li><strong>macOS:</strong> System Settings → Wi‑Fi → Details → IP address (or run <code>ipconfig getifaddr en0</code> in Terminal).</li>
+                        <li><strong>Windows:</strong> Settings → Network &amp; Internet → Wi‑Fi → Hardware properties → IPv4 address (or run <code>ipconfig</code> in Command Prompt).</li>
+                        <li><strong>Linux:</strong> Settings → Network → connection details (or run <code>hostname -I</code> in a terminal).</li>
+                      </ul>
+                      <p style={{ margin: '6px 0 0' }}>It usually starts with <code>192.168.</code>, <code>10.</code> or <code>172.</code></p>
+                    </details>
+                  </div>
+                )}
+              </div>
+              <div className="modal__footer">
+                <button className="modal__btn modal__btn--cancel" onClick={() => setShareProjectId(null)}>Close</button>
               </div>
             </div>
           </div>

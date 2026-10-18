@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Send, AlertCircle } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
+import { StudentShell } from '../components/StudentShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 import { addRecent } from '../utils/projectStorage';
@@ -61,12 +62,19 @@ function migrateInputValues(stored: any, pages: Page[]): PerPageInputs {
   return firstPageId ? { [firstPageId]: stored as Record<string, number | string> } : {};
 }
 
-export const StudentSimulationView: React.FC = () => {
+export const StudentSimulationView: React.FC<{ overrideToken?: string }> = ({ overrideToken }) => {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const isPreview = Boolean((location.state as { preview?: boolean } | null)?.preview);
-  const { token } = useAuth();
+  const { token: authToken } = useAuth();
+  // Effective token priority:
+  //  1. overrideToken - passed in by the join page from the login response. This
+  //     is the fresh student token and must win, so the join flow never depends
+  //     on whatever stale/other session happens to be in AuthContext.
+  //  2. the authenticated session token (normal teacher/student navigation).
+  const token = overrideToken || authToken || null;
+  const isGuest = !authToken && Boolean(overrideToken);
 
   const [pages, setPages] = useState<Page[]>([]);
   const [currentPageIdx, setCurrentPageIdx] = useState(0);
@@ -164,7 +172,10 @@ export const StudentSimulationView: React.FC = () => {
         addRecent({ id: projectId!, name: proj.name });
         setPages(pgs);
 
-        // Try to load existing state
+        // Load (or create) this student's attempt state. A non-OK response here is
+        // meaningful - e.g. the backend refuses with "No attempts remaining" when the
+        // student has used all their attempts - so surface it rather than silently
+        // dropping the student into an empty/broken simulation.
         const stateRes = await fetch(`${API_URL}/student-state/${projectId}/state`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -180,6 +191,12 @@ export const StudentSimulationView: React.FC = () => {
             const idx = pgs.findIndex((p: Page) => p.id === state.current_page_id);
             if (idx >= 0) setCurrentPageIdx(idx);
           }
+        } else if (!isPreview) {
+          // In a real student session a non-OK state response is fatal and
+          // explained (e.g. "No attempts remaining"). In teacher preview the
+          // teacher may not be a participant, so we ignore it and just preview.
+          const body = await stateRes.json().catch(() => ({}));
+          throw new Error(body.error || 'Unable to start this simulation.');
         }
 
         // Get attempt info from participant
@@ -198,7 +215,7 @@ export const StudentSimulationView: React.FC = () => {
     };
 
     load();
-  }, [projectId, token]);
+  }, [projectId, token, isPreview]);
 
   // Persist the full per-page input values to the server (debounced) for resume across sessions
   const saveInputValues = useCallback(async (values: Record<string, Record<string, number | string>>) => {
@@ -427,40 +444,50 @@ export const StudentSimulationView: React.FC = () => {
     );
   };
 
+  // Students (anonymous joiners and logged-in students) get a minimal shell that
+  // shows ONLY the simulation. Teacher preview keeps the full AppShell so the
+  // teacher retains their normal navigation and the "Back to Editing" control.
+  //
+  // NOTE: this is a plain render helper, NOT a component defined inline. Defining
+  // a component inside the render body creates a new component *type* on every
+  // render, which makes React remount the whole subtree on each keystroke - that
+  // breaks text inputs and sliders (they reset / lose focus after one change).
+  const renderShell = (title: string, children: React.ReactNode) =>
+    isPreview
+      ? <AppShell title={title} showBack compactSidebar>{children}</AppShell>
+      : <StudentShell title={title}>{children}</StudentShell>;
+
   if (loading) {
-    return <AppShell title="Simulation"><div className={styles.state}>Loading simulation...</div></AppShell>;
+    return renderShell('Simulation', <div className={styles.state}>Loading simulation...</div>);
   }
 
   if (error) {
-    return <AppShell title="Simulation"><div className={`${styles.state} ${styles.stateError}`}>{error}</div></AppShell>;
+    return renderShell('Simulation', <div className={`${styles.state} ${styles.stateError}`}>{error}</div>);
   }
 
   if (submitted) {
-    return (
-      <AppShell title="Simulation Complete">
-        <div className={styles.completed}>
-          <div className={styles.completedIcon}>✓</div>
-          <h1>Simulation Complete</h1>
-          <p>Your answers have been submitted successfully.</p>
-          <button className={styles.backBtn} onClick={() => navigate('/dashboard')}>Back to Dashboard</button>
-        </div>
-      </AppShell>
-    );
+    return renderShell('Simulation Complete', (
+      <div className={styles.completed}>
+        <div className={styles.completedIcon}>✓</div>
+        <h1>Simulation Complete</h1>
+        <p>Your answers have been submitted successfully.</p>
+        {isGuest
+          ? <p className={styles.completedNote}>You can now close this tab.</p>
+          : <button className={styles.backBtn} onClick={() => navigate('/dashboard')}>Back to Dashboard</button>}
+      </div>
+    ));
   }
 
   if (totalPages === 0) {
-    return (
-      <AppShell title="Simulation">
-        <div className={styles.state}>
-          <AlertCircle size={24} />
-          <p>This simulation has no pages yet.</p>
-        </div>
-      </AppShell>
-    );
+    return renderShell('Simulation', (
+      <div className={styles.state}>
+        <AlertCircle size={24} />
+        <p>This simulation has no pages yet.</p>
+      </div>
+    ));
   }
 
-  return (
-    <AppShell title={project?.name || 'Simulation'} showBack compactSidebar>
+  return renderShell(project?.name || 'Simulation', (
       <div className={styles.simulation}>
         {/* ── Page indicator ── */}
         <div className={styles.pageIndicator}>
@@ -637,6 +664,6 @@ export const StudentSimulationView: React.FC = () => {
           </button>
         </div>
       </div>
-    </AppShell>
+    )
   );
 };
