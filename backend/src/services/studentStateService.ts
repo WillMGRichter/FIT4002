@@ -62,19 +62,37 @@ export async function getOrCreateState(
     .limit(1)
     .single();
 
-  const { data, error } = await supabase
+  // Insert the new attempt row. Two requests can reach here concurrently (a
+  // phone often fires the "get or create" call twice on mount), both compute
+  // the same newAttemptNumber, and the second insert would violate
+  // UNIQUE(project_id, user_id, attempt_number) ("duplicate key"). Upsert with
+  // ignoreDuplicates makes the losing request a no-op instead of an error; we
+  // then read back whichever row now exists for this attempt and return it, so
+  // both callers get a valid, identical state.
+  const { error } = await supabase
     .from('student_simulation_state')
-    .insert([{
-      project_id: projectId,
-      user_id: userId,
-      attempt_number: newAttemptNumber,
-      current_page_id: firstPage?.id || null,
-      input_values: {},
-    }])
-    .select()
-    .single();
+    .upsert(
+      [{
+        project_id: projectId,
+        user_id: userId,
+        attempt_number: newAttemptNumber,
+        current_page_id: firstPage?.id || null,
+        input_values: {},
+      }],
+      { onConflict: 'project_id,user_id,attempt_number', ignoreDuplicates: true }
+    );
 
   if (error) throw error;
+
+  const { data, error: readError } = await supabase
+    .from('student_simulation_state')
+    .select('*')
+    .eq('project_id', projectId)
+    .eq('user_id', userId)
+    .eq('attempt_number', newAttemptNumber)
+    .single();
+
+  if (readError) throw readError;
   return data;
 }
 
