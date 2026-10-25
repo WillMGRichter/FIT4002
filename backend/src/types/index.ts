@@ -28,6 +28,8 @@ export interface User {
   email?: string;
   role: UserRole;
   organisation_id?: string;
+  /** Set only for project-scoped student accounts; NULL for real accounts. */
+  project_id?: string;
   created_at: string;
   updated_at: string;
 }

@@ -72,7 +72,8 @@ router.post('/', authMiddleware, upload.single('file'), async (req: AuthRequest,
           username,
           student.password || 'password123',
           'student',
-          user.organisation_id
+          user.organisation_id,
+          project.id
         );
         await addProjectParticipant(
           project.id,
@@ -170,6 +171,49 @@ router.post('/:projectId/participants', authMiddleware, async (req: AuthRequest,
 
     const participant = await addProjectParticipant(req.params.projectId as string, userId, role, maxAttempts);
     res.status(201).json(participant);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /:projectId/students — Create a project-scoped student account AND enrol
+ * it in the project in one step. Only the creator may add. Requires auth.
+ * Body: { username, password?, maxAttempts? }. Returns the created participant.
+ *
+ * This mirrors the student-creation logic in POST / (project create) so students
+ * added later via the edit screen are also project-scoped (users.project_id set)
+ * and can log in through the project-scoped student login. Using the generic
+ * /auth/signup here would create a global (project_id = NULL) account that the
+ * student login cannot resolve.
+ */
+router.post('/:projectId/students', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const projectId = req.params.projectId as string;
+    const { username: rawUsername, password, maxAttempts } = req.body;
+    const username = (rawUsername || '').trim();
+
+    if (!username) {
+      return res.status(400).json({ error: 'Username is required' });
+    }
+
+    const project = await getProjectById(projectId);
+    if (project.created_by !== req.userId!) {
+      return res.status(403).json({ error: 'Only project creator can add students' });
+    }
+
+    const creator = await getUserById(req.userId!);
+
+    const { user: newUser } = await registerUser(
+      username,
+      password || 'password123',
+      'student',
+      creator.organisation_id,
+      projectId
+    );
+    const participant = await addProjectParticipant(projectId, newUser.id, 'student', maxAttempts || 1);
+
+    res.status(201).json({ participant, user: { id: newUser.id, username: newUser.username } });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }

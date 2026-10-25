@@ -30,11 +30,29 @@ export async function getOrCreateState(
     .single();
 
   if (!participant) throw new Error('Not a participant of this project');
-  if (participant.attempts_used >= participant.max_attempts) {
+
+  // Determine the next attempt number from the ACTUAL state rows for this
+  // (project, user), not from attempts_used. attempts_used is maintained
+  // separately (and can drift if an increment failed), so relying on it to
+  // build the attempt_number risks reusing a value and violating the
+  // UNIQUE(project_id, user_id, attempt_number) constraint ("duplicate key").
+  const { data: attemptRows } = await supabase
+    .from('student_simulation_state')
+    .select('attempt_number')
+    .eq('project_id', projectId)
+    .eq('user_id', userId)
+    .order('attempt_number', { ascending: false })
+    .limit(1);
+
+  const highestAttempt = attemptRows && attemptRows.length > 0 ? attemptRows[0].attempt_number : 0;
+
+  // The student has used an attempt for every state row that already exists
+  // (the current incomplete one was handled above). Gate on max_attempts.
+  if (highestAttempt >= participant.max_attempts) {
     throw new Error('No attempts remaining');
   }
 
-  const newAttemptNumber = participant.attempts_used + 1;
+  const newAttemptNumber = highestAttempt + 1;
 
   const { data: firstPage } = await supabase
     .from('project_pages')
@@ -103,6 +121,18 @@ export async function completeAttempt(
   userId: string,
   finalInputValues: any
 ): Promise<void> {
+  // Guard against completing a state that is already completed (e.g. a double
+  // submit, or a retry after a flaky network). Without this, we would run the
+  // attempts increment and results insert twice.
+  const { data: current } = await supabase
+    .from('student_simulation_state')
+    .select('is_completed, attempt_number')
+    .eq('id', stateId)
+    .single();
+
+  if (!current) throw new Error('Simulation state not found');
+  if (current.is_completed) return; // already done - idempotent no-op
+
   const { error: stateError } = await supabase
     .from('student_simulation_state')
     .update({ is_completed: true, input_values: finalInputValues, updated_at: new Date().toISOString() })
@@ -138,7 +168,7 @@ export async function completeAttempt(
     .insert([{
       project_id: projectId,
       user_id: userId,
-      final_state: { input_values: finalInputValues, attempt_number: 0 },
+      final_state: { input_values: finalInputValues, attempt_number: current.attempt_number },
     }]);
 
   if (resultError) throw resultError;

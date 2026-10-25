@@ -50,7 +50,8 @@ router.post('/:projectId/state/complete', authMiddleware, async (req: AuthReques
     await completeAttempt(stateId, req.params.projectId as string, req.userId!, inputValues);
     res.json({ message: 'Simulation completed' });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    console.error('[complete] failed:', error);
+    res.status(400).json({ error: error?.message || 'Failed to complete attempt' });
   }
 });
 

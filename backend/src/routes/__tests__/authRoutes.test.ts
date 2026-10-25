@@ -15,6 +15,7 @@ function makeBuilder() {
     update: jest.fn(() => builder),
     delete: jest.fn(() => builder),
     eq: jest.fn(() => builder),
+    is: jest.fn(() => builder),
     order: jest.fn(() => nextResult()),
     single: jest.fn(() => nextResult()),
   };
@@ -118,6 +119,37 @@ describe('POST /auth/signup', () => {
     expect(res.status).toBe(201);
     expect(typeof res.body.token).toBe('string');
     expect(res.body.user).toMatchObject({ id: 'u2', username: 'newbie', role: 'student' });
+    expect(res.body.user).not.toHaveProperty('password_hash');
+  });
+});
+
+describe('POST /auth/login/student', () => {
+  it('rejects a request missing projectId/username/password with 400', async () => {
+    const res = await request(app).post('/auth/login/student').send({ username: 'alice', password: 'x' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/missing/i);
+  });
+
+  it('returns 401 when no matching student exists in the project', async () => {
+    queue({ data: null, error: { message: 'not found' } }); // users select .single()
+    const res = await request(app)
+      .post('/auth/login/student')
+      .send({ projectId: 'p1', username: 'ghost', password: 'x' });
+    expect(res.status).toBe(401);
+    expect(res.body.error).toMatch(/not found/i);
+  });
+
+  it('logs in a project-scoped student with correct credentials', async () => {
+    const password_hash = await hashPassword('s3cret');
+    queue({ data: { id: 's1', username: 'alice', role: 'student', project_id: 'p1', password_hash }, error: null });
+
+    const res = await request(app)
+      .post('/auth/login/student')
+      .send({ projectId: 'p1', username: 'alice', password: 's3cret' });
+
+    expect(res.status).toBe(200);
+    expect(typeof res.body.token).toBe('string');
+    expect(res.body.user).toMatchObject({ id: 's1', username: 'alice', role: 'student', project_id: 'p1' });
     expect(res.body.user).not.toHaveProperty('password_hash');
   });
 });

@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { registerUser, loginUser, createOrganisation, listOrganisations } from '../services/authService';
+import { registerUser, loginUser, loginStudent, createOrganisation, listOrganisations } from '../services/authService';
 import { authMiddleware, AuthRequest } from '../middleware/authMiddleware';
 
 const router = Router();
@@ -77,6 +77,32 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     const result = await loginUser(username, password);
+
+    res.json(result);
+  } catch (error: any) {
+    res.status(401).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /login/student — Authenticate a student within a specific project.
+ * Student accounts are project-scoped (migration 005), so login is resolved by
+ * (projectId, username). Body: { projectId, username, password }.
+ * Returns: { user, token }.
+ */
+router.post('/login/student', async (req: Request, res: Response) => {
+  try {
+    const { projectId, username, password } = req.body as {
+      projectId?: string;
+      username?: string;
+      password?: string;
+    };
+
+    if (!projectId || !username || !password) {
+      return res.status(400).json({ error: 'Missing projectId, username or password' });
+    }
+
+    const result = await loginStudent(projectId, username, password);
 
     res.json(result);
   } catch (error: any) {
