@@ -164,8 +164,50 @@ export async function getProjectParticipantsWithUsernames(projectId: string): Pr
   }));
 }
 
-/** Removes a user from a project's participant list */
+/**
+ * Removes a student from a project.
+ *
+ * Student accounts are project-scoped (see migration 005): one `users` row per
+ * student per project, with `users.project_id` set, and every child table
+ * (project_participants, simulation_progress, student_simulation_state,
+ * project_results) declares ON DELETE CASCADE on its user_id. So for a project
+ * student we delete the `users` row itself, which cascades away the participant
+ * link, progress, state and results, and frees the username for re-add.
+ *
+ * Deleting only the join row (the previous behaviour) left an orphaned `users`
+ * row: the student appeared to be removed but their account lingered, which
+ * both re-populated the list and tripped the uniq_users_username_per_project
+ * index when the same username was added again.
+ *
+ * For any non-student / global account (project_id IS NULL) we never delete the
+ * user; we only detach the participant row, as before.
+ */
 export async function removeProjectParticipant(projectId: string, userId: string): Promise<void> {
+  const { data: user, error: lookupError } = await supabase
+    .from('users')
+    .select('id, role, project_id')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (lookupError) throw lookupError;
+
+  const isProjectStudent =
+    !!user && user.role === 'student' && user.project_id === projectId;
+
+  if (isProjectStudent) {
+    // Deleting the student user cascades to project_participants,
+    // simulation_progress, student_simulation_state and project_results.
+    const { error } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', userId)
+      .eq('project_id', projectId);
+
+    if (error) throw error;
+    return;
+  }
+
+  // Non-student (or mismatched project): only detach from this project.
   const { error } = await supabase
     .from('project_participants')
     .delete()
