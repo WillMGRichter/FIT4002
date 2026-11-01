@@ -1,17 +1,19 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Trash2, Plus, Eye, Save, GripVertical, Table, X, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
+import { Eye, Save, Table } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 import { addRecent } from '../utils/projectStorage';
-import { getColumns, getRows } from '../utils/tableUtils';
 import styles from './ProjectDesigner.module.css';
 import type { ElementProps, SimulationProject } from '../types/simulation';
 import type { CanvasElement, ElementType, Page, ServerPage } from './projectDesigner/types';
 import { ELEMENT_PALETTE, newElemId } from './projectDesigner/elementPalette';
 import { CanvasElementView } from './projectDesigner/CanvasElementView';
 import { getInputCells, getOutputCells, getTrackedCells } from './projectDesigner/designerCells';
+import { PageSidebar } from './projectDesigner/PageSidebar';
+import { PropertiesPanel } from './projectDesigner/PropertiesPanel';
+import { ExcelPreviewModal } from './projectDesigner/ExcelPreviewModal';
 
 export const ProjectDesigner: React.FC = () => {
   const { projectId } = useParams();
@@ -429,45 +431,20 @@ export const ProjectDesigner: React.FC = () => {
     <AppShell title={project?.name || 'Designer'} activeItem="create" showBack>
       <div className={styles.designer}>
         {/* ── Left: Page sidebar ── */}
-        <aside className={`${styles.pageSidebar} ${!pagesOpen ? styles.panelCollapsed : ''}`}>
-          <div className={styles.pageSidebarHeader}>
-            {pagesOpen && <h3>Pages</h3>}
-            <button
-              className={styles.panelToggleBtn}
-              onClick={() => setPagesOpen(v => !v)}
-              title={pagesOpen ? 'Collapse pages' : 'Expand pages'}
-            >
-              {pagesOpen ? <ChevronLeft size={15} /> : <ChevronRight size={15} />}
-            </button>
-          </div>
-          {pagesOpen && (
-            <>
-              <div className={styles.pageList}>
-                {pages.map((page, idx) => (
-                  <div
-                    key={page.id}
-                    className={`${styles.pageItem} ${idx === activePageIdx ? styles.pageItemActive : ''}`}
-                    onClick={() => { setActivePageIdx(idx); setSelectedElemId(null); }}
-                  >
-                    <GripVertical size={14} className={styles.pageDrag} />
-                    <input
-                      className={styles.pageNameInput}
-                      value={page.name}
-                      onChange={e => {
-                        const newPages = [...pages];
-                        newPages[idx] = { ...newPages[idx], name: e.target.value };
-                        setPages(newPages);
-                      }}
-                      onClick={e => e.stopPropagation()}
-                    />
-                    <button className={styles.pageDeleteBtn} onClick={e => { e.stopPropagation(); deletePage(idx); }} title="Delete page"><Trash2 size={13} /></button>
-                  </div>
-                ))}
-                <button className={styles.addPageBtn} onClick={addPage}><Plus size={14} /> Add Page</button>
-              </div>
-            </>
-          )}
-        </aside>
+        <PageSidebar
+          pages={pages}
+          activePageIdx={activePageIdx}
+          open={pagesOpen}
+          onToggle={() => setPagesOpen(v => !v)}
+          onSelectPage={idx => { setActivePageIdx(idx); setSelectedElemId(null); }}
+          onRenamePage={(idx, name) => {
+            const newPages = [...pages];
+            newPages[idx] = { ...newPages[idx], name };
+            setPages(newPages);
+          }}
+          onDeletePage={deletePage}
+          onAddPage={addPage}
+        />
 
         {/* ── Center: Canvas ── */}
         <div className={styles.centerCol}>
@@ -506,406 +483,23 @@ export const ProjectDesigner: React.FC = () => {
         </div>
 
         {/* ── Right: Properties panel ── */}
-        <aside className={`${styles.propsPanel} ${!propsOpen ? styles.panelCollapsed : ''}`}>
-          <div className={styles.propsTitleRow}>
-            {propsOpen && <h3 className={styles.propsTitle}>Properties</h3>}
-            <button
-              className={styles.panelToggleBtn}
-              onClick={() => setPropsOpen(v => !v)}
-              title={propsOpen ? 'Collapse properties' : 'Expand properties'}
-            >
-              {propsOpen ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
-            </button>
-          </div>
-          {propsOpen && (
-            selectedElem ? (
-              <div className={styles.propsContent}>
-                <div className={styles.propsSection}>
-                  <div className={styles.propsSectionTitle}>Position &amp; Size</div>
-                  <div className={styles.propRow}>
-                    <label>X</label>
-                    <input type="number" value={selectedElem.x} onChange={e => updateElementPosition(selectedElem.id, parseInt(e.target.value) || 0, selectedElem.y)} className={styles.propInput} />
-                  </div>
-                  <div className={styles.propRow}>
-                    <label>Y</label>
-                    <input type="number" value={selectedElem.y} onChange={e => updateElementPosition(selectedElem.id, selectedElem.x, parseInt(e.target.value) || 0)} className={styles.propInput} />
-                  </div>
-                  <div className={styles.propRow}>
-                    <label>Width</label>
-                    <input type="number" value={selectedElem.w} onChange={e => updateElementSize(selectedElem.id, parseInt(e.target.value) || 40, selectedElem.h)} className={styles.propInput} />
-                  </div>
-                  <div className={styles.propRow}>
-                    <label>Height</label>
-                    <input type="number" value={selectedElem.h} onChange={e => updateElementSize(selectedElem.id, selectedElem.w, parseInt(e.target.value) || 24)} className={styles.propInput} />
-                  </div>
-                </div>
-
-              <div className={styles.divider} />
-
-              {selectedElem.type === 'text' && (
-                <div className={styles.propsSection}>
-                  <div className={styles.propsSectionTitle}>Text</div>
-                  <div className={styles.propRow}>
-                    <label>Content</label>
-                    <input type="text" value={selectedElem.props.content || ''} onChange={e => updateElementProps(selectedElem.id, { content: e.target.value })} className={styles.propInput} />
-                  </div>
-                  <div className={styles.propRow}>
-                    <label>Font size</label>
-                    <input type="number" value={selectedElem.props.fontSize || 16} onChange={e => updateElementProps(selectedElem.id, { fontSize: parseInt(e.target.value) || 16 })} className={styles.propInput} />
-                  </div>
-                  <div className={styles.propRow}>
-                    <label>Bold</label>
-                    <input type="checkbox" checked={selectedElem.props.bold || false} onChange={e => updateElementProps(selectedElem.id, { bold: e.target.checked })} className={styles.propInput} />
-                  </div>
-                  <div className={styles.propRow}>
-                    <label>Color</label>
-                    <input type="color" value={selectedElem.props.color || '#111827'} onChange={e => updateElementProps(selectedElem.id, { color: e.target.value })} className={styles.propInput} />
-                  </div>
-                </div>
-              )}
-
-              {(selectedElem.type === 'input-field' || selectedElem.type === 'output-field') && (
-                <div className={styles.propsSection}>
-                  <div className={styles.propsSectionTitle}>Cell Binding</div>
-                  <div className={styles.propRow}>
-                    <label>Label</label>
-                    <input type="text" value={selectedElem.props.label || ''} onChange={e => updateElementProps(selectedElem.id, { label: e.target.value })} className={styles.propInput} />
-                  </div>
-                  {selectedElem.props.format !== 'bar-chart' && selectedElem.props.format !== 'pie-chart' && selectedElem.props.format !== 'table' && (
-                    <div className={styles.propRow}>
-                      <label>Cell ref</label>
-                      <select value={selectedElem.props.cellRef || ''} onChange={e => {
-                        const ref = e.target.value;
-                        const cell = selectedElem.type === 'input-field'
-                          ? inputCells.find(c => c.ref === ref)
-                          : outputCells.find(c => c.ref === ref);
-                        const updates: Partial<ElementProps> = { cellRef: ref };
-                        const isDefaultLabel = selectedElem.props.label === 'Input' || selectedElem.props.label === 'Output';
-                        if (cell?.title && isDefaultLabel) updates.label = cell.title;
-                        updateElementProps(selectedElem.id, updates);
-                      }} className={styles.propInput}>
-                        <option value="">-- Select cell --</option>
-                        {selectedElem.type === 'input-field' && inputCells.map(c => (
-                          <option key={c.ref} value={c.ref}>{c.ref} | {c.title || c.ref}{c.value !== undefined && c.value !== null ? ` | ${c.value}` : ''}</option>
-                        ))}
-                        {selectedElem.type === 'output-field' && outputCells.map(c => (
-                          <option key={c.ref} value={c.ref}>{c.ref} | {c.title || c.ref}{c.formula ? ` | ${c.formula}` : ''}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                  {selectedElem.type === 'input-field' && (
-                    <>
-                      <div className={styles.propRow}>
-                        <label>Placeholder</label>
-                        <input type="text" value={selectedElem.props.placeholder || ''} onChange={e => updateElementProps(selectedElem.id, { placeholder: e.target.value })} className={styles.propInput} />
-                      </div>
-                      {/* Specify format of the input type */}
-                      <div className={styles.propRow}>
-                        <label>Format</label>
-                          <select value={selectedElem.props.format || 'number'} onChange={e => updateElementProps(selectedElem.id, { format: e.target.value })} className={styles.propInput}>
-                            <option value="number">Number</option>
-                            <option value="range">Slider</option>
-                            <option value="dropdown">Dropdown</option>
-                          </select>
-                      </div>
-                    </>
-                  )}
-                  {selectedElem.type === 'output-field' && (
-                    <div className={styles.propRow}>
-                      <label>Format</label>
-                      <select value={selectedElem.props.format || 'number'} onChange={e => updateElementProps(selectedElem.id, { format: e.target.value })} className={styles.propInput}>
-                        <option value="number">Number</option>
-                        <option value="text">Text</option>
-                        <option value="currency">Currency</option>
-                        <option value="percentage">Percentage</option>
-                        <option value="bar-chart">Bar Chart</option>
-                        <option value="pie-chart">Pie Chart</option>
-                        <option value="table">Table</option>
-                      </select>
-                    </div>
-                  )}
-                  {selectedElem.type === 'output-field' && selectedElem.props.format === 'bar-chart' && (
-                    <>
-                      <div className={styles.propRow}>
-                        <label>Cell range</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. B4:B8 or B1:B3,B5:B7"
-                          value={selectedElem.props.cellRange || ''}
-                          onChange={e => updateElementProps(selectedElem.id, { cellRange: e.target.value })}
-                          className={styles.propInput}
-                        />
-                      </div>
-                      <div className={styles.propRow}>
-                        <label>Chart title</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Revenue by Year"
-                          value={selectedElem.props.chartTitle || ''}
-                          onChange={e => updateElementProps(selectedElem.id, { chartTitle: e.target.value })}
-                          className={styles.propInput}
-                        />
-                      </div>
-                      <div className={styles.propRow}>
-                        <label>X-axis title</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Year"
-                          value={selectedElem.props.xAxisTitle || ''}
-                          onChange={e => updateElementProps(selectedElem.id, { xAxisTitle: e.target.value })}
-                          className={styles.propInput}
-                        />
-                      </div>
-                      <div className={styles.propRow}>
-                        <label>Y-axis title</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Revenue ($)"
-                          value={selectedElem.props.yAxisTitle || ''}
-                          onChange={e => updateElementProps(selectedElem.id, { yAxisTitle: e.target.value })}
-                          className={styles.propInput}
-                        />
-                      </div>
-                    </>
-                  )}
-                  {selectedElem.type === 'output-field' && selectedElem.props.format === 'pie-chart' && (
-                    <>
-                      <div className={styles.propRow}>
-                        <label>Cell range</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. B8:B12 or B1:B3,B5:B7"
-                          value={selectedElem.props.cellRange || ''}
-                          onChange={e => updateElementProps(selectedElem.id, { cellRange: e.target.value })}
-                          className={styles.propInput}
-                        />
-                      </div>
-                      <div className={styles.propRow}>
-                        <label>Chart title</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Budget by Channel"
-                          value={selectedElem.props.chartTitle || ''}
-                          onChange={e => updateElementProps(selectedElem.id, { chartTitle: e.target.value })}
-                          className={styles.propInput}
-                        />
-                      </div>
-                    </>
-                  )}
-                  {selectedElem.type === 'output-field' && selectedElem.props.format === 'table' && (
-                    <>
-                      <div className={styles.tableColumnsSection}>
-                        <div className={styles.propsSectionTitle}>Rows</div>
-                        <div className={styles.propRow}>
-                          <label>Heading</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. Month"
-                            value={selectedElem.props.tableRowHeader || ''}
-                            onChange={e => updateElementProps(selectedElem.id, { tableRowHeader: e.target.value })}
-                            className={styles.propInput}
-                          />
-                        </div>
-                        {getRows(selectedElem.props).map((row: string, index: number) => {
-                          const rows = getRows(selectedElem.props);
-                          return (
-                            <div key={index} className={styles.tableRowConfig}>
-                              <input
-                                type="text"
-                                placeholder="Row Label"
-                                value={row}
-                                onChange={e => {
-                                  const next = [...rows];
-                                  next[index] = e.target.value;
-                                  updateElementProps(selectedElem.id, { tableRows: next });
-                                }}
-                                className={styles.propInput}
-                              />
-                              <button type="button" className={styles.removeColumnBtn} onClick={() => {
-                                const next = rows.filter((_: string, i: number) => i !== index);
-                                updateElementProps(selectedElem.id, { tableRows: next });
-                              }} title="Remove row">x</button>
-                            </div>
-                          );
-                        })}
-                        <button type="button" className={styles.addColumnBtn} onClick={() => {
-                          const rows = getRows(selectedElem.props);
-                          updateElementProps(selectedElem.id, { tableRows: [...rows, `Row ${rows.length + 1}`] });
-                        }}>+</button>
-                      </div>
-                      <div className={styles.tableColumnsSection}>
-                        <div className={styles.propsSectionTitle}>Columns</div>
-                        {getColumns(selectedElem.props).map((column, index: number) => {
-                          const columns = getColumns(selectedElem.props);
-                          return (
-                            <div key={index} className={styles.tableColumnConfig}>
-                              <input
-                                type="text"
-                                placeholder="Column Heading"
-                                value={column.header || ''}
-                                onChange={e => {
-                                  const next = [...columns];
-                                  next[index] = { ...next[index], header: e.target.value };
-                                  updateElementProps(selectedElem.id, { tableColumns: next });
-                                }}
-                                className={styles.propInput}
-                              />
-                              <input
-                                type="text"
-                                placeholder="e.g. B2:B13"
-                                value={column.range || ''}
-                                onChange={e => {
-                                  const next = [...columns];
-                                  next[index] = { ...next[index], range: e.target.value };
-                                  updateElementProps(selectedElem.id, { tableColumns: next });
-                                }}
-                                className={styles.propInput}
-                              />
-                              <button type="button" className={styles.removeColumnBtn} onClick={() => {
-                                const next = columns.filter((_: unknown, i: number) => i !== index);
-                                updateElementProps(selectedElem.id, { tableColumns: next.length ? next : [{ header: 'Column 1', range: '' }] });
-                              }} title="Remove column">x</button>
-                            </div>
-                          );
-                        })}
-                        <button type="button" className={styles.addColumnBtn} onClick={() => {
-                          const columns = getColumns(selectedElem.props);
-                          updateElementProps(selectedElem.id, { tableColumns: [...columns, { header: `Column ${columns.length + 1}`, range: '' }] });
-                        }}>+</button>
-                      </div>
-                    </>
-                  )}
-                  {selectedElem.type === 'input-field' && selectedElem.props.format === 'range' && (
-                    <>
-                      <div className={styles.propRow}>
-                        <label>Step Size</label>
-                        <input 
-                        type="text"
-                        placeholder='1'
-                        value={selectedElem.props.stepSize ?? ''}
-                        onChange={e => updateElementProps(selectedElem.id, { stepSize: e.target.value})}
-                        className={styles.propInput}/>
-                      </div>
-                      <div className={styles.propRow}>
-                        <label>Min</label>
-                        <input 
-                        type="text"
-                        placeholder='0'
-                        value={selectedElem.props.min ?? ''}
-                        onChange={e => updateElementProps(selectedElem.id, { min: e.target.value})}
-                        className={styles.propInput}/>
-                      </div>
-                      <div className={styles.propRow}>
-                        <label>Max</label>
-                        <input 
-                        type="text"
-                        placeholder='10'
-                        value={selectedElem.props.max ?? ''}
-                        onChange={e => updateElementProps(selectedElem.id, { max: e.target.value})}
-                        className={styles.propInput}/>
-                      </div>
-                    </>
-                  )}
-                  {selectedElem.type === 'input-field' && selectedElem.props.format === 'dropdown' && (
-                    <div className={styles.propRow}>
-                      <label>Options</label>
-                      <input type="text" value={selectedElem.props.options || ''} onChange={e => updateElementProps(selectedElem.id, { options: e.target.value })} className={styles.propInput} placeholder="Comma-separated" />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {selectedElem.type === 'image' && (
-                <div className={styles.propsSection}>
-                  <div className={styles.propsSectionTitle}>Image</div>
-                  <div className={styles.propRow}>
-                    <label>Image URL</label>
-                    <input type="text" value={selectedElem.props.src || ''} onChange={e => updateElementProps(selectedElem.id, { src: e.target.value })} className={styles.propInput} />
-                  </div>
-                  <div className={styles.propRow}>
-                    <label>Upload from device</label>
-                    <label className={styles.uploadBtn}>
-                      <Upload size={14} /> Choose Image
-                      <input type="file" accept="image/*" hidden onChange={e => {
-                        const file = e.target.files?.[0];
-                        if (file) handleImageUpload(file);
-                        e.target.value = '';
-                      }} />
-                    </label>
-                  </div>
-                  {selectedElem.props.src && String(selectedElem.props.src).startsWith('data:') && (
-                    <div>
-                      <div className={styles.uploadPreview}>
-                        <img src={selectedElem.props.src} alt="" />
-                      </div>
-                      <button className={styles.removeImgBtn} onClick={() => updateElementProps(selectedElem.id, { src: '' })}>
-                        <X size={12} /> Remove image
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className={styles.divider} />
-              <button className={styles.deleteBtn} onClick={() => deleteElement(selectedElem.id)}>
-                <Trash2 size={14} /> Delete element
-              </button>
-            </div>
-          ) : (
-            <p className={styles.propsEmpty}>Select an element on the canvas to edit its properties</p>
-          )
-          )}
-        </aside>
+        <PropertiesPanel
+          open={propsOpen}
+          onToggle={() => setPropsOpen(v => !v)}
+          selectedElem={selectedElem}
+          inputCells={inputCells}
+          outputCells={outputCells}
+          updateElementProps={updateElementProps}
+          updateElementPosition={updateElementPosition}
+          updateElementSize={updateElementSize}
+          deleteElement={deleteElement}
+          onImageUpload={handleImageUpload}
+        />
       </div>
 
-      {/* THe section that shows preview of excel sheet values */}
+      {/* The section that shows preview of excel sheet values */}
       {showExcelPreview && (
-        <div className="modal-overlay" onClick={() => setShowExcelPreview(false)}>
-          <div className={`modal ${styles.excelPreviewModal}`} onClick={e => e.stopPropagation()}>
-            <div className="modal__header">
-              <h3>Excel Sheet Values</h3>
-              <button className="modal__close" onClick={() => setShowExcelPreview(false)}><X size={18} /></button>
-            </div>
-            <div className={`modal__body ${styles.excelPreviewBody}`}>
-              {project?.excel_data?.multiSheet && (
-                <p className={styles.excelMultiSheetNotice}>
-                  This workbook has {project.excel_data.sheets?.length || 'multiple'} sheets
-                  {project.excel_data.sheets?.length ? ` (${project.excel_data.sheets.join(', ')})` : ''}.
-                  Cell references are shown as <code>Sheet!Cell</code>, and cross-sheet formulas are supported.
-                </p>
-              )}
-              <p className={styles.excelPreviewHint}>
-                Showing the cells currently used by this simulation - not the full original spreadsheet layout.
-              </p>
-              <table className={styles.excelPreviewTable}>
-                <thead>
-                  <tr>
-                    <th>Cell</th>
-                    <th>Title</th>
-                    <th>Type</th>
-                    <th>Value / Formula</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {allTrackedCells.map(c => (
-                    <tr key={c.ref}>
-                      <td>{c.ref}</td>
-                      <td>{c.title || '-'}</td>
-                      <td>{c.kind}</td>
-                      <td>{c.display}</td>
-                    </tr>
-                  ))}
-                  {allTrackedCells.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className={styles.excelPreviewEmpty}>No spreadsheet data on this project.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <ExcelPreviewModal project={project} cells={allTrackedCells} onClose={() => setShowExcelPreview(false)} />
       )}
     </AppShell>
   );

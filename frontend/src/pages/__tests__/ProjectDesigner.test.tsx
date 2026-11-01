@@ -598,6 +598,114 @@ describe('ProjectDesigner - editing properties', () => {
   });
 });
 
+// ── More property editing: output cells, placeholder, pie title, image upload ────────────────────
+describe('ProjectDesigner - more property editing', () => {
+  it('picking a cell for an OUTPUT element replaces the default label with the cell\'s title', async () => {
+    await renderEmptyDesigner();
+    await addElement('Output');
+    await userEvent.selectOptions(field('Cell ref'), 'B1');
+
+    expect(field('Label').value).toBe('Beta');
+    expect(field('Cell ref').value).toBe('B1');
+  });
+
+  it('edits an input\'s placeholder', async () => {
+    await renderEmptyDesigner();
+    await addElement('Input');
+    fireEvent.change(field('Placeholder'), { target: { value: 'Type here' } });
+
+    expect(field('Placeholder').value).toBe('Type here');
+    expect(screen.getByText(/Type here/)).toBeInTheDocument(); // shown on the canvas preview
+  });
+
+  it('edits a pie chart\'s title', async () => {
+    await renderEmptyDesigner();
+    await addElement('Output');
+    await userEvent.selectOptions(field('Format'), 'pie-chart');
+    fireEvent.change(field('Chart title'), { target: { value: 'Budget' } });
+
+    expect(field('Chart title').value).toBe('Budget');
+  });
+
+  describe('image upload from device', () => {
+    // jsdom can't decode images or draw on a canvas, so stand in for the browser: capture the <img>
+    // the component creates, report a size for it, and fake the canvas.
+    let drawImage: jest.Mock;
+    let toDataURL: jest.Mock;
+    let canvasSize: { width: number; height: number };
+    let created: HTMLImageElement[];
+    // React also creates <img> nodes while rendering; the one the upload code creates is the one
+    // that gets an onload handler assigned.
+    const loaderImage = () => created.find(i => typeof i.onload === 'function');
+    const realCreate = document.createElement.bind(document);
+
+    beforeEach(() => {
+      drawImage = jest.fn();
+      toDataURL = jest.fn(() => 'data:image/jpeg;base64,RESIZED');
+      created = [];
+      canvasSize = { width: 0, height: 0 };
+      jest.spyOn(document, 'createElement').mockImplementation(((tag: string, opts?: ElementCreationOptions) => {
+        const el = realCreate(tag, opts);
+        if (tag === 'img') created.push(el as HTMLImageElement);
+        if (tag === 'canvas') {
+          (el as HTMLCanvasElement).getContext = (() => ({ drawImage })) as any;
+          (el as HTMLCanvasElement).toDataURL = toDataURL as any;
+          canvasSize = { width: 0, height: 0 };
+          Object.defineProperty(el, 'width', { get: () => canvasSize.width, set: v => { canvasSize.width = v; } });
+          Object.defineProperty(el, 'height', { get: () => canvasSize.height, set: v => { canvasSize.height = v; } });
+        }
+        return el;
+      }) as any);
+    });
+    afterEach(() => jest.restoreAllMocks());
+
+    async function upload(imgW: number, imgH: number): Promise<HTMLImageElement> {
+      await renderEmptyDesigner();
+      await addElement('Image');
+      // eslint-disable-next-line testing-library/no-node-access -- the picker is a hidden input inside a label
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+      fireEvent.change(input, { target: { files: [new File(['x'], 'pic.png', { type: 'image/png' })] } });
+
+      // FileReader finishes asynchronously, then the component creates its <img>
+      await waitFor(() => expect(loaderImage()).toBeDefined());
+      const img = loaderImage() as HTMLImageElement;
+      Object.defineProperty(img, 'width', { value: imgW });
+      Object.defineProperty(img, 'height', { value: imgH });
+      act(() => { img.onload?.(new Event('load')); });
+      return img;
+    }
+
+    it('downscales a large image to fit 1280px and stores it as a JPEG data URL', async () => {
+      const img = await upload(2560, 1280);
+
+      expect(canvasSize).toEqual({ width: 1280, height: 640 }); // halved, aspect ratio kept
+      expect(drawImage).toHaveBeenCalledWith(img, 0, 0, 1280, 640);
+      expect(toDataURL).toHaveBeenCalledWith('image/jpeg', 0.85);
+      expect(field('Image URL').value).toBe('data:image/jpeg;base64,RESIZED');
+    });
+
+    it('keeps a small image at its own size', async () => {
+      await upload(400, 300);
+
+      expect(canvasSize).toEqual({ width: 400, height: 300 });
+      expect(field('Image URL').value).toBe('data:image/jpeg;base64,RESIZED');
+    });
+
+    it('ignores the upload if the selected element is not an image', async () => {
+      await renderEmptyDesigner();
+      await addElement('Image');
+      // eslint-disable-next-line testing-library/no-node-access -- the picker is a hidden input inside a label
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+      // deselect by clicking the empty canvas: the panel (and picker) goes away, nothing is uploaded
+      // eslint-disable-next-line testing-library/no-node-access -- the canvas is the parent of the elements
+      fireEvent.mouseDown(canvasNodes()[0].parentElement as HTMLElement);
+
+      expect(input).not.toBeInTheDocument();
+      expect(loaderImage()).toBeUndefined();
+    });
+  });
+});
+
 // ── Drag and resize ──────────────────────────────────────────────────────────
 describe('ProjectDesigner - drag and resize', () => {
   // jsdom has no layout; give elements a real size so the drag commit can read it back.
