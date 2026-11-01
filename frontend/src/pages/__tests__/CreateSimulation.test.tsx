@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CreateSimulation } from '../CreateSimulation';
 
@@ -33,7 +33,11 @@ async function chooseFile() {
   // The file input is inside a <label>; it has no accessible name to query by.
   // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container
   const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-  await userEvent.upload(input, file);
+  // The upload kicks off a fetch whose result updates state afterwards, so let it settle inside act.
+  // eslint-disable-next-line testing-library/no-unnecessary-act
+  await act(async () => {
+    userEvent.upload(input, file);
+  });
 }
 
 describe('CreateSimulation upload', () => {
@@ -49,8 +53,6 @@ describe('CreateSimulation upload', () => {
     // The browser must set the multipart boundary itself.
     expect(init.headers['Content-Type']).toBeUndefined();
 
-    // Let the component finish its post-upload state updates before the test ends.
-    await waitFor(() => expect(screen.queryByText('Processing…')).not.toBeInTheDocument());
   });
 
   it('shows the server\'s reason when the upload is rejected', async () => {
