@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { registerUser, loginUser, loginStudent, createOrganisation, listOrganisations } from '../services/authService';
 import { authMiddleware, AuthRequest } from '../middleware/authMiddleware';
+import { getErrorMessage } from '../utils/errors';
 
 const router = Router();
 
@@ -31,8 +32,8 @@ router.post('/signup/organisation', async (req: Request, res: Response) => {
     const result = await registerUser(username, password, 'admin', organisationId);
 
     res.status(201).json(result);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 
@@ -52,8 +53,8 @@ router.post('/signup', async (req: Request, res: Response) => {
     const result = await registerUser(username, password, role, organisationId);
 
     res.status(201).json(result);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 
@@ -62,8 +63,8 @@ router.get('/organisations', authMiddleware, async (req: AuthRequest, res: Respo
   try {
     const orgs = await listOrganisations();
     res.json(orgs);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 
@@ -79,8 +80,8 @@ router.post('/login', async (req: Request, res: Response) => {
     const result = await loginUser(username, password);
 
     res.json(result);
-  } catch (error: any) {
-    res.status(401).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(401).json({ error: getErrorMessage(error) });
   }
 });
 
@@ -105,8 +106,8 @@ router.post('/login/student', async (req: Request, res: Response) => {
     const result = await loginStudent(projectId, username, password);
 
     res.json(result);
-  } catch (error: any) {
-    res.status(401).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(401).json({ error: getErrorMessage(error) });
   }
 });
 

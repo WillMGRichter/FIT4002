@@ -1,5 +1,5 @@
 import { supabase } from '../config/supabase';
-import { SimulationProgress, ProjectResult } from '../types';
+import { JsonValue, ProjectResult, SimulationProgress } from '../types';
 
 /**
  * Saves or updates simulation progress for a user.
@@ -9,7 +9,7 @@ import { SimulationProgress, ProjectResult } from '../types';
 export async function saveSimulationProgress(
   projectId: string,
   userId: string,
-  state: any
+  state: JsonValue
 ): Promise<SimulationProgress> {
   const { data, error } = await supabase.from('simulation_progress').upsert(
     {
@@ -54,7 +54,7 @@ export async function getSimulationProgress(
 export async function completeSimulation(
   projectId: string,
   userId: string,
-  finalState: any
+  finalState: JsonValue
 ): Promise<ProjectResult> {
   const { data, error } = await supabase
     .from('project_results')

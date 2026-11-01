@@ -1,5 +1,10 @@
 import { supabase } from '../config/supabase';
-import { StudentSimulationState } from '../types';
+import { JsonObject, ProjectResult, StudentSimulationState } from '../types';
+
+/** A stored result plus the student's username/email from the `users:user_id` join. */
+export type StudentResultRow = ProjectResult & {
+  users: { username: string; email: string | null } | null;
+};
 
 /**
  * Retrieves the current active state for a student, or creates a new one if none exists.
@@ -99,7 +104,7 @@ export async function getOrCreateState(
 /** Updates the input values for a student's simulation state */
 export async function updateInputValues(
   stateId: string,
-  inputValues: any
+  inputValues: JsonObject
 ): Promise<StudentSimulationState> {
   const { data, error } = await supabase
     .from('student_simulation_state')
@@ -137,7 +142,7 @@ export async function completeAttempt(
   stateId: string,
   projectId: string,
   userId: string,
-  finalInputValues: any
+  finalInputValues: JsonObject
 ): Promise<void> {
   // Guard against completing a state that is already completed (e.g. a double
   // submit, or a retry after a flaky network). Without this, we would run the
@@ -196,7 +201,7 @@ export async function completeAttempt(
  * Fetches all student results for a project, including associated user data.
  * Joins with users table to include username and email.
  */
-export async function getStudentResults(projectId: string): Promise<any[]> {
+export async function getStudentResults(projectId: string): Promise<StudentResultRow[]> {
   const { data, error } = await supabase
     .from('project_results')
     .select('*, users:user_id(username, email)')

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { joinProjectAsStudent } from '../services/studentJoinService';
 import { joinRateLimiter } from '../middleware/rateLimiters';
+import { getErrorMessage } from '../utils/errors';
 
 /**
  * PUBLIC routes (no authentication) for the anonymous student join flow.
@@ -24,8 +25,8 @@ router.post('/projects/:projectId/join', joinRateLimiter, async (req: Request, r
     const { displayName, email } = req.body;
     const result = await joinProjectAsStudent(req.params.projectId as string, displayName, email);
     res.status(201).json(result);
-  } catch (error: any) {
-    const msg = error?.message || 'Could not join project';
+  } catch (error: unknown) {
+    const msg = getErrorMessage(error, 'Could not join project');
     const status = msg === 'Project not found' ? 404 : 400;
     res.status(status).json({ error: msg });
   }

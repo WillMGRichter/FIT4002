@@ -50,7 +50,7 @@ export function computeOracle(data: ExcelData): OracleValues {
   const values: OracleValues = {};
 
   // Seed with literal (non-formula) numeric inputs, keyed by uppercased ref.
-  for (const [ref, cell] of Object.entries<any>(data.cells)) {
+  for (const [ref, cell] of Object.entries(data.cells)) {
     if (!cell.formula && cell.value != null && !isNaN(Number(cell.value))) {
       values[ref.toUpperCase()] = Number(cell.value);
     }
@@ -69,17 +69,17 @@ export function computeOracle(data: ExcelData): OracleValues {
     // evaluation CORE (arithmetic, precedence, ^, unary, comparisons, IF, ranges) still comes
     // from the parser, keeping it an independent check of the parts where bugs actually hide.
     functions: {
-      MIN: (...params: any[]) => {
+      MIN: (...params: unknown[]) => {
         const nums: number[] = [];
-        FormulaHelpers.flattenParams(params, Types.NUMBER, false, (v: any) => {
+        FormulaHelpers.flattenParams(params, Types.NUMBER, false, (v: unknown) => {
           const n = Number(v);
           if (!isNaN(n)) nums.push(n);
         });
         return nums.length ? Math.min(...nums) : 0;
       },
-      MAX: (...params: any[]) => {
+      MAX: (...params: unknown[]) => {
         const nums: number[] = [];
-        FormulaHelpers.flattenParams(params, Types.NUMBER, false, (v: any) => {
+        FormulaHelpers.flattenParams(params, Types.NUMBER, false, (v: unknown) => {
           const n = Number(v);
           if (!isNaN(n)) nums.push(n);
         });

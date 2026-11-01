@@ -9,6 +9,7 @@ import {
   reorderPages,
 } from '../services/pageService';
 import { getProjectById } from '../services/projectService';
+import { getErrorMessage } from '../utils/errors';
 
 const router = Router();
 
@@ -17,8 +18,8 @@ router.get('/:projectId/pages', authMiddleware, async (req: AuthRequest, res: Re
   try {
     const pages = await getPagesByProject(req.params.projectId as string);
     res.json(pages);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 
@@ -27,7 +28,7 @@ router.get('/:projectId/pages/:pageId', authMiddleware, async (req: AuthRequest,
   try {
     const page = await getPageById(req.params.pageId as string);
     res.json(page);
-  } catch (error: any) {
+  } catch {
     res.status(404).json({ error: 'Page not found' });
   }
 });
@@ -43,8 +44,8 @@ router.post('/:projectId/pages', authMiddleware, async (req: AuthRequest, res: R
     const { name, sortOrder } = req.body;
     const page = await createPage(req.params.projectId as string, name || 'Untitled', sortOrder ?? 0);
     res.status(201).json(page);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 
@@ -58,8 +59,8 @@ router.put('/:projectId/pages/:pageId', authMiddleware, async (req: AuthRequest,
 
     const page = await updatePage(req.params.pageId as string, req.body);
     res.json(page);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 
@@ -73,8 +74,8 @@ router.delete('/:projectId/pages/:pageId', authMiddleware, async (req: AuthReque
 
     await deletePage(req.params.pageId as string);
     res.json({ message: 'Page deleted' });
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 
@@ -88,8 +89,8 @@ router.put('/:projectId/pages/reorder', authMiddleware, async (req: AuthRequest,
 
     await reorderPages(req.params.projectId as string, req.body.pageIds);
     res.json({ message: 'Pages reordered' });
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 

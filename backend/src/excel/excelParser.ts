@@ -1,8 +1,20 @@
 import { Router, Request, Response } from "express";
-import multer from "multer";
 import XLSX from "xlsx";
 import { extractFormulas } from "./formulaExtractor";
 import { createExcelUpload } from "../config/upload";
+
+/** One formula found in a sheet, with the cell refs it mentions. */
+interface FormulaEntry {
+  cell: string;
+  formula: string;
+  references: string[];
+}
+
+/** Response shape of POST /excel/upload: the formulas found in each sheet. */
+interface SheetFormulas {
+  sheet: string;
+  formulas: FormulaEntry[];
+}
 
 const router = Router();
 const upload = createExcelUpload();
@@ -18,11 +30,11 @@ router.post("/upload", upload.single("file"), (req: Request, res: Response) => {
 
   const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
   const rawFormulasBySheet = extractFormulas(req.file.buffer);
-  const result: any[] = [];
+  const result: SheetFormulas[] = [];
 
   workbook.SheetNames.forEach(sheetName => {
     const sheet = workbook.Sheets[sheetName];
-    const formulas: any[] = [];
+    const formulas: FormulaEntry[] = [];
 
     for (const cellAddress in sheet) {
       if (cellAddress[0] === '!') continue;

@@ -1,5 +1,12 @@
 import { supabase } from '../config/supabase';
+import type { ExcelData } from '../excel/excelDataBuilder';
 import { Project, ProjectParticipant } from '../types';
+
+/** A participant row as returned by the `users:user_id ( username )` join. */
+type ParticipantRow = ProjectParticipant & { users?: { username: string | null } | null };
+
+/** A participant plus the joined user's username (null if the user row is gone). */
+export type ParticipantWithUsername = ParticipantRow & { username: string | null };
 
 /**
  * Creates a new simulation project.
@@ -15,7 +22,7 @@ export async function createProject(
   createdBy: string,
   organisationId: string,
   description?: string,
-  excelData?: any,
+  excelData?: ExcelData | null,
   defaultMaxAttempts?: number
 ): Promise<Project> {
   const { data, error } = await supabase
@@ -148,7 +155,7 @@ export async function getProjectParticipants(projectId: string): Promise<Project
 }
 
 /** Fetches participants with their usernames via a join on the users table */
-export async function getProjectParticipantsWithUsernames(projectId: string): Promise<any[]> {
+export async function getProjectParticipantsWithUsernames(projectId: string): Promise<ParticipantWithUsername[]> {
   const { data, error } = await supabase
     .from('project_participants')
     .select(`
@@ -158,7 +165,7 @@ export async function getProjectParticipantsWithUsernames(projectId: string): Pr
     .eq('project_id', projectId);
 
   if (error) throw error;
-  return (data || []).map((p: any) => ({
+  return ((data || []) as ParticipantRow[]).map((p) => ({
     ...p,
     username: p.users?.username || null,
   }));

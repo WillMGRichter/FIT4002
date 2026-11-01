@@ -15,6 +15,14 @@ import {
   getStudentProjects,
 } from '../services/projectService';
 import { getUserById, registerUser } from '../services/authService';
+import { getErrorMessage } from '../utils/errors';
+
+/** One student row as sent by the create-project form (all fields optional: it is user input). */
+interface StudentInput {
+  username?: string;
+  password?: string;
+  maxAttempts?: number;
+}
 
 const router = Router();
 const upload = createExcelUpload();
@@ -46,7 +54,7 @@ router.post('/', authMiddleware, upload.single('file'), async (req: AuthRequest,
     // Create student accounts and add as participants. Collect per-student
     // outcomes so the client can tell the teacher which rows failed (e.g. a
     // duplicate username) instead of failing silently.
-    let students: any[] = [];
+    let students: StudentInput[] = [];
     try {
       students = JSON.parse(req.body.students || '[]');
     } catch { /* ignore parse errors */ }
@@ -82,15 +90,15 @@ router.post('/', authMiddleware, upload.single('file'), async (req: AuthRequest,
           student.maxAttempts || 1
         );
         studentResults.push({ username, ok: true });
-      } catch (err: any) {
-        console.error(`Failed to create student ${username}:`, err.message);
-        studentResults.push({ username, ok: false, error: err.message || 'Could not create student' });
+      } catch (err: unknown) {
+        console.error(`Failed to create student ${username}:`, getErrorMessage(err));
+        studentResults.push({ username, ok: false, error: getErrorMessage(err, 'Could not create student') });
       }
     }
 
     res.status(201).json({ ...project, studentResults });
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 
@@ -99,7 +107,7 @@ router.get('/:projectId', authMiddleware, async (req: AuthRequest, res: Response
   try {
     const project = await getProjectById(req.params.projectId as string);
     res.json(project);
-  } catch (error: any) {
+  } catch {
     res.status(404).json({ error: 'Project not found' });
   }
 });
@@ -109,8 +117,8 @@ router.get('/teacher/projects', authMiddleware, async (req: AuthRequest, res: Re
   try {
     const projects = await getProjectsByTeacher(req.userId!);
     res.json(projects);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 
@@ -119,8 +127,8 @@ router.get('/student/projects', authMiddleware, async (req: AuthRequest, res: Re
   try {
     const projects = await getStudentProjects(req.userId!);
     res.json(projects);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 
@@ -136,8 +144,8 @@ router.put('/:projectId', authMiddleware, async (req: AuthRequest, res: Response
 
     const updated = await updateProject(req.params.projectId as string, req.body);
     res.json(updated);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 
@@ -153,8 +161,8 @@ router.delete('/:projectId', authMiddleware, async (req: AuthRequest, res: Respo
 
     await deleteProject(req.params.projectId as string);
     res.json({ message: 'Project deleted' });
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 
@@ -171,8 +179,8 @@ router.post('/:projectId/participants', authMiddleware, async (req: AuthRequest,
 
     const participant = await addProjectParticipant(req.params.projectId as string, userId, role, maxAttempts);
     res.status(201).json(participant);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 
@@ -214,8 +222,8 @@ router.post('/:projectId/students', authMiddleware, async (req: AuthRequest, res
     const participant = await addProjectParticipant(projectId, newUser.id, 'student', maxAttempts || 1);
 
     res.status(201).json({ participant, user: { id: newUser.id, username: newUser.username } });
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 
@@ -224,8 +232,8 @@ router.get('/:projectId/participants/with-usernames', authMiddleware, async (req
   try {
     const participants = await getProjectParticipantsWithUsernames(req.params.projectId as string);
     res.json(participants);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 
@@ -234,8 +242,8 @@ router.get('/:projectId/participants', authMiddleware, async (req: AuthRequest, 
   try {
     const participants = await getProjectParticipants(req.params.projectId as string);
     res.json(participants);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 
@@ -254,8 +262,8 @@ router.delete(
 
       await removeProjectParticipant(req.params.projectId as string, req.params.userId as string);
       res.json({ message: 'Participant removed' });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
+    } catch (error: unknown) {
+      res.status(400).json({ error: getErrorMessage(error) });
     }
   }
 );

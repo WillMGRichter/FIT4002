@@ -53,8 +53,10 @@ export function generateToken(userId: string): string {
 /** Verifies a JWT token and returns the userId, or null if invalid/expired */
 export function verifyToken(token: string): string | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
-    return decoded.userId;
+    const decoded = jwt.verify(token, JWT_SECRET);
+    // jwt.verify may return a bare string payload; ours always carries a string userId.
+    if (typeof decoded === 'string') return null;
+    return typeof decoded.userId === 'string' ? decoded.userId : null;
   } catch {
     return null;
   }

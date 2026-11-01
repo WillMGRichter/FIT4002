@@ -8,6 +8,7 @@ import {
   getUserProjectResults,
 } from '../services/simulationService';
 import { getProjectById } from '../services/projectService';
+import { getErrorMessage } from '../utils/errors';
 
 const router = Router();
 
@@ -24,8 +25,8 @@ router.post('/:projectId/progress', authMiddleware, async (req: AuthRequest, res
 
     const progress = await saveSimulationProgress(projectId, userId, state);
     res.json(progress);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 
@@ -37,8 +38,8 @@ router.get('/:projectId/progress', authMiddleware, async (req: AuthRequest, res:
 
     const progress = await getSimulationProgress(projectId, userId);
     res.json(progress);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 
@@ -55,8 +56,8 @@ router.post('/:projectId/complete', authMiddleware, async (req: AuthRequest, res
 
     const result = await completeSimulation(projectId, userId, finalState);
     res.status(201).json(result);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 
@@ -74,8 +75,8 @@ router.get('/:projectId/results', authMiddleware, async (req: AuthRequest, res: 
 
     const results = await getProjectResults(projectId as string);
     res.json(results);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 
@@ -87,8 +88,8 @@ router.get('/:projectId/results/user', authMiddleware, async (req: AuthRequest, 
 
     const results = await getUserProjectResults(projectId, userId);
     res.json(results);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 

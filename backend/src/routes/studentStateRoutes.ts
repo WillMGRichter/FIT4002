@@ -8,6 +8,7 @@ import {
   getStudentResults,
 } from '../services/studentStateService';
 import { getProjectById } from '../services/projectService';
+import { getErrorMessage } from '../utils/errors';
 
 const router = Router();
 
@@ -16,8 +17,8 @@ router.get('/:projectId/state', authMiddleware, async (req: AuthRequest, res: Re
   try {
     const state = await getOrCreateState(req.params.projectId as string, req.userId!);
     res.json(state);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 
@@ -27,8 +28,8 @@ router.put('/:projectId/state/inputs', authMiddleware, async (req: AuthRequest, 
     const { stateId, inputValues } = req.body;
     const state = await updateInputValues(stateId, inputValues);
     res.json(state);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 
@@ -38,8 +39,8 @@ router.put('/:projectId/state/page', authMiddleware, async (req: AuthRequest, re
     const { stateId, pageId } = req.body;
     const state = await updateCurrentPage(stateId, pageId);
     res.json(state);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 
@@ -49,9 +50,9 @@ router.post('/:projectId/state/complete', authMiddleware, async (req: AuthReques
     const { stateId, inputValues } = req.body;
     await completeAttempt(stateId, req.params.projectId as string, req.userId!, inputValues);
     res.json({ message: 'Simulation completed' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[complete] failed:', error);
-    res.status(400).json({ error: error?.message || 'Failed to complete attempt' });
+    res.status(400).json({ error: getErrorMessage(error, 'Failed to complete attempt') });
   }
 });
 
@@ -65,8 +66,8 @@ router.get('/:projectId/results', authMiddleware, async (req: AuthRequest, res: 
 
     const results = await getStudentResults(req.params.projectId as string);
     res.json(results);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
+  } catch (error: unknown) {
+    res.status(400).json({ error: getErrorMessage(error) });
   }
 });
 

@@ -57,7 +57,7 @@ export function createApp() {
   app.use("/excel", excelParser);
 
   /** Global error handler - catches unhandled errors from all routes */
-  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
     // Upload problems are the client's fault, not a server error: report them as such.
     if (err instanceof multer.MulterError) {
       if (err.code === "LIMIT_FILE_SIZE") {

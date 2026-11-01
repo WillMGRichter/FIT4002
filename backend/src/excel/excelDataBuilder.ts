@@ -14,9 +14,19 @@ import { extractFormulas } from './formulaExtractor';
  *    (`Sales!B3`) are preserved.
  */
 
+/** A spreadsheet cell's value as read from the workbook. */
+export type CellValue = number | string | boolean | null;
+
+/** A cell in the trimmed-down `cells` map shipped to the client. */
+export interface ExcelCell {
+  value: CellValue;
+  formula: string | null;
+  type: string | null;
+}
+
 export interface InputCell {
   ref: string;
-  value: any;
+  value: CellValue;
   title: string | null;
   /**
    * True when this input is actually a FORMULA cell being exposed as an
@@ -31,14 +41,14 @@ export interface InputCell {
 
 export interface OutputCell {
   ref: string;
-  value: any;
+  value: CellValue;
   formula: string;
   title: string | null;
   dependencies: Record<string, number>;
 }
 
 export interface ExcelData {
-  cells: Record<string, any>;
+  cells: Record<string, ExcelCell>;
   sheets: string[];
   /** True when the workbook has more than one sheet. */
   multiSheet: boolean;
@@ -47,7 +57,7 @@ export interface ExcelData {
 }
 
 interface RawCell {
-  value: any;
+  value: CellValue;
   formula: string | null;
   type: string | null;
   /** Sheet this cell belongs to (original case). */
@@ -344,7 +354,7 @@ export function buildExcelData(buffer: Buffer): ExcelData {
   const allInputCells = [...relevantInputCells, ...overridableInputCells];
 
   // Build minimal cells map (inputs referenced by formulas + outputs).
-  const filteredCells: Record<string, any> = {};
+  const filteredCells: Record<string, ExcelCell> = {};
   for (const ic of relevantInputCells) {
     filteredCells[ic.ref] = { value: ic.value, formula: null, type: typeof ic.value === 'number' ? 'n' : 's' };
   }
