@@ -1,161 +1,17 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Trash2, Plus, Eye, Save, GripVertical, Type, Image, RectangleHorizontal, ChartBar, Table, X, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
+import { Trash2, Plus, Eye, Save, GripVertical, Table, X, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 import { addRecent } from '../utils/projectStorage';
-import { expandRange } from '../utils/FormulaEngine';
 import { getColumns, getRows } from '../utils/tableUtils';
 import styles from './ProjectDesigner.module.css';
-import type { ElementProps, InputCell, OutputCell, SimulationProject } from '../types/simulation';
-
-type ElementType = 'text' | 'input-field' | 'output-field' | 'image';
-
-// Matches PIE_COLORS in StudentSimulationView.tsx, so this canvas preview's slice colors
-// line up with what the actual student-facing pie chart will render.
-const PIE_COLORS = ['#4ade80', '#60a5fa', '#f59e0b', '#f87171', '#a78bfa', '#22d3ee', '#fb923c', '#34d399'];
-
-interface CanvasElement {
-  id: string;
-  type: ElementType;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  props: ElementProps;
-}
-
-interface Page {
-  id: string;
-  name: string;
-  sort_order: number;
-  elements: CanvasElement[];
-}
-
-/** A page as stored by the API: `elements` can be null on rows that were never edited. */
-type ServerPage = Omit<Page, 'elements'> & { elements: CanvasElement[] | null };
-
-const newElemId = () => `elem_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-
-const ELEMENT_PALETTE: { type: ElementType; label: string; icon: React.ReactNode; defaultProps: ElementProps }[] = [
-  { type: 'text', label: 'Text', icon: <Type size={20} />, defaultProps: { content: 'Text', fontSize: 16, color: '#111827', bold: false } },
-  { type: 'input-field', label: 'Input', icon: <RectangleHorizontal size={20} />, defaultProps: { cellRef: '', label: 'Input', placeholder: 'Enter value...' } },
-  { type: 'output-field', label: 'Output', icon: <ChartBar size={20} />, defaultProps: { cellRef: '', cellRange: '', tableRowHeader: '', tableRows: ['Row 1'], tableColumns: [{ header: 'Column 1', range: '' }], label: 'Output', format: 'number', chartTitle: '', xAxisTitle: '', yAxisTitle: '' } },
-  { type: 'image', label: 'Image', icon: <Image size={20} />, defaultProps: { src: 'https://placehold.co/400x200?text=Image', alt: '' } },
-];
-
-// Renders a single canvas element. Memoized so that dragging/resizing ONE element
-// (which updates only that element's x/y/w/h in state) does not re-render every other
-// element. This matters most for image elements, whose src is a large base64 data URL:
-// re-rendering all of them on every mousemove made dragging very laggy.
-interface CanvasElementViewProps {
-  elem: CanvasElement;
-  selected: boolean;
-  onElemMouseDown: (e: React.MouseEvent, elem: CanvasElement) => void;
-  onResizeMouseDown: (e: React.MouseEvent, elem: CanvasElement) => void;
-}
-
-const CanvasElementView = React.memo<CanvasElementViewProps>(({ elem, selected, onElemMouseDown, onResizeMouseDown }) => {
-  return (
-    <div
-      className={`${styles.canvasElem} ${selected ? styles.canvasElemSelected : ''}`}
-      data-elem-id={elem.id}
-      style={{ left: elem.x, top: elem.y, width: elem.w, height: elem.h }}
-      onMouseDown={e => onElemMouseDown(e, elem)}
-    >
-      {elem.type === 'text' && (
-        <div className={styles.elemText} style={{ fontSize: elem.props.fontSize, color: elem.props.color, fontWeight: elem.props.bold ? 700 : 400 }}>
-          {elem.props.content}
-        </div>
-      )}
-      {elem.type === 'input-field' && (
-        <div className={styles.elemField}>
-          <label>{elem.props.label}</label>
-          {elem.props.format === 'range' && (
-            <div>
-            <input className={styles.fieldBox} type='range' readOnly disabled></input>
-            <span className={styles.sliderValue}>{elem.props.min ?? 0} - {elem.props.max ?? 10}</span>
-            </div>
-          )}
-          {elem.props.format === 'dropdown' && (
-            <div className={styles.fieldBox}>
-              <span className={styles.fieldPlaceholder}>{elem.props.placeholder || 'Choose...'} ({elem.props.cellRef || 'no cell'})</span>
-            </div>
-          )}
-          {elem.props.format !== 'range' && elem.props.format !== 'dropdown' && (
-            <div className={styles.fieldBox}>
-            <span className={styles.fieldPlaceholder}>{elem.props.placeholder} ({elem.props.cellRef || 'no cell'})</span>
-          </div>
-          )}
-        </div>
-      )}
-      {elem.type === 'output-field' && elem.props.format === 'bar-chart' && (
-        <div className={styles.elemField}>
-          <label>{elem.props.label}</label>
-          <div className={styles.barChartPreview}>
-            <div className={styles.barChartPreviewBar} style={{ height: '40%' }} />
-            <div className={styles.barChartPreviewBar} style={{ height: '65%' }} />
-            <div className={styles.barChartPreviewBar} style={{ height: '50%' }} />
-            <div className={styles.barChartPreviewBar} style={{ height: '85%' }} />
-            <span className={styles.barChartPreviewLabel}>{elem.props.cellRange || 'no range'}</span>
-          </div>
-        </div>
-      )}
-      {elem.type === 'output-field' && elem.props.format === 'pie-chart' && (
-        <div className={styles.elemField}>
-          <label>{elem.props.label}</label>
-          <div className={styles.pieChartPreview}>
-            <div className={styles.pieChartPreviewCircle} />
-            <div className={styles.pieChartPreviewLegend}>
-              {elem.props.cellRange
-                ? expandRange(elem.props.cellRange).map((ref, i) => (
-                    <div key={ref} className={styles.pieChartPreviewLegendRow}>
-                      <span className={styles.pieChartPreviewSwatch} style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
-                      <span className={styles.pieChartPreviewLegendLabel}>Legend {i + 1}</span>
-                    </div>
-                  ))
-                : <span className={styles.barChartPreviewLabel}>no range</span>}
-            </div>
-          </div>
-        </div>
-      )}
-      {elem.type === 'output-field' && elem.props.format === 'table' && (
-        <div className={styles.elemField}>
-          <label>{elem.props.label}</label>
-          <div className={styles.tablePreview}>
-            <div className={styles.tablePreviewHeader}>
-              <span>{elem.props.tableRowHeader || ''}</span>
-              {getColumns(elem.props).map((column, i) => <span key={i}>{column.header || `Column ${i + 1}`}</span>)}
-            </div>
-            {getRows(elem.props).slice(0, 3).map((row: string, i: number) => (
-              <div key={`${row}-${i}`} className={styles.tablePreviewRow}>
-                <span>{row}</span>
-                {getColumns(elem.props).map((_, columnIndex) => <span key={columnIndex}>0</span>)}
-              </div>
-            ))}
-            {!getRows(elem.props).length && <span className={styles.barChartPreviewLabel}>no rows</span>}
-          </div>
-        </div>
-      )}
-      {elem.type === 'output-field' && elem.props.format !== 'bar-chart' && elem.props.format !== 'pie-chart' && elem.props.format !== 'table' && (
-        <div className={styles.elemField}>
-          <label>{elem.props.label}</label>
-          <div className={`${styles.fieldBox} ${styles.fieldOutput}`}>
-            <span>{elem.props.cellRef || 'no cell'}</span>
-          </div>
-        </div>
-      )}
-      {elem.type === 'image' && (
-        <div className={styles.elemImage}>
-          <img src={elem.props.src} alt={elem.props.alt} draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        </div>
-      )}
-      <div className={styles.resizeHandle} onMouseDown={e => onResizeMouseDown(e, elem)} />
-    </div>
-  );
-});
-CanvasElementView.displayName = 'CanvasElementView';
+import type { ElementProps, SimulationProject } from '../types/simulation';
+import type { CanvasElement, ElementType, Page, ServerPage } from './projectDesigner/types';
+import { ELEMENT_PALETTE, newElemId } from './projectDesigner/elementPalette';
+import { CanvasElementView } from './projectDesigner/CanvasElementView';
+import { getInputCells, getOutputCells, getTrackedCells } from './projectDesigner/designerCells';
 
 export const ProjectDesigner: React.FC = () => {
   const { projectId } = useParams();
@@ -218,40 +74,11 @@ export const ProjectDesigner: React.FC = () => {
   const activePage = pages[activePageIdx];
   const activeElements = activePage?.elements || [];
 
-  // Collect all non-formula (input) cells from the uploaded spreadsheet, sorted by reference
-  const inputCells = React.useMemo(() => {
-    if (project?.excel_data?.inputCells) {
-      return project.excel_data.inputCells.sort((a, b) => a.ref.localeCompare(b.ref, undefined, { numeric: true }));
-    }
-    if (!project?.excel_data?.cells) return [];
-    return Object.entries(project.excel_data.cells)
-      .filter(([, cell]) => !cell.formula)
-      .map(([ref, cell]): InputCell => ({ ref, value: cell.value, title: null }))
-      .sort((a, b) => a.ref.localeCompare(b.ref, undefined, { numeric: true }));
-  }, [project]);
-
-  // Collect all formula (output) cells from the uploaded spreadsheet, sorted by reference
-  const outputCells = React.useMemo(() => {
-    if (project?.excel_data?.outputCells) {
-      return project.excel_data.outputCells.sort((a, b) => a.ref.localeCompare(b.ref, undefined, { numeric: true }));
-    }
-    if (!project?.excel_data?.cells) return [];
-    return Object.entries(project.excel_data.cells)
-      .filter(([, cell]) => !!cell.formula)
-      .map(([ref, cell]): OutputCell => ({ ref, formula: cell.formula ?? '', title: null, dependencies: {} }))
-      .sort((a, b) => a.ref.localeCompare(b.ref, undefined, { numeric: true }));
-  }, [project]);
-
-  // Combined list of every cell the app currently tracks from the sheet, for the "Preview Excel" table.
-  // Note: this only reflects cells the backend kept after upload (output/formula cells, plus input cells
-  // referenced by a formula) - unreferenced or label-only cells from the original sheet are not available.
-  const allTrackedCells = React.useMemo(() => {
-    const rows = [
-      ...inputCells.map(c => ({ ref: c.ref, title: c.title, kind: 'Input', display: c.value })),
-      ...outputCells.map(c => ({ ref: c.ref, title: c.title, kind: 'Output', display: c.formula })),
-    ];
-    return rows.sort((a, b) => a.ref.localeCompare(b.ref, undefined, { numeric: true }));
-  }, [inputCells, outputCells]);
+  // Input / output cells of the uploaded spreadsheet (sorted by reference) and the combined list
+  // shown in the "Preview Excel" table. See projectDesigner/designerCells.ts.
+  const inputCells = React.useMemo(() => getInputCells(project?.excel_data), [project]);
+  const outputCells = React.useMemo(() => getOutputCells(project?.excel_data), [project]);
+  const allTrackedCells = React.useMemo(() => getTrackedCells(inputCells, outputCells), [inputCells, outputCells]);
 
   const [saving, setSaving] = useState(false);
 
