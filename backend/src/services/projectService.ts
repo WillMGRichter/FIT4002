@@ -179,8 +179,13 @@ export async function getProjectParticipantsWithUsernames(projectId: string): Pr
  * both re-populated the list and tripped the uniq_users_username_per_project
  * index when the same username was added again.
  *
- * For any non-student / global account (project_id IS NULL) we never delete the
- * user; we only detach the participant row, as before.
+ * For any non-student / global account we never delete the user; we only detach
+ * the participant row, as before.
+ *
+ * Legacy rows: students created by the join flow before it stamped `project_id`
+ * have `project_id = NULL`. Those are treated as belonging to this project only
+ * if this is their SOLE enrolment; if they are enrolled elsewhere too we detach
+ * rather than destroy an account another project depends on.
  */
 export async function removeProjectParticipant(projectId: string, userId: string): Promise<void> {
   const { data: user, error: lookupError } = await supabase
@@ -191,23 +196,39 @@ export async function removeProjectParticipant(projectId: string, userId: string
 
   if (lookupError) throw lookupError;
 
-  const isProjectStudent =
-    !!user && user.role === 'student' && user.project_id === projectId;
+  let ownedByThisProject = false;
+  if (user && user.role === 'student') {
+    if (user.project_id === projectId) {
+      ownedByThisProject = true;
+    } else if (user.project_id === null) {
+      // Legacy unscoped student: owned by this project only if it is their sole enrolment.
+      const { data: enrolments, error: enrolError } = await supabase
+        .from('project_participants')
+        .select('project_id')
+        .eq('user_id', userId);
 
-  if (isProjectStudent) {
+      if (enrolError) throw enrolError;
+      ownedByThisProject =
+        !!enrolments &&
+        enrolments.length > 0 &&
+        enrolments.every((e: { project_id: string }) => e.project_id === projectId);
+    }
+  }
+
+  if (ownedByThisProject) {
     // Deleting the student user cascades to project_participants,
     // simulation_progress, student_simulation_state and project_results.
     const { error } = await supabase
       .from('users')
       .delete()
       .eq('id', userId)
-      .eq('project_id', projectId);
+      .eq('role', 'student');
 
     if (error) throw error;
     return;
   }
 
-  // Non-student (or mismatched project): only detach from this project.
+  // Non-student, or a student that belongs elsewhere: only detach from this project.
   const { error } = await supabase
     .from('project_participants')
     .delete()

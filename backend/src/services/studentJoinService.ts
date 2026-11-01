@@ -60,6 +60,10 @@ export async function joinProjectAsStudent(
       password_hash: passwordHash,
       role: 'student',
       organisation_id: project.organisation_id,
+      // Scope the account to this project (migration 005). Without it the row is
+      // treated as a global account and project-scoped logic (login lookup,
+      // student removal) can't recognise it as belonging to this project.
+      project_id: projectId,
     }])
     .select('id')
     .single();
