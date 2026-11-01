@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { UserRoundPlus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { getErrorMessage } from '../utils/errors';
 import './AuthPages.css';
 
 const GoogleIcon = () => (
@@ -42,8 +43,8 @@ export const SignupPage: React.FC = () => {
     try {
       await signup(username, password, organisationName);
       navigate('/dashboard');
-    } catch (err: any) {
-      setError(err.message || 'Signup failed');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Signup failed'));
     } finally {
       setLoading(false);
     }

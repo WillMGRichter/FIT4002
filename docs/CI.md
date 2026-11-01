@@ -36,7 +36,7 @@ caching.
 | Job | Purpose | DB |
 |-----|---------|:--:|
 | `Backend (unit + routes)` | `npm ci` → `tsc --noEmit` → `npm run lint` (ESLint, incl. `no-explicit-any`) → `npm test` (mocked tests) | — |
-| `Frontend (unit + type-check)` | `npm ci` → `tsc --noEmit` → `react-scripts test` (56 tests) | — |
+| `Frontend (unit + type-check)` | `npm ci` → `tsc --noEmit` → `npm run lint` (ESLint, incl. `no-explicit-any`) → `react-scripts test` | — |
 | `Backend (DB integration)` | boots Supabase, migrates, runs the 15 opt-in integration tests | ✔ |
 
 ### Backend (mocked) — dummy Supabase env

@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { API_URL } from '../config';
 import { StudentSimulationView } from './StudentSimulationView';
 import styles from './JoinSimulation.module.css';
+import { getErrorMessage } from '../utils/errors';
 
 /**
  * Entry point for the shareable student link (/join/:projectId).
@@ -53,8 +54,8 @@ export const JoinSimulation: React.FC = () => {
       const data = await res.json();
       if (!data?.token) throw new Error('Could not sign in. Please try again.');
       setSession({ token: data.token, userId: data.user?.id ?? null });
-    } catch (err: any) {
-      setError(err.message || 'Could not sign in. Please try again.');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Could not sign in. Please try again.'));
     } finally {
       setSubmitting(false);
     }

@@ -9,6 +9,8 @@ import { addRecent } from '../utils/projectStorage';
 import { recomputeAll, expandRange, getTransitiveDependencies, type CellMap } from '../utils/FormulaEngine';
 import { getColumns, getRows } from '../utils/tableUtils';
 import styles from './StudentSimulationView.module.css';
+import { getErrorMessage } from '../utils/errors';
+import type { ElementProps, ParticipantRow, SimulationProject } from '../types/simulation';
 
 interface CanvasElement {
   id: string;
@@ -17,7 +19,7 @@ interface CanvasElement {
   y: number;
   w: number;
   h: number;
-  props: Record<string, any>;
+  props: ElementProps;
 }
 
 interface Page {
@@ -26,6 +28,9 @@ interface Page {
   sort_order: number;
   elements: CanvasElement[];
 }
+
+/** A page as stored by the API: `elements` can be null on rows that were never edited. */
+type ServerPage = Omit<Page, 'elements'> & { elements: CanvasElement[] | null };
 
 // Fixed slice colors for pie charts - not user-configurable yet, cycled in order per slice.
 const PIE_COLORS = ['#4ade80', '#60a5fa', '#f59e0b', '#f87171', '#a78bfa', '#22d3ee', '#fb923c', '#34d399'];
@@ -41,7 +46,7 @@ type PerPageInputs = Record<string, Record<string, number | string>>;
  * values are primitives rather than objects), we seed the FIRST page with those
  * values so existing in-progress attempts aren't lost.
  */
-function migrateInputValues(stored: any, pages: Page[]): PerPageInputs {
+function migrateInputValues(stored: unknown, pages: Page[]): PerPageInputs {
   if (!stored || typeof stored !== 'object') return {};
 
   const values = Object.values(stored);
@@ -89,7 +94,7 @@ export const StudentSimulationView: React.FC<{ overrideToken?: string; overrideU
   const [noMoreAttempts, setNoMoreAttempts] = useState(false);
   const [startingAttempt, setStartingAttempt] = useState(false);
   const [attemptInfo, setAttemptInfo] = useState<{ attemptNumber: number; maxAttempts: number } | null>(null);
-  const [project, setProject] = useState<any>(null);
+  const [project, setProject] = useState<SimulationProject | null>(null);
   const stateIdRef = useRef<string | null>(null);
   // The signed-in student's own user id (from the join login response), used to
   // find their participant row for attempt limits. Falls back to null for the
@@ -109,7 +114,7 @@ export const StudentSimulationView: React.FC<{ overrideToken?: string; overrideU
   const formulas = useMemo(() => {
     if (!project?.excel_data?.cells) return {};
     const f: Record<string, string> = {};
-    for (const [ref, cell] of Object.entries<any>(project.excel_data.cells)) {
+    for (const [ref, cell] of Object.entries(project.excel_data.cells)) {
       const rawFormula = cell.formula || (typeof cell.value === 'string' ? cell.value : null);
       if (rawFormula) {
         f[ref.toUpperCase()] = rawFormula.startsWith('=') ? rawFormula : '=' + rawFormula;
@@ -122,7 +127,7 @@ export const StudentSimulationView: React.FC<{ overrideToken?: string; overrideU
   const defaultCells = useMemo(() => {
     if (!project?.excel_data?.cells) return {};
     const d: CellMap = {};
-    for (const [ref, cell] of Object.entries<any>(project.excel_data.cells)) {
+    for (const [ref, cell] of Object.entries(project.excel_data.cells)) {
       if (!cell.formula && cell.value !== null && cell.value !== undefined && !isNaN(Number(cell.value))) {
         d[ref.toUpperCase()] = Number(cell.value);
       }
@@ -173,7 +178,7 @@ export const StudentSimulationView: React.FC<{ overrideToken?: string; overrideU
 
         const proj = await projRes.json();
         let pgs = await pagesRes.json();
-        pgs = pgs.map((p: any) => ({ ...p, elements: p.elements || [] }));
+        pgs = pgs.map((p: ServerPage) => ({ ...p, elements: p.elements || [] }));
 
         setProject(proj);
         addRecent({ id: projectId!, name: proj.name });
@@ -214,15 +219,15 @@ export const StudentSimulationView: React.FC<{ overrideToken?: string; overrideU
         });
         if (partRes.ok) {
           const parts = await partRes.json();
-          const mine = Array.isArray(parts) ? parts.find((p: any) => p.user_id === userIdRef.current) : null;
+          const mine = Array.isArray(parts) ? parts.find((p: ParticipantRow) => p.user_id === userIdRef.current) : null;
           if (mine) {
             setAttemptInfo(prev => prev ? { ...prev, maxAttempts: mine.max_attempts ?? 0 } : prev);
           }
         }
 
         setLoading(false);
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(getErrorMessage(err));
         setLoading(false);
       }
     };
@@ -315,8 +320,8 @@ export const StudentSimulationView: React.FC<{ overrideToken?: string; overrideU
       });
       if (!res.ok) throw new Error('Failed to submit');
       setSubmitted(true);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -350,8 +355,8 @@ export const StudentSimulationView: React.FC<{ overrideToken?: string; overrideU
       setCurrentPageIdx(0);
       setAttemptInfo(prev => prev ? { ...prev, attemptNumber: state.attempt_number } : { attemptNumber: state.attempt_number, maxAttempts: 0 });
       setSubmitted(false);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setStartingAttempt(false);
     }
@@ -373,7 +378,7 @@ export const StudentSimulationView: React.FC<{ overrideToken?: string; overrideU
   } return { width, height };
   }, [currentPage]);
 
-  const formatValue = (value: any, fmt?: string) => {
+  const formatValue = (value: unknown, fmt?: string) => {
     if (fmt === 'text') return String(value ?? '');
     const num = typeof value === 'number' ? value : parseFloat(String(value));
     if (isNaN(num)) return String(value ?? '0');
@@ -384,7 +389,7 @@ export const StudentSimulationView: React.FC<{ overrideToken?: string; overrideU
     }
   };
 
-  const renderBarChart = (props: Record<string, any>) => {
+  const renderBarChart = (props: ElementProps) => {
     const refs = expandRange(props.cellRange || '');
     const bars = refs.map(ref => {
       const upperRef = ref.toUpperCase();
@@ -412,7 +417,7 @@ export const StudentSimulationView: React.FC<{ overrideToken?: string; overrideU
     );
   };
 
-  const renderPieChart = (props: Record<string, any>) => {
+  const renderPieChart = (props: ElementProps) => {
     const refs = expandRange(props.cellRange || '');
     const slices = refs.map(ref => {
       const upperRef = ref.toUpperCase();
@@ -453,7 +458,7 @@ export const StudentSimulationView: React.FC<{ overrideToken?: string; overrideU
     );
   };
 
-  const renderTable = (props: Record<string, any>) => {
+  const renderTable = (props: ElementProps) => {
     const configuredRows = getRows(props);
     const rowLabels = Array.isArray(props.tableRows) && props.tableRows.length
       ? configuredRows

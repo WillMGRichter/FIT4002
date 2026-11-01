@@ -5,6 +5,8 @@ import { AppShell, ProjectBadge, StarButton } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 import { addRecent, getStarredProjects, toggleStar, pruneStoredProjects, removeProject } from '../utils/projectStorage';
+import { getErrorMessage } from '../utils/errors';
+import type { ParticipantRow } from '../types/simulation';
 import './Dashboard.css';
 
 interface Project {
@@ -78,13 +80,13 @@ export const DashboardPage: React.FC = () => {
           });
           if (partRes.ok) {
             const participants = await partRes.json();
-            counts[p.id] = participants.filter((part: any) => part.role === 'student').length;
+            counts[p.id] = participants.filter((part: ParticipantRow) => part.role === 'student').length;
           }
         } catch { /* skip */ }
       }));
       setStudentCounts(counts);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -199,8 +201,8 @@ export const DashboardPage: React.FC = () => {
       setDeleteProjectId(null);
       removeProject(deleteProjectId);
       fetchProjects();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(getErrorMessage(err));
     }
   };
 

@@ -8,6 +8,7 @@ import { addRecent } from '../utils/projectStorage';
 import { expandRange } from '../utils/FormulaEngine';
 import { getColumns, getRows } from '../utils/tableUtils';
 import styles from './ProjectDesigner.module.css';
+import type { ElementProps, InputCell, OutputCell, SimulationProject } from '../types/simulation';
 
 type ElementType = 'text' | 'input-field' | 'output-field' | 'image';
 
@@ -22,7 +23,7 @@ interface CanvasElement {
   y: number;
   w: number;
   h: number;
-  props: Record<string, any>;
+  props: ElementProps;
 }
 
 interface Page {
@@ -32,9 +33,12 @@ interface Page {
   elements: CanvasElement[];
 }
 
+/** A page as stored by the API: `elements` can be null on rows that were never edited. */
+type ServerPage = Omit<Page, 'elements'> & { elements: CanvasElement[] | null };
+
 const newElemId = () => `elem_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 
-const ELEMENT_PALETTE: { type: ElementType; label: string; icon: React.ReactNode; defaultProps: Record<string, any> }[] = [
+const ELEMENT_PALETTE: { type: ElementType; label: string; icon: React.ReactNode; defaultProps: ElementProps }[] = [
   { type: 'text', label: 'Text', icon: <Type size={20} />, defaultProps: { content: 'Text', fontSize: 16, color: '#111827', bold: false } },
   { type: 'input-field', label: 'Input', icon: <RectangleHorizontal size={20} />, defaultProps: { cellRef: '', label: 'Input', placeholder: 'Enter value...' } },
   { type: 'output-field', label: 'Output', icon: <ChartBar size={20} />, defaultProps: { cellRef: '', cellRange: '', tableRowHeader: '', tableRows: ['Row 1'], tableColumns: [{ header: 'Column 1', range: '' }], label: 'Output', format: 'number', chartTitle: '', xAxisTitle: '', yAxisTitle: '' } },
@@ -159,7 +163,7 @@ export const ProjectDesigner: React.FC = () => {
   const { token } = useAuth();
   const canvasRef = useRef<HTMLDivElement>(null);
 
-  const [project, setProject] = useState<any>(null);
+  const [project, setProject] = useState<SimulationProject | null>(null);
   const [pages, setPages] = useState<Page[]>([]);
   const [activePageIdx, setActivePageIdx] = useState(0);
   const [selectedElemId, setSelectedElemId] = useState<string | null>(null);
@@ -204,7 +208,7 @@ export const ProjectDesigner: React.FC = () => {
         if (data.length === 0) {
           setPages([{ id: 'temp_1', name: 'Page 1', sort_order: 0, elements: [] }]);
         } else {
-          setPages(data.map((p: any) => ({ ...p, elements: p.elements || [] })));
+          setPages(data.map((p: ServerPage) => ({ ...p, elements: p.elements || [] })));
         }
         setLoading(false);
       })
@@ -217,24 +221,24 @@ export const ProjectDesigner: React.FC = () => {
   // Collect all non-formula (input) cells from the uploaded spreadsheet, sorted by reference
   const inputCells = React.useMemo(() => {
     if (project?.excel_data?.inputCells) {
-      return project.excel_data.inputCells.sort((a: any, b: any) => a.ref.localeCompare(b.ref, undefined, { numeric: true }));
+      return project.excel_data.inputCells.sort((a, b) => a.ref.localeCompare(b.ref, undefined, { numeric: true }));
     }
     if (!project?.excel_data?.cells) return [];
     return Object.entries(project.excel_data.cells)
-      .filter(([_, cell]: [string, any]) => !cell.formula)
-      .map(([ref, cell]: [string, any]) => ({ ref, value: cell.value, title: null }))
+      .filter(([, cell]) => !cell.formula)
+      .map(([ref, cell]): InputCell => ({ ref, value: cell.value, title: null }))
       .sort((a, b) => a.ref.localeCompare(b.ref, undefined, { numeric: true }));
   }, [project]);
 
   // Collect all formula (output) cells from the uploaded spreadsheet, sorted by reference
   const outputCells = React.useMemo(() => {
     if (project?.excel_data?.outputCells) {
-      return project.excel_data.outputCells.sort((a: any, b: any) => a.ref.localeCompare(b.ref, undefined, { numeric: true }));
+      return project.excel_data.outputCells.sort((a, b) => a.ref.localeCompare(b.ref, undefined, { numeric: true }));
     }
     if (!project?.excel_data?.cells) return [];
     return Object.entries(project.excel_data.cells)
-      .filter(([_, cell]: [string, any]) => !!cell.formula)
-      .map(([ref, cell]: [string, any]) => ({ ref, formula: cell.formula, title: null, dependencies: {} }))
+      .filter(([, cell]) => !!cell.formula)
+      .map(([ref, cell]): OutputCell => ({ ref, formula: cell.formula ?? '', title: null, dependencies: {} }))
       .sort((a, b) => a.ref.localeCompare(b.ref, undefined, { numeric: true }));
   }, [project]);
 
@@ -243,8 +247,8 @@ export const ProjectDesigner: React.FC = () => {
   // referenced by a formula) - unreferenced or label-only cells from the original sheet are not available.
   const allTrackedCells = React.useMemo(() => {
     const rows = [
-      ...inputCells.map((c: any) => ({ ref: c.ref, title: c.title, kind: 'Input', display: c.value })),
-      ...outputCells.map((c: any) => ({ ref: c.ref, title: c.title, kind: 'Output', display: c.formula })),
+      ...inputCells.map(c => ({ ref: c.ref, title: c.title, kind: 'Input', display: c.value })),
+      ...outputCells.map(c => ({ ref: c.ref, title: c.title, kind: 'Output', display: c.formula })),
     ];
     return rows.sort((a, b) => a.ref.localeCompare(b.ref, undefined, { numeric: true }));
   }, [inputCells, outputCells]);
@@ -334,7 +338,7 @@ export const ProjectDesigner: React.FC = () => {
     setPages(prev => prev.map((p, i) => i === activePageIdx ? { ...p, elements } : p));
   }, [activePageIdx]);
 
-  const updateElementProps = useCallback((elemId: string, props: Record<string, any>) => {
+  const updateElementProps = useCallback((elemId: string, props: Partial<ElementProps>) => {
     setPages(prev => {
       const page = prev[activePageIdx];
       if (!page) return prev;
@@ -746,18 +750,18 @@ export const ProjectDesigner: React.FC = () => {
                       <select value={selectedElem.props.cellRef || ''} onChange={e => {
                         const ref = e.target.value;
                         const cell = selectedElem.type === 'input-field'
-                          ? inputCells.find((c: any) => c.ref === ref)
-                          : outputCells.find((c: any) => c.ref === ref);
-                        const updates: Record<string, any> = { cellRef: ref };
+                          ? inputCells.find(c => c.ref === ref)
+                          : outputCells.find(c => c.ref === ref);
+                        const updates: Partial<ElementProps> = { cellRef: ref };
                         const isDefaultLabel = selectedElem.props.label === 'Input' || selectedElem.props.label === 'Output';
                         if (cell?.title && isDefaultLabel) updates.label = cell.title;
                         updateElementProps(selectedElem.id, updates);
                       }} className={styles.propInput}>
                         <option value="">-- Select cell --</option>
-                        {selectedElem.type === 'input-field' && inputCells.map((c: any) => (
+                        {selectedElem.type === 'input-field' && inputCells.map(c => (
                           <option key={c.ref} value={c.ref}>{c.ref} | {c.title || c.ref}{c.value !== undefined && c.value !== null ? ` | ${c.value}` : ''}</option>
                         ))}
-                        {selectedElem.type === 'output-field' && outputCells.map((c: any) => (
+                        {selectedElem.type === 'output-field' && outputCells.map(c => (
                           <option key={c.ref} value={c.ref}>{c.ref} | {c.title || c.ref}{c.formula ? ` | ${c.formula}` : ''}</option>
                         ))}
                       </select>

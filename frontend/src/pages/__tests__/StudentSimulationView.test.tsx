@@ -86,6 +86,7 @@ function installFetchMock() {
 function getB1Output(): string {
   // The output-field renders <label>B1 output</label> then a sibling value div.
   const label = screen.getByText('B1 output');
+  // eslint-disable-next-line testing-library/no-node-access -- the value div is a sibling of the label (no htmlFor/role to query by)
   const container = label.parentElement as HTMLElement;
   // The value div is the last child text; grab all text and strip the label.
   return (container.textContent || '').replace('B1 output', '').trim();
@@ -96,6 +97,7 @@ function getB1Output(): string {
 // the input within the shared .fieldElem parent.
 function getInputByLabel(labelText: string): HTMLElement {
   const label = screen.getByText(labelText);
+  // eslint-disable-next-line testing-library/no-node-access -- the label is a sibling of the input (no htmlFor), so go via the shared parent
   const container = label.parentElement as HTMLElement;
   const input = within(container).getByRole('spinbutton'); // number inputs expose role "spinbutton"
   return input;

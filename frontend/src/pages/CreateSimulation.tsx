@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../config';
 import styles from './CreateSimulation.module.css';
+import { getErrorMessage } from '../utils/errors';
+import type { SheetFormulas } from '../types/simulation';
 
 export const CreateSimulation: React.FC = () => {
   const [message, setMessage] = useState<string>('');
-  const [formulas, setFormulas] = useState<any>(null);
+  const [formulas, setFormulas] = useState<SheetFormulas[] | null>(null);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState('');
   const [backendOk, setBackendOk] = useState<boolean | null>(null);
@@ -31,8 +33,8 @@ export const CreateSimulation: React.FC = () => {
         throw new Error(body.error || 'Upload failed');
       }
       setFormulas(await res.json());
-    } catch (err: any) {
-      setError(err.message || 'Error uploading file');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Error uploading file'));
     } finally {
       setLoading(false);
     }

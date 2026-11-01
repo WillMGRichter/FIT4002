@@ -24,6 +24,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "lint": "eslint src --ext .ts,.tsx --max-warnings 0",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -31,6 +32,22 @@
     "extends": [
       "react-app",
       "react-app/jest"
+    ],
+    "rules": {
+      "@typescript-eslint/no-explicit-any": "error"
+    },
+    "overrides": [
+      {
+        "files": [
+          "**/__tests__/**/*.ts",
+          "**/__tests__/**/*.tsx",
+          "**/*.test.ts",
+          "**/*.test.tsx"
+        ],
+        "rules": {
+          "@typescript-eslint/no-explicit-any": "off"
+        }
+      }
     ]
   },
   "jest": {
