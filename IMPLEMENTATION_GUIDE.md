@@ -93,7 +93,8 @@ cp .env.example .env
 # Configure your .env with:
 # - SUPABASE_URL: Your Supabase project URL
 # - SUPABASE_SERVICE_ROLE_KEY: Your Supabase service role key
-# - JWT_SECRET: A strong secret key
+# - JWT_SECRET: REQUIRED. A long random string (the server refuses to start without
+#   it). Generate one: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ```
 
 **Run SQL migrations in Supabase:**
@@ -269,7 +270,7 @@ The frontend will run on `http://localhost:3000`
 ```
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-JWT_SECRET=your_super_secret_key_change_in_prod
+JWT_SECRET=<long random string - REQUIRED, generate with: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))">
 PORT=5000
 NODE_ENV=development
 ```

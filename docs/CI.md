@@ -54,6 +54,11 @@ env:
 
 The production fail-fast check is intentionally left intact.
 
+`JWT_SECRET` is likewise **required** at startup (`backend/src/services/authService.ts`
+throws if it is missing or a known placeholder). The jest setup file
+`backend/jest.setup.js` supplies a throwaway test-only value, so the CI jobs need no extra
+configuration; a real `JWT_SECRET` already in the environment is never overwritten.
+
 ### Frontend
 
 Runs `react-scripts test` with `CI: true` and `--watchAll=false` so it executes once and
