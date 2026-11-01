@@ -1,4 +1,5 @@
-import request from 'supertest';
+import http from 'http';
+import supertest from 'supertest';
 import XLSX from 'xlsx';
 import type { Express } from 'express';
 
@@ -10,6 +11,31 @@ jest.mock('../services/studentJoinService', () => ({
   joinProjectAsStudent: (...args: unknown[]) => mockJoin(...args),
 }));
 
+// Keep the real token functions (the upload tests sign real JWTs) but stub the DB-backed logins.
+const mockLoginUser = jest.fn();
+const mockLoginStudent = jest.fn();
+jest.mock('../services/authService', () => ({
+  ...jest.requireActual('../services/authService'),
+  loginUser: (...args: unknown[]) => mockLoginUser(...args),
+  loginStudent: (...args: unknown[]) => mockLoginStudent(...args),
+}));
+import { generateToken } from '../services/authService';
+
+// supertest's request(app) listens on a wildcard port. On a dev machine running many other local
+// servers (language servers, dev servers, ...) some requests have been seen answered by a
+// different process (random 404 / 501 that this app cannot produce). Binding explicitly to
+// 127.0.0.1 makes that much rarer (roughly 1 run in 8 -> 1 in 30 on the author's Mac) but does not
+// eliminate it; CI on a clean machine is unaffected. If it recurs locally, just re-run.
+const servers: http.Server[] = [];
+function request(app: Express) {
+  const server = http.createServer(app).listen(0, '127.0.0.1');
+  servers.push(server);
+  return supertest(server);
+}
+afterEach(async () => {
+  await Promise.all(servers.splice(0).map((s) => new Promise((resolve) => s.close(resolve))));
+});
+
 const JOIN_URL = '/public/projects/proj-1/join';
 const JOIN_BODY = { displayName: 'Alice', email: 'alice@example.com' };
 
@@ -18,7 +44,9 @@ const JOIN_BODY = { displayName: 'Alice', email: 'alice@example.com' };
  * created at import time, so each scenario loads its own isolated module graph.
  */
 function loadApp(env: Record<string, string | undefined> = {}): Express {
-  const keys = ['JOIN_RATE_LIMIT_MAX', 'JOIN_RATE_LIMIT_WINDOW_MS', 'TRUST_PROXY', 'MAX_UPLOAD_MB'];
+  const keys = ['JOIN_RATE_LIMIT_MAX', 'JOIN_RATE_LIMIT_WINDOW_MS', 'TRUST_PROXY', 'MAX_UPLOAD_MB',
+    'LOGIN_RATE_LIMIT_MAX', 'LOGIN_IP_RATE_LIMIT_MAX', 'LOGIN_RATE_LIMIT_WINDOW_MS',
+    'SIGNUP_RATE_LIMIT_MAX', 'SIGNUP_RATE_LIMIT_WINDOW_MS'];
   const saved = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
   for (const k of keys) delete process.env[k];
   Object.assign(process.env, env);
@@ -38,6 +66,8 @@ function loadApp(env: Record<string, string | undefined> = {}): Express {
 }
 
 beforeEach(() => {
+  mockLoginUser.mockReset();
+  mockLoginStudent.mockReset();
   mockJoin.mockReset();
   mockJoin.mockResolvedValue({ token: 't', userId: 'u1', displayName: 'Alice', email: 'a@b.com', maxAttempts: 1 });
 });
@@ -138,6 +168,7 @@ describe('join endpoint rate limit', () => {
 });
 
 describe('excel upload size limit', () => {
+  const auth = () => ({ Authorization: `Bearer ${generateToken('teacher-1')}` });
   const workbookBuffer = (): Buffer => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([[1, 2, { f: 'A1+B1' }]]), 'Sheet1');
@@ -146,7 +177,7 @@ describe('excel upload size limit', () => {
 
   it('rejects a file over the limit with 413 and a clear message (not a 500)', async () => {
     const app = loadApp({ MAX_UPLOAD_MB: '0.01' }); // ~10 KB
-    const res = await request(app).post('/excel/upload').attach('file', Buffer.alloc(50 * 1024), 'big.xlsx');
+    const res = await request(app).post('/excel/upload').set(auth()).attach('file', Buffer.alloc(50 * 1024), 'big.xlsx');
 
     expect(res.status).toBe(413);
     expect(res.body.error).toMatch(/file too large/i);
@@ -155,7 +186,7 @@ describe('excel upload size limit', () => {
 
   it('still accepts a normal workbook under the limit', async () => {
     const app = loadApp({ MAX_UPLOAD_MB: '1' });
-    const res = await request(app).post('/excel/upload').attach('file', workbookBuffer(), 'ok.xlsx');
+    const res = await request(app).post('/excel/upload').set(auth()).attach('file', workbookBuffer(), 'ok.xlsx');
 
     expect(res.status).toBe(200);
     expect(res.body[0].sheet).toBe('Sheet1');
@@ -165,6 +196,7 @@ describe('excel upload size limit', () => {
     const app = loadApp();
     const res = await request(app)
       .post('/excel/upload')
+      .set(auth())
       .attach('file', workbookBuffer(), 'a.xlsx')
       .attach('file', workbookBuffer(), 'b.xlsx');
 
@@ -184,5 +216,156 @@ describe('excel upload size limit', () => {
       return cfg;
     })();
     expect(MAX_UPLOAD_MB).toBe(10);
+  });
+});
+
+describe('excel upload authentication', () => {
+  const workbook = (): Buffer => {
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([[1, 2]]), 'Sheet1');
+    return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  };
+
+  it('rejects an upload with no token (401)', async () => {
+    const res = await request(loadApp()).post('/excel/upload').attach('file', workbook(), 'a.xlsx');
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects an upload with an invalid token (401)', async () => {
+    const res = await request(loadApp())
+      .post('/excel/upload')
+      .set('Authorization', 'Bearer not-a-real-token')
+      .attach('file', workbook(), 'a.xlsx');
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects before parsing: an oversized file without a token gets 401, not 413', async () => {
+    const app = loadApp({ MAX_UPLOAD_MB: '0.01' });
+    const res = await request(app).post('/excel/upload').attach('file', Buffer.alloc(50 * 1024), 'big.xlsx');
+    expect(res.status).toBe(401);
+  });
+
+  it('accepts an upload with a valid token', async () => {
+    const res = await request(loadApp())
+      .post('/excel/upload')
+      .set('Authorization', `Bearer ${generateToken('teacher-1')}`)
+      .attach('file', workbook(), 'a.xlsx');
+    expect(res.status).toBe(200);
+  });
+});
+
+describe('login rate limit', () => {
+  const STUDENT = '/auth/login/student';
+  const TEACHER = '/auth/login';
+  const wrong = new Error('Invalid credentials');
+
+  const studentLogin = (app: Express, username: string, projectId = 'proj-1') =>
+    request(app).post(STUDENT).send({ projectId, username, password: 'pw' });
+  const teacherLogin = (app: Express, username: string) =>
+    request(app).post(TEACHER).send({ username, password: 'pw' });
+
+  it('blocks password guessing on one account after the failure limit, with 429', async () => {
+    mockLoginStudent.mockRejectedValue(wrong);
+    const app = loadApp({ LOGIN_RATE_LIMIT_MAX: '3' });
+
+    for (let i = 0; i < 3; i++) expect((await studentLogin(app, 'alice')).status).toBe(401);
+    const blocked = await studentLogin(app, 'alice');
+
+    expect(blocked.status).toBe(429);
+    expect(blocked.body.error).toMatch(/too many failed login attempts/i);
+    expect(mockLoginStudent).toHaveBeenCalledTimes(3); // the 4th never reached the service
+  });
+
+  it('applies the same limit to teacher login', async () => {
+    mockLoginUser.mockRejectedValue(wrong);
+    const app = loadApp({ LOGIN_RATE_LIMIT_MAX: '2' });
+
+    await teacherLogin(app, 'teacher');
+    await teacherLogin(app, 'teacher');
+    expect((await teacherLogin(app, 'teacher')).status).toBe(429);
+  });
+
+  it('does not let one locked-out account block a classmate on the same IP', async () => {
+    mockLoginStudent.mockRejectedValue(wrong);
+    const app = loadApp({ LOGIN_RATE_LIMIT_MAX: '2' });
+    await studentLogin(app, 'alice');
+    await studentLogin(app, 'alice');
+    expect((await studentLogin(app, 'alice')).status).toBe(429);
+
+    mockLoginStudent.mockResolvedValue({ user: { id: 'u2' }, token: 't' });
+    expect((await studentLogin(app, 'bob')).status).toBe(200);
+  });
+
+  it('treats the account case-insensitively so changing case does not dodge the limit', async () => {
+    mockLoginStudent.mockRejectedValue(wrong);
+    const app = loadApp({ LOGIN_RATE_LIMIT_MAX: '2' });
+    await studentLogin(app, 'alice');
+    await studentLogin(app, 'ALICE');
+    expect((await studentLogin(app, ' Alice ')).status).toBe(429);
+  });
+
+  it('scopes student accounts per project', async () => {
+    mockLoginStudent.mockRejectedValue(wrong);
+    const app = loadApp({ LOGIN_RATE_LIMIT_MAX: '2' });
+    await studentLogin(app, 'alice', 'proj-1');
+    await studentLogin(app, 'alice', 'proj-1');
+    expect((await studentLogin(app, 'alice', 'proj-1')).status).toBe(429);
+    expect((await studentLogin(app, 'alice', 'proj-2')).status).toBe(401); // different project, own budget
+  });
+
+  it('never counts successful logins, so a class logging in at once is not throttled', async () => {
+    mockLoginStudent.mockResolvedValue({ user: { id: 'u1' }, token: 't' });
+    const app = loadApp({ LOGIN_RATE_LIMIT_MAX: '2', LOGIN_IP_RATE_LIMIT_MAX: '2' });
+
+    for (let i = 0; i < 10; i++) expect((await studentLogin(app, 'alice')).status).toBe(200);
+  });
+
+  it('stops one IP spraying many accounts once the per-IP failure limit is hit', async () => {
+    mockLoginStudent.mockRejectedValue(wrong);
+    const app = loadApp({ LOGIN_RATE_LIMIT_MAX: '100', LOGIN_IP_RATE_LIMIT_MAX: '3' });
+
+    for (const name of ['a', 'b', 'c']) expect((await studentLogin(app, name)).status).toBe(401);
+    expect((await studentLogin(app, 'd')).status).toBe(429);
+  });
+
+  it('cannot be dodged by spoofing X-Forwarded-For when no proxy is trusted', async () => {
+    mockLoginStudent.mockRejectedValue(wrong);
+    const app = loadApp({ LOGIN_RATE_LIMIT_MAX: '2' });
+    for (let i = 0; i < 2; i++) await studentLogin(app, 'alice').set('X-Forwarded-For', `1.2.3.${i}`);
+
+    expect((await studentLogin(app, 'alice').set('X-Forwarded-For', '9.9.9.9')).status).toBe(429);
+  });
+
+  it('counts a malformed (400) request as a failure and tolerates a missing body', async () => {
+    const app = loadApp({ LOGIN_RATE_LIMIT_MAX: '2' });
+    expect((await request(app).post(STUDENT).send({})).status).toBe(400);
+    expect((await request(app).post(STUDENT).send({})).status).toBe(400);
+    expect((await request(app).post(STUDENT).send({})).status).toBe(429);
+  });
+
+  it('uses defaults (10 per account) when not configured', async () => {
+    mockLoginStudent.mockRejectedValue(wrong);
+    const app = loadApp();
+    for (let i = 0; i < 10; i++) expect((await studentLogin(app, 'alice')).status).toBe(401);
+    expect((await studentLogin(app, 'alice')).status).toBe(429);
+  });
+});
+
+describe('signup rate limit', () => {
+  it('limits unauthenticated signups per IP with 429', async () => {
+    const app = loadApp({ SIGNUP_RATE_LIMIT_MAX: '2' });
+    const signup = () => request(app).post('/auth/signup').send({});
+
+    expect((await signup()).status).not.toBe(429);
+    expect((await signup()).status).not.toBe(429);
+    const blocked = await signup();
+    expect(blocked.status).toBe(429);
+    expect(blocked.body.error).toMatch(/too many sign-up attempts/i);
+  });
+
+  it('also covers organisation signup', async () => {
+    const app = loadApp({ SIGNUP_RATE_LIMIT_MAX: '1' });
+    await request(app).post('/auth/signup/organisation').send({});
+    expect((await request(app).post('/auth/signup/organisation').send({})).status).toBe(429);
   });
 });

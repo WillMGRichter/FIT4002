@@ -10,6 +10,7 @@ import studentStateRoutes from "./routes/studentStateRoutes";
 import publicRoutes from "./routes/publicRoutes";
 import excelParser from "./excel/excelParser";
 import { MAX_UPLOAD_MB } from "./config/upload";
+import { authMiddleware } from "./middleware/authMiddleware";
 
 /**
  * Reads TRUST_PROXY: the number of reverse-proxy hops in front of this server
@@ -54,7 +55,8 @@ export function createApp() {
   app.use("/projects", pageRoutes);
   app.use("/student-state", studentStateRoutes);
   app.use("/public", publicRoutes);
-  app.use("/excel", excelParser);
+  /** Auth runs before the router so unauthenticated callers are rejected before any file is parsed. */
+  app.use("/excel", authMiddleware, excelParser);
 
   /** Global error handler - catches unhandled errors from all routes */
   app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
