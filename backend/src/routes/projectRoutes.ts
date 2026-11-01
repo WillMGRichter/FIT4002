@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import multer from 'multer';
+import { createExcelUpload } from '../config/upload';
 import { buildExcelData } from '../excel/excelDataBuilder';
 import { AuthRequest, authMiddleware } from '../middleware/authMiddleware';
 import {
@@ -17,7 +17,7 @@ import {
 import { getUserById, registerUser } from '../services/authService';
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = createExcelUpload();
 
 /** POST / — Create a new project with optional Excel upload. Multipart: file + fields (title, description, students JSON). Requires auth. Returns: Project. */
 router.post('/', authMiddleware, upload.single('file'), async (req: AuthRequest, res: Response) => {

@@ -2,9 +2,10 @@ import { Router, Request, Response } from "express";
 import multer from "multer";
 import XLSX from "xlsx";
 import { extractFormulas } from "./formulaExtractor";
+import { createExcelUpload } from "../config/upload";
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = createExcelUpload();
 
 /**
  * POST /excel/upload

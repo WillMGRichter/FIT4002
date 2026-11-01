@@ -25,7 +25,11 @@ export const CreateSimulation: React.FC = () => {
     setLoading(true); setError(''); setFormulas(null);
     try {
       const res = await fetch(`${API_URL}/excel/upload`, { method: 'POST', body: formData });
-      if (!res.ok) throw new Error('Upload failed');
+      if (!res.ok) {
+        // Surface the server's reason (e.g. "File too large. The maximum upload size is 10 MB.").
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Upload failed');
+      }
       setFormulas(await res.json());
     } catch (err: any) {
       setError(err.message || 'Error uploading file');
