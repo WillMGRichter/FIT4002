@@ -39,7 +39,7 @@ Browser (React SPA)  ->  Express API (JWT auth)  ->  Supabase PostgreSQL
 3. The student view evaluates formulas client-side with the project's own `FormulaEngine`,
    so server load does not grow as students interact. Student state is saved through the API.
 
-Details: [System Architecture Document](docs/design/SmartSim_System_Architecture_Document.docx).
+Details: [System Architecture Document](docs/SmartSim_System_Architecture_Document.docx).
 
 ## Tech stack
 
@@ -76,8 +76,8 @@ Prerequisites: Node.js 20+, Git, and a free [Supabase](https://supabase.com) pro
 4. Open the app, click **Sign Up** to create an admin account, then **Create New Simulation**.
    Sample workbooks are in [`sample-excel-sheets/`](sample-excel-sheets/).
 
-The full walkthrough is in the [Technical Guide](docs/guides/SmartSim_Technical_Guide.docx)
-and the [User Guide](docs/guides/SmartSim_User_Guide.docx).
+The full walkthrough is in the [Technical Guide](docs/SmartSim_Technical_Guide.docx)
+and the [User Guide](docs/SmartSim_User_Guide.docx).
 Students on a local network: see [docs/STUDENT_JOIN.md](docs/STUDENT_JOIN.md).
 
 ## Running the tests
@@ -95,15 +95,15 @@ The backend DB integration suite is opt-in and needs Docker and the Supabase CLI
 Everything below is in this repository.
 
 **Guides**
-- [Technical Guide](docs/guides/SmartSim_Technical_Guide.docx): setup, deployment, configuration.
-- [User Guide](docs/guides/SmartSim_User_Guide.docx): teacher and student walkthrough.
+- [Technical Guide](docs/SmartSim_Technical_Guide.docx): setup, deployment, configuration.
+- [User Guide](docs/SmartSim_User_Guide.docx): teacher and student walkthrough.
 - [Student join and LAN access](docs/STUDENT_JOIN.md)
 
 **Design**
-- [System Architecture Document](docs/design/SmartSim_System_Architecture_Document.docx)
-- [Database Design](docs/design/SmartSim_Database_Design.docx)
-- [Security and Privacy](docs/design/SmartSim_Security_and_Privacy.docx)
-- Prototypes: [lo-fi](docs/design/SmartSim_LoFi_Prototype.png), [hi-fi](docs/design/SmartSim_HiFi_Prototype.png)
+- [System Architecture Document](docs/SmartSim_System_Architecture_Document.docx)
+- [Database Design](docs/SmartSim_Database_Design.docx)
+- [Security and Privacy](docs/SmartSim_Security_and_Privacy.docx)
+- Prototypes: [lo-fi](docs/SmartSim_LoFi_Prototype.png), [hi-fi](docs/SmartSim_HiFi_Prototype.png)
 - Module diagrams: [`docs/diagrams/`](docs/diagrams/)
 
 **Quality assurance**
@@ -112,11 +112,11 @@ Everything below is in this repository.
 - [Workflow definition](.github/workflows/ci.yml)
 
 **Project management**
-- [Project Management Artefact](docs/project-management/Project_Management_Artefact.docx)
-- [Project Plan](docs/project-management/SmartSim_Project_Plan.docx)
-- [Project Timeline](docs/project-management/SmartSim_Project_Timeline.xlsx)
-- [Risk Register](docs/project-management/SmartSim_RiskMatrix.docx)
-- Meeting minutes: [client](docs/project-management/meeting-minutes/SmartSim_Client_Meeting_Minutes.docx), [supervisor](docs/project-management/meeting-minutes/SmartSim_Supervisor_Meeting_Minutes.docx)
+- [Project Management Artefact](docs/Project_Management_Artefact.docx)
+- [Project Plan](docs/SmartSim_Project_Plan.docx)
+- [Project Timeline](docs/SmartSim_Project_Timeline.xlsx)
+- [Risk Register](docs/SmartSim_RiskMatrix.docx)
+- Meeting minutes: [client](docs/SmartSim_Client_Meeting_Minutes.docx), [supervisor](docs/SmartSim_Supervisor_Meeting_Minutes.docx)
 
 **Other repository notes**
 - [Implementation guide](IMPLEMENTATION_GUIDE.md) (includes hosting behind a reverse proxy)
@@ -128,7 +128,7 @@ Everything below is in this repository.
 ```
 backend/            Express API: routes, services, middleware, Excel parsing, migrations
 frontend/           React app: pages, components, FormulaEngine, designer modules
-docs/               Test and CI docs, diagrams, and docs/design, guides, project-management (FIT4002 documents)
+docs/               FIT4002 documents, test and CI notes, diagrams
 sample-excel-sheets/  Example workbooks for trying the product
 scripts/            Helpers that build the demo workbooks
 supabase/           Local Supabase configuration (used by integration tests)

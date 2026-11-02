@@ -5,7 +5,7 @@ Reference docs for the SmartSim test suite and CI.
 - [TESTS.md](./TESTS.md) — every test file, what it covers, and how to run each suite.
 - [CI.md](./CI.md) — GitHub Actions setup, with a focus on how the database integration job is wired.
 - [STUDENT_JOIN.md](./STUDENT_JOIN.md) — anonymous student join links and LAN access setup/troubleshooting.
-- [design/](./design/), [guides/](./guides/), [project-management/](./project-management/) — the FIT4002 documents (architecture, database, security, user and technical guides, plan, risk register, minutes). Linked from the [root README](../README.md).
+- The FIT4002 documents (architecture, database, security, user and technical guides, plan, risk register, timeline, minutes, prototypes) are in this folder. They are listed in the [root README](../README.md).
 
 ## Quick reference
 
