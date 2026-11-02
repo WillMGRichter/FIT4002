@@ -1,11 +1,9 @@
 import { expandRange } from './FormulaEngine';
+import type { ElementProps, TableColumn } from '../types/simulation';
 
-export interface TableColumn {
-  header?: string;
-  range?: string;
-}
+export type { TableColumn };
 
-export function getRows(props: Record<string, any>): string[] {
+export function getRows(props: ElementProps): string[] {
   if (Array.isArray(props.tableRows) && props.tableRows.length) {
     return props.tableRows;
   }
@@ -14,7 +12,7 @@ export function getRows(props: Record<string, any>): string[] {
   return legacyRange ? expandRange(legacyRange) : [];
 }
 
-export function getColumns(props: Record<string, any>): TableColumn[] {
+export function getColumns(props: ElementProps): TableColumn[] {
   if (Array.isArray(props.tableColumns) && props.tableColumns.length) {
     return props.tableColumns;
   }

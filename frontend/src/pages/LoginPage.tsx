@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { UserRound } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { getErrorMessage } from '../utils/errors';
 import './AuthPages.css';
 
 const GoogleIcon = () => (
@@ -29,8 +30,8 @@ export const LoginPage: React.FC = () => {
     try {
       await login(username, password);
       navigate('/dashboard');
-    } catch (err: any) {
-      setError(err.message || 'Login failed');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Login failed'));
     } finally {
       setLoading(false);
     }

@@ -4,6 +4,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
+import { getErrorMessage } from '../utils/errors';
+import type { ParticipantRow, StudentCreateResult } from '../types/simulation';
 import './ProjectCreate.css';
 
 interface StudentRow {
@@ -84,8 +86,8 @@ export const ProjectCreatePage: React.FC = () => {
         }
         if (partRes.ok) {
           const participants = await partRes.json();
-          const studentParticipants = participants.filter((p: any) => p.role === 'student');
-          setStudents(studentParticipants.map((p: any) => ({
+          const studentParticipants = participants.filter((p: ParticipantRow) => p.role === 'student');
+          setStudents(studentParticipants.map((p: ParticipantRow) => ({
             id: p.user_id,
             firstName: '',
             lastName: '',
@@ -152,8 +154,8 @@ export const ProjectCreatePage: React.FC = () => {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error || 'Failed to remove student');
         }
-      } catch (err: any) {
-        setError(err.message || 'Failed to remove student');
+      } catch (err: unknown) {
+        setError(getErrorMessage(err, 'Failed to remove student'));
         return; // keep the row so the teacher knows it wasn't removed
       }
     }
@@ -269,9 +271,9 @@ export const ProjectCreatePage: React.FC = () => {
         // Report any students that could not be created (e.g. duplicate
         // username) so the teacher can fix them, but don't block the project
         // itself, which was created successfully.
-        const failed = (project.studentResults || []).filter((r: any) => !r.ok);
+        const failed = (project.studentResults || []).filter((r: StudentCreateResult) => !r.ok);
         if (failed.length > 0) {
-          const detail = failed.map((f: any) => `${f.username} (${f.error})`).join(', ');
+          const detail = failed.map((f: StudentCreateResult) => `${f.username} (${f.error})`).join(', ');
           alert(`Simulation created, but some students could not be added: ${detail}`);
         }
 
@@ -301,8 +303,8 @@ export const ProjectCreatePage: React.FC = () => {
             const body = await res.json().catch(() => ({}));
             failedStudents.push(`${username} (${body.error || 'could not add'})`);
           }
-        } catch (err: any) {
-          failedStudents.push(`${username} (${err.message || 'network error'})`);
+        } catch (err: unknown) {
+          failedStudents.push(`${username} (${getErrorMessage(err, 'network error')})`);
         }
       }
 
@@ -311,8 +313,8 @@ export const ProjectCreatePage: React.FC = () => {
       }
 
       navigate(`/projects/${editProjectId}/design`);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

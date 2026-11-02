@@ -3,7 +3,36 @@ import bcrypt from 'bcrypt';
 import { supabase } from '../config/supabase';
 import { SafeUser, AuthResponse } from '../types';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-prod';
+/**
+ * Placeholder that used to be the silent fallback. It is public (it was in the
+ * repo), so a deployment running with it would let anyone forge a valid token.
+ * Rejecting it explicitly stops a copy-pasted example value from reaching prod.
+ */
+const INSECURE_PLACEHOLDER_SECRETS = new Set([
+  'your-secret-key-change-in-prod',
+  'your_super_secret_key_change_in_prod',
+  'my-super-secret-key-please-change',
+]);
+
+/**
+ * Reads JWT_SECRET and fails fast at startup if it is missing or a known
+ * placeholder, rather than silently signing tokens with a guessable key.
+ */
+function requireJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error(
+      'Missing JWT_SECRET env var. Set it to a long random string, e.g. ' +
+        '`node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'hex\'))"`.'
+    );
+  }
+  if (INSECURE_PLACEHOLDER_SECRETS.has(secret)) {
+    throw new Error('JWT_SECRET is set to a known placeholder value. Generate a real random secret.');
+  }
+  return secret;
+}
+
+const JWT_SECRET = requireJwtSecret();
 const SALT_ROUNDS = 10;
 
 /** Hashes a plaintext password using bcrypt */
@@ -24,8 +53,10 @@ export function generateToken(userId: string): string {
 /** Verifies a JWT token and returns the userId, or null if invalid/expired */
 export function verifyToken(token: string): string | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
-    return decoded.userId;
+    const decoded = jwt.verify(token, JWT_SECRET);
+    // jwt.verify may return a bare string payload; ours always carries a string userId.
+    if (typeof decoded === 'string') return null;
+    return typeof decoded.userId === 'string' ? decoded.userId : null;
   } catch {
     return null;
   }

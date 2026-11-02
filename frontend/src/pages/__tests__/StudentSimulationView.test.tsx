@@ -86,6 +86,7 @@ function installFetchMock() {
 function getB1Output(): string {
   // The output-field renders <label>B1 output</label> then a sibling value div.
   const label = screen.getByText('B1 output');
+  // eslint-disable-next-line testing-library/no-node-access -- the value div is a sibling of the label (no htmlFor/role to query by)
   const container = label.parentElement as HTMLElement;
   // The value div is the last child text; grab all text and strip the label.
   return (container.textContent || '').replace('B1 output', '').trim();
@@ -96,6 +97,7 @@ function getB1Output(): string {
 // the input within the shared .fieldElem parent.
 function getInputByLabel(labelText: string): HTMLElement {
   const label = screen.getByText(labelText);
+  // eslint-disable-next-line testing-library/no-node-access -- the label is a sibling of the input (no htmlFor), so go via the shared parent
   const container = label.parentElement as HTMLElement;
   const input = within(container).getByRole('spinbutton'); // number inputs expose role "spinbutton"
   return input;
@@ -303,5 +305,235 @@ describe('StudentSimulationView - table output', () => {
     await screen.findByText('Table Page');
 
     expect(await screen.findByText('Quarterly Report')).toBeInTheDocument();
+  });
+});
+
+// ── Persistence, submit, attempts and load failures ──────────────────────────
+// These cover the server round-trips: resuming saved state, debounced auto-save, page-change
+// saves, submit (success + failure), the attempts flow and load errors. A configurable fetch
+// mock records every call so we can assert on method, URL and body.
+describe('StudentSimulationView - server interaction', () => {
+  interface ApiOpts {
+    stateResponses?: Array<{ status: number; body: any }>; // consumed in order, last one repeats
+    participants?: any[];
+    projectOk?: boolean;
+    completeOk?: boolean;
+  }
+
+  let calls: Array<{ method: string; url: string; body: any }>;
+
+  function installApi(opts: ApiOpts = {}) {
+    const stateResponses = opts.stateResponses ?? [{ status: 200, body: { id: 'state-1', attempt_number: 1 } }];
+    let stateCall = 0;
+    calls = [];
+    (global as any).fetch = jest.fn((url: string, init?: any) => {
+      const method = init?.method || 'GET';
+      calls.push({ method, url, body: init?.body ? JSON.parse(init.body) : undefined });
+      const res = (status: number, data: any) =>
+        Promise.resolve({ ok: status >= 200 && status < 300, status, json: () => Promise.resolve(data) });
+
+      if (url.endsWith('/projects/proj-1')) return opts.projectOk === false ? res(500, {}) : res(200, project);
+      if (url.endsWith('/projects/proj-1/pages')) return res(200, pages);
+      if (url.endsWith('/projects/proj-1/participants')) return res(200, opts.participants ?? []);
+      if (url.endsWith('/state/complete')) return opts.completeOk === false ? res(500, {}) : res(200, {});
+      if (url.endsWith('/student-state/proj-1/state') && method === 'GET') {
+        const r = stateResponses[Math.min(stateCall++, stateResponses.length - 1)];
+        return res(r.status, r.body);
+      }
+      return res(200, {}); // PUT /state/inputs, PUT /state/page
+    });
+  }
+
+  const callsTo = (method: string, suffix: string) =>
+    calls.filter(c => c.method === method && c.url.endsWith(suffix));
+
+  // Go to the last page, where the Submit button lives.
+  async function goToLastPage() {
+    await screen.findByText('Page One');
+    await userEvent.click(screen.getByRole('button', { name: /next/i }));
+    await screen.findByText('Page Two');
+  }
+
+  it('resumes saved inputs and the saved page from the server state', async () => {
+    installApi({
+      stateResponses: [{
+        status: 200,
+        body: {
+          id: 'state-1',
+          attempt_number: 2,
+          current_page_id: 'page-2',
+          input_values: { 'page-2': { A1: 7 } },
+        },
+      }],
+    });
+    render(<StudentSimulationView />);
+
+    // Lands on the saved page, not page 1, with the saved input applied.
+    expect(await screen.findByText('Page Two')).toBeInTheDocument();
+    expect((getInputByLabel('A1 input') as HTMLInputElement).value).toBe('7');
+    await waitFor(() => expect(getB1Output()).toBe('14'));
+    expect(screen.getByText('Attempt 2')).toBeInTheDocument();
+  });
+
+  it('auto-saves inputs after a debounce, as one PUT with the final value', async () => {
+    installApi();
+    render(<StudentSimulationView />);
+    await screen.findByText('Page One');
+
+    // Two quick keystrokes must coalesce into a single save.
+    // Note: the component doesn't cancel its debounce timer on unmount, so saves left over from
+    // earlier tests can fire into this test's fetch mock. Those never contain 9 or 3 (no other
+    // test types them), so we only count saves carrying this test's own values.
+    const savesWith = (v: string) =>
+      callsTo('PUT', '/state/inputs').filter(c => c.body.inputValues['page-1']?.A1 === v);
+
+    await userEvent.type(getInputByLabel('A1 input'), '93');
+    expect(savesWith('93')).toHaveLength(0); // nothing sent yet
+
+    await waitFor(() => expect(savesWith('93')).toHaveLength(1), { timeout: 3000 });
+    expect(savesWith('93')[0].body.stateId).toBe('state-1');
+    expect(savesWith('9')).toHaveLength(0); // the intermediate value was never saved
+  });
+
+  it('saves the new page to the server when the student navigates', async () => {
+    installApi();
+    render(<StudentSimulationView />);
+    await screen.findByText('Page One');
+
+    await userEvent.click(screen.getByRole('button', { name: /next/i }));
+    await screen.findByText('Page Two');
+
+    await waitFor(() => expect(callsTo('PUT', '/state/page')).toHaveLength(1));
+    expect(callsTo('PUT', '/state/page')[0].body).toEqual({ stateId: 'state-1', pageId: 'page-2' });
+  });
+
+  it('only shows Submit on the last page', async () => {
+    installApi();
+    render(<StudentSimulationView />);
+    await screen.findByText('Page One');
+    expect(screen.queryByRole('button', { name: /submit/i })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /next/i }));
+    expect(await screen.findByRole('button', { name: /submit/i })).toBeInTheDocument();
+  });
+
+  it('submits the answers and shows the completion screen', async () => {
+    installApi();
+    render(<StudentSimulationView />);
+    await screen.findByText('Page One');
+    await userEvent.type(getInputByLabel('A1 input'), '7');
+    await userEvent.click(screen.getByRole('button', { name: /next/i }));
+    await screen.findByText('Page Two');
+
+    await userEvent.click(screen.getByRole('button', { name: /submit/i }));
+
+    expect(await screen.findByText('Simulation Complete', { selector: 'h1' })).toBeInTheDocument();
+    const complete = callsTo('POST', '/state/complete');
+    expect(complete).toHaveLength(1);
+    expect(complete[0].body.stateId).toBe('state-1');
+    expect(complete[0].body.inputValues['page-1'].A1).toBe('7');
+    // The full inputs are also flushed via the save endpoint before completing.
+    expect(callsTo('PUT', '/state/inputs').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows an error and does not show completion when submit fails', async () => {
+    installApi({ completeOk: false });
+    render(<StudentSimulationView />);
+    await goToLastPage();
+
+    await userEvent.click(screen.getByRole('button', { name: /submit/i }));
+
+    expect(await screen.findByText('Failed to submit')).toBeInTheDocument();
+    expect(screen.queryByText('Simulation Complete', { selector: 'h1' })).not.toBeInTheDocument();
+  });
+
+  it('offers another attempt only while attempts remain, and starts a clean new attempt', async () => {
+    installApi({
+      participants: [{ user_id: 'stu-1', max_attempts: 3 }],
+      stateResponses: [
+        { status: 200, body: { id: 'state-1', attempt_number: 1 } },
+        { status: 200, body: { id: 'state-2', attempt_number: 2 } },
+      ],
+    });
+    render(<StudentSimulationView overrideUserId="stu-1" />);
+    await goToLastPage();
+    await userEvent.click(screen.getByRole('button', { name: /submit/i }));
+
+    const another = await screen.findByRole('button', { name: /do another attempt/i });
+    expect(screen.getByText(/attempt 1 of 3 used/i)).toBeInTheDocument();
+
+    await userEvent.click(another);
+
+    // Back in the simulation on page 1 with the new attempt number and empty inputs.
+    expect(await screen.findByText('Page One')).toBeInTheDocument();
+    expect(screen.getByText('Attempt 2')).toBeInTheDocument();
+    expect((getInputByLabel('A1 input') as HTMLInputElement).value).toBe('');
+
+    // Later saves target the NEW state id.
+    await userEvent.type(getInputByLabel('A1 input'), '5');
+    await waitFor(() => expect(callsTo('PUT', '/state/inputs').some(c => c.body.stateId === 'state-2')).toBe(true), { timeout: 3000 });
+  });
+
+  it('does not offer another attempt when the maximum has been used', async () => {
+    installApi({
+      participants: [{ user_id: 'stu-1', max_attempts: 1 }],
+    });
+    render(<StudentSimulationView overrideUserId="stu-1" />);
+    await goToLastPage();
+    await userEvent.click(screen.getByRole('button', { name: /submit/i }));
+
+    await screen.findByText('Simulation Complete', { selector: 'h1' });
+    expect(screen.queryByRole('button', { name: /do another attempt/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /i'm finished/i })).toBeInTheDocument();
+  });
+
+  it('shows "used all your attempts" when the backend refuses a new attempt', async () => {
+    installApi({
+      participants: [{ user_id: 'stu-1', max_attempts: 3 }],
+      stateResponses: [
+        { status: 200, body: { id: 'state-1', attempt_number: 1 } },
+        { status: 400, body: { error: 'No attempts remaining' } },
+      ],
+    });
+    render(<StudentSimulationView overrideUserId="stu-1" />);
+    await goToLastPage();
+    await userEvent.click(screen.getByRole('button', { name: /submit/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /do another attempt/i }));
+
+    expect(await screen.findByText(/used all your attempts/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /do another attempt/i })).not.toBeInTheDocument();
+  });
+
+  it('navigates to /done from the completion screen', async () => {
+    installApi();
+    render(<StudentSimulationView />);
+    await goToLastPage();
+    await userEvent.click(screen.getByRole('button', { name: /submit/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /i'm finished/i }));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/done');
+  });
+
+  it('shows an error when the simulation cannot be loaded', async () => {
+    installApi({ projectOk: false });
+    render(<StudentSimulationView />);
+
+    expect(await screen.findByText('Failed to load simulation')).toBeInTheDocument();
+    expect(screen.queryByText('Page One')).not.toBeInTheDocument();
+  });
+
+  it("surfaces the backend's reason when the student's state is refused", async () => {
+    installApi({ stateResponses: [{ status: 400, body: { error: 'No attempts remaining' } }] });
+    render(<StudentSimulationView />);
+
+    expect(await screen.findByText('No attempts remaining')).toBeInTheDocument();
+    expect(screen.queryByText('Page One')).not.toBeInTheDocument();
+  });
+
+  it('falls back to a generic message when a refused state has no error body', async () => {
+    installApi({ stateResponses: [{ status: 500, body: {} }] });
+    render(<StudentSimulationView />);
+
+    expect(await screen.findByText('Unable to start this simulation.')).toBeInTheDocument();
   });
 });

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { getErrorMessage } from '../utils/errors';
 
 const ShieldIcon = () => (
   <ShieldCheck size={34} color="#118a05" strokeWidth={1.9} />
@@ -37,8 +38,8 @@ export const AdminLogin: React.FC = () => {
     try {
       await login(username, password);
       navigate('/org-management');
-    } catch (err: any) {
-      setError(err.message || 'Login failed');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Login failed'));
     } finally {
       setLoading(false);
     }

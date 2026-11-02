@@ -1,5 +1,12 @@
 import { supabase } from '../config/supabase';
+import type { ExcelData } from '../excel/excelDataBuilder';
 import { Project, ProjectParticipant } from '../types';
+
+/** A participant row as returned by the `users:user_id ( username )` join. */
+type ParticipantRow = ProjectParticipant & { users?: { username: string | null } | null };
+
+/** A participant plus the joined user's username (null if the user row is gone). */
+export type ParticipantWithUsername = ParticipantRow & { username: string | null };
 
 /**
  * Creates a new simulation project.
@@ -15,7 +22,7 @@ export async function createProject(
   createdBy: string,
   organisationId: string,
   description?: string,
-  excelData?: any,
+  excelData?: ExcelData | null,
   defaultMaxAttempts?: number
 ): Promise<Project> {
   const { data, error } = await supabase
@@ -148,7 +155,7 @@ export async function getProjectParticipants(projectId: string): Promise<Project
 }
 
 /** Fetches participants with their usernames via a join on the users table */
-export async function getProjectParticipantsWithUsernames(projectId: string): Promise<any[]> {
+export async function getProjectParticipantsWithUsernames(projectId: string): Promise<ParticipantWithUsername[]> {
   const { data, error } = await supabase
     .from('project_participants')
     .select(`
@@ -158,14 +165,77 @@ export async function getProjectParticipantsWithUsernames(projectId: string): Pr
     .eq('project_id', projectId);
 
   if (error) throw error;
-  return (data || []).map((p: any) => ({
+  return ((data || []) as ParticipantRow[]).map((p) => ({
     ...p,
     username: p.users?.username || null,
   }));
 }
 
-/** Removes a user from a project's participant list */
+/**
+ * Removes a student from a project.
+ *
+ * Student accounts are project-scoped (see migration 005): one `users` row per
+ * student per project, with `users.project_id` set, and every child table
+ * (project_participants, simulation_progress, student_simulation_state,
+ * project_results) declares ON DELETE CASCADE on its user_id. So for a project
+ * student we delete the `users` row itself, which cascades away the participant
+ * link, progress, state and results, and frees the username for re-add.
+ *
+ * Deleting only the join row (the previous behaviour) left an orphaned `users`
+ * row: the student appeared to be removed but their account lingered, which
+ * both re-populated the list and tripped the uniq_users_username_per_project
+ * index when the same username was added again.
+ *
+ * For any non-student / global account we never delete the user; we only detach
+ * the participant row, as before.
+ *
+ * Legacy rows: students created by the join flow before it stamped `project_id`
+ * have `project_id = NULL`. Those are treated as belonging to this project only
+ * if this is their SOLE enrolment; if they are enrolled elsewhere too we detach
+ * rather than destroy an account another project depends on.
+ */
 export async function removeProjectParticipant(projectId: string, userId: string): Promise<void> {
+  const { data: user, error: lookupError } = await supabase
+    .from('users')
+    .select('id, role, project_id')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (lookupError) throw lookupError;
+
+  let ownedByThisProject = false;
+  if (user && user.role === 'student') {
+    if (user.project_id === projectId) {
+      ownedByThisProject = true;
+    } else if (user.project_id === null) {
+      // Legacy unscoped student: owned by this project only if it is their sole enrolment.
+      const { data: enrolments, error: enrolError } = await supabase
+        .from('project_participants')
+        .select('project_id')
+        .eq('user_id', userId);
+
+      if (enrolError) throw enrolError;
+      ownedByThisProject =
+        !!enrolments &&
+        enrolments.length > 0 &&
+        enrolments.every((e: { project_id: string }) => e.project_id === projectId);
+    }
+  }
+
+  if (ownedByThisProject) {
+    // Deleting the student user cascades to project_participants,
+    // simulation_progress, student_simulation_state and project_results.
+    const { error } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', userId)
+      .eq('role', 'student');
+
+    if (error) throw error;
+    return;
+  }
+
+  // Non-student, or a student that belongs elsewhere: only detach from this project.
   const { error } = await supabase
     .from('project_participants')
     .delete()

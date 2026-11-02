@@ -1,0 +1,32 @@
+%%{init: {'theme':'base', 'themeVariables': {'fontSize':'16px'}}}%%
+flowchart TD
+    pages["pages/*<br/>(Dashboard,<br/>ProjectDesigner,<br/>StudentSimulationView, JoinSimulation, ...)"]
+
+    pages --> comps["components/*<br/>(AppShell, StudentShell,<br/>canvas, Button, Input)"]
+    pages --> auth["contexts/AuthContext<br/><i>auth state, single source</i>"]
+    pages --> cfg["config.API_URL<br/><i>single backend URL</i>"]
+    pages --> utils["utils/*"]
+
+    utils --> fe["FormulaEngine"]
+    utils --> tbl["tableUtils"]
+    utils --> store["projectStorage"]
+    utils --> guest["guestSession"]
+
+    %% ── Legend: one compact horizontal strip, kept clear of the graph ──
+    subgraph Legend [" "]
+        direction LR
+        L1[" Page "]:::page --- L2[" Component "]:::comp --- L3[" Shared "]:::shared --- L4[" Util "]:::util
+    end
+    Legend ~~~ pages
+
+    classDef page fill:#dbeafe,stroke:#2563eb,color:#0c2a5b;
+    classDef comp fill:#dcfce7,stroke:#16a34a,color:#064e3b;
+    classDef shared fill:#f3e8ff,stroke:#9333ea,color:#3b0764;
+    classDef util fill:#fef9c3,stroke:#ca8a04,color:#713f12;
+
+    class pages page;
+    class comps comp;
+    class auth,cfg shared;
+    class utils,fe,tbl,store,guest util;
+
+    linkStyle 8,9,10 stroke-width:0px;

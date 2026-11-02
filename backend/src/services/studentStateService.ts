@@ -1,5 +1,10 @@
 import { supabase } from '../config/supabase';
-import { StudentSimulationState } from '../types';
+import { JsonObject, ProjectResult, StudentSimulationState } from '../types';
+
+/** A stored result plus the student's username/email from the `users:user_id` join. */
+export type StudentResultRow = ProjectResult & {
+  users: { username: string; email: string | null } | null;
+};
 
 /**
  * Retrieves the current active state for a student, or creates a new one if none exists.
@@ -62,26 +67,44 @@ export async function getOrCreateState(
     .limit(1)
     .single();
 
-  const { data, error } = await supabase
+  // Insert the new attempt row. Two requests can reach here concurrently (a
+  // phone often fires the "get or create" call twice on mount), both compute
+  // the same newAttemptNumber, and the second insert would violate
+  // UNIQUE(project_id, user_id, attempt_number) ("duplicate key"). Upsert with
+  // ignoreDuplicates makes the losing request a no-op instead of an error; we
+  // then read back whichever row now exists for this attempt and return it, so
+  // both callers get a valid, identical state.
+  const { error } = await supabase
     .from('student_simulation_state')
-    .insert([{
-      project_id: projectId,
-      user_id: userId,
-      attempt_number: newAttemptNumber,
-      current_page_id: firstPage?.id || null,
-      input_values: {},
-    }])
-    .select()
-    .single();
+    .upsert(
+      [{
+        project_id: projectId,
+        user_id: userId,
+        attempt_number: newAttemptNumber,
+        current_page_id: firstPage?.id || null,
+        input_values: {},
+      }],
+      { onConflict: 'project_id,user_id,attempt_number', ignoreDuplicates: true }
+    );
 
   if (error) throw error;
+
+  const { data, error: readError } = await supabase
+    .from('student_simulation_state')
+    .select('*')
+    .eq('project_id', projectId)
+    .eq('user_id', userId)
+    .eq('attempt_number', newAttemptNumber)
+    .single();
+
+  if (readError) throw readError;
   return data;
 }
 
 /** Updates the input values for a student's simulation state */
 export async function updateInputValues(
   stateId: string,
-  inputValues: any
+  inputValues: JsonObject
 ): Promise<StudentSimulationState> {
   const { data, error } = await supabase
     .from('student_simulation_state')
@@ -119,7 +142,7 @@ export async function completeAttempt(
   stateId: string,
   projectId: string,
   userId: string,
-  finalInputValues: any
+  finalInputValues: JsonObject
 ): Promise<void> {
   // Guard against completing a state that is already completed (e.g. a double
   // submit, or a retry after a flaky network). Without this, we would run the
@@ -178,7 +201,7 @@ export async function completeAttempt(
  * Fetches all student results for a project, including associated user data.
  * Joins with users table to include username and email.
  */
-export async function getStudentResults(projectId: string): Promise<any[]> {
+export async function getStudentResults(projectId: string): Promise<StudentResultRow[]> {
   const { data, error } = await supabase
     .from('project_results')
     .select('*, users:user_id(username, email)')

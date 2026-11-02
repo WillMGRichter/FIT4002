@@ -33,13 +33,16 @@ All three must be run - skipping 002 or 003 will cause errors later (e.g. "Add P
 cd backend
 npm install
 
-# Create .env file
+# Create .env file from the template
 cp .env.example .env
 
 # Edit .env and add your Supabase credentials:
 # SUPABASE_URL=https://xxxx.supabase.co
 # SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
-# JWT_SECRET=my-super-secret-key-please-change
+# JWT_SECRET=<required - generate one, see below>
+
+# Generate a strong JWT_SECRET (the server will not start without one):
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ```
 
 ### Step 4: Start Backend (1 minute)

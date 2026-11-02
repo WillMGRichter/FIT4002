@@ -35,8 +35,8 @@ caching.
 
 | Job | Purpose | DB |
 |-----|---------|:--:|
-| `Backend (unit + routes)` | `npm ci` → `tsc --noEmit` → `npm test` (77 mocked tests) | — |
-| `Frontend (unit + type-check)` | `npm ci` → `tsc --noEmit` → `react-scripts test` (56 tests) | — |
+| `Backend (unit + routes)` | `npm ci` → `tsc --noEmit` → `npm run lint` (ESLint, incl. `no-explicit-any`) → `npm test` (mocked tests) | — |
+| `Frontend (unit + type-check)` | `npm ci` → `tsc --noEmit` → `npm run lint` (ESLint, incl. `no-explicit-any`) → `react-scripts test` | — |
 | `Backend (DB integration)` | boots Supabase, migrates, runs the 15 opt-in integration tests | ✔ |
 
 ### Backend (mocked) — dummy Supabase env
@@ -53,6 +53,11 @@ env:
 ```
 
 The production fail-fast check is intentionally left intact.
+
+`JWT_SECRET` is likewise **required** at startup (`backend/src/services/authService.ts`
+throws if it is missing or a known placeholder). The jest setup file
+`backend/jest.setup.js` supplies a throwaway test-only value, so the CI jobs need no extra
+configuration; a real `JWT_SECRET` already in the environment is never overwritten.
 
 ### Frontend
 

@@ -1,0 +1,69 @@
+%%{init: {'theme':'base', 'themeVariables': {'fontSize':'16px'}}}%%
+flowchart TD
+    index["index.ts"] --> app["app.ts<br/><i>mounts all routers</i>"]
+
+    app --> authR["authRoutes"]
+    app --> projR["projectRoutes"]
+    app --> pageR["pageRoutes"]
+    app --> simR["simulationRoutes"]
+    app --> stateR["studentStateRoutes"]
+    app --> pubR["publicRoutes"]
+
+    %% routes -> services
+    authR --> authS["authService"]
+    projR --> projS["projectService"]
+    projR --> authS
+    projR --> excel["excel/excelDataBuilder"]
+    pageR --> pageS["pageService"]
+    pageR --> projS
+    simR --> simS["simulationService"]
+    simR --> projS
+    stateR --> stateS["studentStateService"]
+    stateR --> projS
+    pubR --> joinS["studentJoinService"]
+
+    %% routes -> middleware
+    authR --> mw["middleware/authMiddleware"]
+    projR --> mw
+    pageR --> mw
+    simR --> mw
+    stateR --> mw
+    mw --> authS
+
+    %% one deliberate service-to-service reuse
+    joinS --> authS
+
+    %% all services -> shared infra
+    authS --> cfg["config/supabase"]
+    projS --> cfg
+    pageS --> cfg
+    simS --> cfg
+    stateS --> cfg
+    joinS --> cfg
+
+    authS --> types["types/"]
+    projS --> types
+    pageS --> types
+    simS --> types
+    stateS --> types
+
+    %% ── Legend: one compact horizontal strip at the top ──
+    subgraph Legend [" "]
+        direction LR
+        L1[" Entry "]:::entry --- L2[" Route "]:::route --- L3[" Service "]:::service --- L4[" Infra "]:::infra --- L5[" Shared "]:::shared
+    end
+    Legend ~~~ index
+
+    classDef entry fill:#e0e7ff,stroke:#4f46e5,color:#1e1b4b;
+    classDef route fill:#dbeafe,stroke:#2563eb,color:#0c2a5b;
+    classDef service fill:#dcfce7,stroke:#16a34a,color:#064e3b;
+    classDef infra fill:#fef9c3,stroke:#ca8a04,color:#713f12;
+    classDef shared fill:#f3e8ff,stroke:#9333ea,color:#3b0764;
+
+    class index,app entry;
+    class authR,projR,pageR,simR,stateR,pubR route;
+    class authS,projS,pageS,simS,stateS,joinS service;
+    class cfg,excel infra;
+    class types,mw shared;
+
+    linkStyle 36,37,38,39 stroke-width:0px;

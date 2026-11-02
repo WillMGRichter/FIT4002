@@ -4,6 +4,7 @@ import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 import styles from './OrgManagement.module.css';
+import { getErrorMessage } from '../utils/errors';
 
 interface Organisation {
   id: string;
@@ -30,8 +31,8 @@ export const OrgManagement: React.FC = () => {
       const data = await res.json();
       setOrgs(data);
       if (data.length > 0) setSelectedOrgId(data[0].id);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

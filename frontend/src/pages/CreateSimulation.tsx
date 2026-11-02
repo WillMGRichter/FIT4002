@@ -1,15 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../config';
+import { useAuth } from '../contexts/AuthContext';
 import styles from './CreateSimulation.module.css';
+import { getErrorMessage } from '../utils/errors';
+import type { SheetFormulas } from '../types/simulation';
 
 export const CreateSimulation: React.FC = () => {
   const [message, setMessage] = useState<string>('');
-  const [formulas, setFormulas] = useState<any>(null);
+  const [formulas, setFormulas] = useState<SheetFormulas[] | null>(null);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState('');
   const [backendOk, setBackendOk] = useState<boolean | null>(null);
   const navigate = useNavigate();
+  const { token } = useAuth();
 
   useEffect(() => {
     fetch(`${API_URL}`)
@@ -24,11 +28,21 @@ export const CreateSimulation: React.FC = () => {
     formData.append('file', e.target.files[0]);
     setLoading(true); setError(''); setFormulas(null);
     try {
-      const res = await fetch(`${API_URL}/excel/upload`, { method: 'POST', body: formData });
-      if (!res.ok) throw new Error('Upload failed');
+      // The upload endpoint requires a signed-in user. Don't set Content-Type: the browser
+      // adds the multipart boundary itself.
+      const res = await fetch(`${API_URL}/excel/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (!res.ok) {
+        // Surface the server's reason (e.g. "File too large. The maximum upload size is 10 MB.").
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Upload failed');
+      }
       setFormulas(await res.json());
-    } catch (err: any) {
-      setError(err.message || 'Error uploading file');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Error uploading file'));
     } finally {
       setLoading(false);
     }

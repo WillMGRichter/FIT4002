@@ -20,6 +20,7 @@ import { AppShell } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 import { addRecent } from '../utils/projectStorage';
+import { getErrorMessage } from '../utils/errors';
 import './SimulationPage.css';
 
 interface Project {
@@ -62,8 +63,8 @@ export const SimulationPage: React.FC = () => {
         const data = await response.json();
         setProject(data);
         addRecent({ id: projectId!, name: data.name });
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err: unknown) {
+        setError(getErrorMessage(err));
       } finally {
         setLoading(false);
       }

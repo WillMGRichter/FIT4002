@@ -93,7 +93,8 @@ cp .env.example .env
 # Configure your .env with:
 # - SUPABASE_URL: Your Supabase project URL
 # - SUPABASE_SERVICE_ROLE_KEY: Your Supabase service role key
-# - JWT_SECRET: A strong secret key
+# - JWT_SECRET: REQUIRED. A long random string (the server refuses to start without
+#   it). Generate one: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ```
 
 **Run SQL migrations in Supabase:**
@@ -147,7 +148,7 @@ The frontend will run on `http://localhost:3000`
 - `GET /simulations/:projectId/results/user` - Get user's results
 
 ### Excel
-- `POST /excel/upload` - Upload and parse Excel file
+- `POST /excel/upload` - Upload and parse Excel file (requires `Authorization: Bearer <token>`)
 
 ## Database Schema
 
@@ -269,10 +270,38 @@ The frontend will run on `http://localhost:3000`
 ```
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-JWT_SECRET=your_super_secret_key_change_in_prod
+JWT_SECRET=<long random string - REQUIRED, generate with: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))">
 PORT=5000
 NODE_ENV=development
 ```
+
+Optional hardening settings (defaults, and what each does, are in `backend/.env.example`):
+`MAX_UPLOAD_MB`, `JOIN_RATE_LIMIT_*`, `LOGIN_RATE_LIMIT_*`, `LOGIN_IP_RATE_LIMIT_MAX`,
+`SIGNUP_RATE_LIMIT_*` and `TRUST_PROXY`.
+
+### Hosting behind a reverse proxy (`TRUST_PROXY`)
+
+Skip this when running locally or on a LAN. **Set it whenever the API is hosted behind a
+reverse proxy or load balancer** (Render, Railway, Heroku, nginx, AWS ELB, ...).
+
+The join, login and signup rate limits count requests per client IP. Behind a proxy, every
+request arrives from the proxy's own address unless Express is told to trust the proxy and read
+the real client address from `X-Forwarded-For`. If `TRUST_PROXY` is left unset in that setup:
+
+- every user shares one IP and one limit, so a single class logging in can lock everyone out, and
+- the limits no longer protect against a single abusive client.
+
+Set `TRUST_PROXY` to the **number of proxies in front of the API**, e.g. `TRUST_PROXY=1` for one
+load balancer. Getting the number right matters: too low and users share the proxy's IP; too high
+and clients can spoof their IP by sending their own `X-Forwarded-For` header.
+
+A bare `TRUST_PROXY=true` is deliberately ignored (silently, so check your value took effect) because it trusts every hop in the
+header, which lets any client dodge the limits by faking their address. An Express subnet name
+such as `loopback` or `uniquelocal` is also accepted.
+
+To check it after deploying, call a rate-limited endpoint repeatedly from two different
+machines. Each should be counted separately; if both hit the limit together, the setting is
+wrong.
 
 ## Contributing
 

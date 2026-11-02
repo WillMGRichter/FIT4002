@@ -5,13 +5,14 @@ Reference docs for the SmartSim test suite and CI.
 - [TESTS.md](./TESTS.md) — every test file, what it covers, and how to run each suite.
 - [CI.md](./CI.md) — GitHub Actions setup, with a focus on how the database integration job is wired.
 - [STUDENT_JOIN.md](./STUDENT_JOIN.md) — anonymous student join links and LAN access setup/troubleshooting.
+- The FIT4002 documents (architecture, database, security, user and technical guides, plan, risk register, timeline, minutes, prototypes) are in this folder. They are listed in the [root README](../README.md).
 
 ## Quick reference
 
 | Suite | Location | Count | DB needed? |
 |-------|----------|-------|------------|
-| Frontend unit/component | `frontend/src/**/__tests__/*.test.{ts,tsx}` | 56 | No |
-| Backend unit/route (mocked) | `backend/src/**/__tests__/*.test.ts` (excl. integration) | 77 | No |
+| Frontend unit/component | `frontend/src/**/__tests__/*.test.{ts,tsx}` | 199 | No |
+| Backend unit/route (mocked) | `backend/src/**/__tests__/*.test.ts` (excl. integration) | 181 | No |
 | Backend DB integration (opt-in) | `backend/src/services/__tests__/*.integration.test.ts` | 15 | Yes (local Supabase) |
 
 Test files live in `__tests__/` folders next to the code they cover (e.g.

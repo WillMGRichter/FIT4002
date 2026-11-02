@@ -5,6 +5,8 @@ import { AppShell, ProjectBadge, StarButton } from '../components/AppShell';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 import { addRecent, getStarredProjects, toggleStar, pruneStoredProjects, removeProject } from '../utils/projectStorage';
+import { getErrorMessage } from '../utils/errors';
+import type { ParticipantRow } from '../types/simulation';
 import './Dashboard.css';
 
 interface Project {
@@ -78,13 +80,13 @@ export const DashboardPage: React.FC = () => {
           });
           if (partRes.ok) {
             const participants = await partRes.json();
-            counts[p.id] = participants.filter((part: any) => part.role === 'student').length;
+            counts[p.id] = participants.filter((part: ParticipantRow) => part.role === 'student').length;
           }
         } catch { /* skip */ }
       }));
       setStudentCounts(counts);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -134,14 +136,35 @@ export const DashboardPage: React.FC = () => {
     navigate(`/projects/create?edit=${project.id}`);
   };
 
-  // Open the share dialog for a project. The join link's base URL defaults to the
-  // current origin, but we reuse a teacher-saved override (e.g. their LAN IP) if set,
-  // so the copied link works for students on other devices.
-  const JOIN_BASE_URL_KEY = 'smartsim_join_base_url';
+  // Open the share dialog for a project.
+  //
+  // The base URL always tracks the CURRENT origin's scheme + port, so the link
+  // works no matter which port the dev server started on (CRA bumps 3000 -> 3001
+  // -> 3002 when ports are taken). We never trust a previously saved port.
+  //
+  // The only thing a teacher may override is the HOST, and only when the browser
+  // origin is localhost/127.0.0.1 — which can't be opened from another device.
+  // In that case we graft the saved host onto the live scheme + port so an old
+  // saved port can never resurface.
+  const JOIN_BASE_URL_KEY = 'smartsim_join_host';
   const copyJoinLink = (projectId: string) => {
     setMenuProjectId(null);
-    const saved = (() => { try { return localStorage.getItem(JOIN_BASE_URL_KEY) || ''; } catch { return ''; } })();
-    setShareBaseUrl(saved || window.location.origin);
+
+    const { protocol, hostname, port } = window.location;
+    const portSuffix = port ? `:${port}` : '';
+    const isLocal = /^(localhost|127\.0\.0\.1|\[?::1\]?)$/.test(hostname);
+
+    let base = `${protocol}//${hostname}${portSuffix}`;
+    if (isLocal) {
+      // Browser is on localhost; let a saved LAN host (hostname only) stand in,
+      // but keep the live scheme + port.
+      const savedHost = (() => {
+        try { return (localStorage.getItem(JOIN_BASE_URL_KEY) || '').trim(); } catch { return ''; }
+      })();
+      if (savedHost) base = `${protocol}//${savedHost}${portSuffix}`;
+    }
+
+    setShareBaseUrl(base);
     setShareProjectId(projectId);
   };
 
@@ -151,7 +174,13 @@ export const DashboardPage: React.FC = () => {
   const shareLink = shareProjectId ? `${normalisedBaseUrl}/join/${shareProjectId}` : '';
 
   const persistAndCopyLink = () => {
-    try { localStorage.setItem(JOIN_BASE_URL_KEY, normalisedBaseUrl); } catch { /* ignore */ }
+    // Persist only the HOST portion (no scheme, no port) so an edited LAN IP is
+    // remembered for localhost sessions, while the port always comes from the
+    // live origin and can never go stale.
+    try {
+      const host = normalisedBaseUrl.replace(/^https?:\/\//, '').replace(/:\d+$/, '');
+      localStorage.setItem(JOIN_BASE_URL_KEY, host);
+    } catch { /* ignore */ }
     if (shareLink) {
       navigator.clipboard?.writeText(shareLink).catch(() => {});
       if (shareProjectId) {
@@ -172,8 +201,8 @@ export const DashboardPage: React.FC = () => {
       setDeleteProjectId(null);
       removeProject(deleteProjectId);
       fetchProjects();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(getErrorMessage(err));
     }
   };
 

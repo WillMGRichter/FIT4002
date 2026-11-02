@@ -1,3 +1,11 @@
+import type { ExcelData } from '../excel/excelDataBuilder';
+
+/** Any value that survives a JSON round-trip, i.e. what a Postgres JSONB column can hold. */
+export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
+/** A JSON object (a JSONB column that always holds an object, e.g. a map of input values). */
+export type JsonObject = { [key: string]: JsonValue };
+
 /** Available user roles in the system hierarchy */
 export enum UserRole {
   ORGANISATION = 'organisation',
@@ -42,7 +50,7 @@ export interface Project {
   created_by: string;
   organisation_id: string;
   visibility: ProjectVisibility;
-  excel_data?: any;
+  excel_data?: ExcelData | null;
   default_max_attempts?: number;
   created_at: string;
   updated_at: string;
@@ -64,7 +72,7 @@ export interface SimulationProgress {
   id: string;
   project_id: string;
   user_id: string;
-  state: any;
+  state: JsonValue;
   saved_at: string;
   updated_at: string;
 }
@@ -74,7 +82,7 @@ export interface ProjectResult {
   id: string;
   project_id: string;
   user_id: string;
-  final_state: any;
+  final_state: JsonValue;
   completed_at: string;
 }
 
@@ -84,7 +92,7 @@ export interface ProjectPage {
   project_id: string;
   name: string;
   sort_order: number;
-  elements: any;
+  elements: JsonValue[];
   created_at: string;
   updated_at: string;
 }
@@ -95,7 +103,7 @@ export interface StudentSimulationState {
   project_id: string;
   user_id: string;
   attempt_number: number;
-  input_values: any;
+  input_values: JsonObject;
   current_page_id?: string;
   is_completed: boolean;
   created_at: string;
